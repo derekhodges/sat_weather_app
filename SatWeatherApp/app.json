@@ -48,11 +48,6 @@
         }
       ],
       "expo-dev-client"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "satellite-weather-app"
-      }
-    }
+    ]
   }
 }
