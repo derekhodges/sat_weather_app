@@ -13,6 +13,17 @@ const COD_BASE_URL = 'https://weather.cod.edu/data/satellite';
  * - https://weather.cod.edu/data/satellite/continental/conus/truecolor/conus.truecolor.20251109.220118.jpg
  */
 export const generateCODImageUrl = (domain, product, timestamp = null) => {
+  // Check for null/undefined domain or product
+  if (!domain || !domain.codName) {
+    console.error('generateCODImageUrl: Invalid domain', domain);
+    return null;
+  }
+
+  if (!product || !product.codName) {
+    console.error('generateCODImageUrl: Invalid product', product);
+    return null;
+  }
+
   const ts = timestamp || generateCurrentTimestamp();
 
   // Determine the base path based on domain type
@@ -122,6 +133,12 @@ export const checkImageExists = async (url) => {
  * Tries current time and works backwards
  */
 export const getLatestImageUrl = async (domain, product, maxAttempts = 12) => {
+  // Validate inputs first
+  if (!domain || !product) {
+    console.error('getLatestImageUrl: Invalid domain or product', { domain, product });
+    return null;
+  }
+
   for (let i = 0; i < maxAttempts; i++) {
     const now = new Date();
     now.setMinutes(now.getMinutes() - (i * 10)); // Go back 10 minutes each attempt
@@ -139,6 +156,12 @@ export const getLatestImageUrl = async (domain, product, maxAttempts = 12) => {
 
     const timestamp = `${year}${month}${day}.${hours}${mins}${secs}`;
     const url = generateCODImageUrl(domain, product, timestamp);
+
+    // Skip if URL generation failed
+    if (!url) {
+      console.warn('getLatestImageUrl: Failed to generate URL for timestamp', timestamp);
+      continue;
+    }
 
     const exists = await checkImageExists(url);
     if (exists) {
