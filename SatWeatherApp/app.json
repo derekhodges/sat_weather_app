@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -48,6 +47,11 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Satellite Weather to use your location to show local weather data."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "satellite-weather-app"
+      }
+    }
   }
 }
