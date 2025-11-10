@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { SATELLITES } from '../constants/satellites';
 
-export const TopBar = ({ onMenuPress, onRefresh }) => {
+export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
   const { selectedSatellite, selectedDomain, setSelectedSatellite } = useApp();
   const [showSatelliteSelector, setShowSatelliteSelector] = useState(false);
 
@@ -34,6 +34,9 @@ export const TopBar = ({ onMenuPress, onRefresh }) => {
 
       {/* Right buttons */}
       <View style={styles.rightButtons}>
+        <TouchableOpacity onPress={onFavoritesPress} style={styles.iconButton}>
+          <Ionicons name="star" size={24} color="#fff" />
+        </TouchableOpacity>
         <TouchableOpacity onPress={onRefresh} style={styles.iconButton}>
           <Ionicons name="refresh" size={24} color="#fff" />
         </TouchableOpacity>

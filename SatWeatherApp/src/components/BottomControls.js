@@ -8,7 +8,7 @@ export const BottomControls = ({
   onPlayPress,
   onEditPress,
   onSharePress,
-  onResetZoom,
+  onFlipOrientation,
 }) => {
   const { isAnimating, isDrawingMode } = useApp();
 
@@ -51,9 +51,9 @@ export const BottomControls = ({
         <Ionicons name="share-social" size={24} color="#fff" />
       </TouchableOpacity>
 
-      {/* Reset zoom button */}
-      <TouchableOpacity style={styles.button} onPress={onResetZoom}>
-        <MaterialCommunityIcons name="arrow-expand-all" size={24} color="#fff" />
+      {/* Flip orientation button */}
+      <TouchableOpacity style={styles.button} onPress={onFlipOrientation}>
+        <MaterialCommunityIcons name="phone-rotate-landscape" size={24} color="#fff" />
       </TouchableOpacity>
     </View>
   );

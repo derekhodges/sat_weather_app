@@ -117,9 +117,19 @@ export const MainScreen = () => {
   const loadImageForTimestamp = (timestamp) => {
     const product = viewMode === 'rgb' ? selectedRGBProduct : null;
 
-    if (!product) return;
+    if (!product) {
+      console.warn('loadImageForTimestamp: No product selected');
+      return;
+    }
 
     const url = generateCODImageUrl(selectedDomain, product, timestamp);
+
+    if (!url) {
+      console.error('loadImageForTimestamp: Failed to generate URL');
+      setError('Unable to generate image URL. Please select a valid product.');
+      return;
+    }
+
     setCurrentImageUrl(url);
     setImageTimestamp(timestamp);
   };
@@ -180,25 +190,35 @@ export const MainScreen = () => {
     }
   };
 
-  const handleResetZoom = () => {
-    // This will be handled by the SatelliteImageViewer component
-    // For now, just show an alert
-    Alert.alert('Reset Zoom', 'Zoom has been reset');
+  const handleFlipOrientation = () => {
+    // Suggest rotating the device to landscape mode
+    Alert.alert(
+      'Rotate Device',
+      'For the best viewing experience, please rotate your device to landscape mode'
+    );
+  };
+
+  const handleFavoritesPress = () => {
+    Alert.alert('Favorites', 'Favorites feature coming soon');
   };
 
   return (
     <View style={styles.container} ref={viewRef}>
       {/* Top bar */}
-      <TopBar onMenuPress={() => {}} onRefresh={handleRefresh} />
-
-      {/* Color scale bar */}
-      <ColorScaleBar />
+      <TopBar
+        onMenuPress={() => {}}
+        onRefresh={handleRefresh}
+        onFavoritesPress={handleFavoritesPress}
+      />
 
       {/* Main content */}
       <View style={styles.content}>
         <SatelliteImageViewer />
         {isDrawingMode && <DrawingOverlay />}
       </View>
+
+      {/* Color scale bar */}
+      <ColorScaleBar />
 
       {/* Menu selector */}
       <MenuSelector />
@@ -209,7 +229,7 @@ export const MainScreen = () => {
         onPlayPress={toggleAnimation}
         onEditPress={handleEditPress}
         onSharePress={handleSharePress}
-        onResetZoom={handleResetZoom}
+        onFlipOrientation={handleFlipOrientation}
       />
 
       {/* Timeline slider */}
