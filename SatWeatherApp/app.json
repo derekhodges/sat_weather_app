@@ -46,7 +46,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Satellite Weather to use your location to show local weather data."
         }
-      ]
+      ],
+      "expo-dev-client"
     ],
     "extra": {
       "eas": {
