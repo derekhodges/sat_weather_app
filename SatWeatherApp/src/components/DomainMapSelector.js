@@ -5,188 +5,164 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
-  ScrollView,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
-import { DOMAINS, DOMAINS_BY_TYPE, DOMAIN_TYPES } from '../constants/domains';
+import { DOMAINS } from '../constants/domains';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MAP_HEIGHT = 500;
+
+// Map coordinates for domain positions (relative to map container)
+const DOMAIN_POSITIONS = {
+  // CONUS
+  conus: { x: '50%', y: '45%', label: 'CONUS' },
+
+  // Regional
+  northwest: { x: '20%', y: '25%', label: 'Northwest' },
+  northeast: { x: '75%', y: '25%', label: 'Northeast' },
+  southwest: { x: '25%', y: '65%', label: 'Southwest' },
+  southeast: { x: '70%', y: '65%', label: 'Southeast' },
+
+  // Local
+  oklahoma: { x: '45%', y: '55%', label: 'Oklahoma' },
+  texas: { x: '42%', y: '72%', label: 'Texas' },
+};
 
 export const DomainMapSelector = () => {
   const { showDomainMap, setShowDomainMap, selectDomain } = useApp();
-  const [selectedType, setSelectedType] = useState(null);
+  const [viewMode, setViewMode] = useState('menu'); // 'menu' or 'map'
 
   const handleDomainSelect = (domain) => {
     selectDomain(domain);
     setShowDomainMap(false);
+    setViewMode('menu');
   };
 
-  const renderDomainList = () => {
-    const domains = selectedType
-      ? DOMAINS_BY_TYPE[selectedType]
-      : Object.values(DOMAINS);
+  const renderMapView = () => {
+    return (
+      <View style={styles.mapContainer}>
+        {/* Map background - representing North America */}
+        <View style={styles.mapBackground}>
+          <Text style={styles.mapLabel}>North America</Text>
 
-    return domains.map((domain) => (
-      <TouchableOpacity
-        key={domain.id}
-        style={styles.domainCard}
-        onPress={() => handleDomainSelect(domain)}
-      >
-        <View style={styles.domainCardContent}>
-          <Text style={styles.domainName}>{domain.name}</Text>
-          <Text style={styles.domainDescription}>{domain.description}</Text>
-          {domain.bounds && (
-            <Text style={styles.domainBounds}>
-              Lat: {domain.bounds.minLat}° to {domain.bounds.maxLat}° |
-              Lon: {domain.bounds.minLon}° to {domain.bounds.maxLon}°
-            </Text>
-          )}
+          {/* Render domain dots on the map */}
+          {Object.entries(DOMAIN_POSITIONS).map(([domainId, position]) => {
+            const domain = DOMAINS[domainId.toUpperCase()];
+            if (!domain) return null;
+
+            return (
+              <TouchableOpacity
+                key={domainId}
+                style={[
+                  styles.domainDot,
+                  {
+                    left: position.x,
+                    top: position.y,
+                  },
+                ]}
+                onPress={() => handleDomainSelect(domain)}
+              >
+                <View style={styles.dot} />
+                <Text style={styles.dotLabel}>{position.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
-        <Ionicons name="chevron-forward" size={24} color="#666" />
-      </TouchableOpacity>
-    ));
+
+        <View style={styles.mapInstructions}>
+          <Text style={styles.instructionsText}>
+            Tap a dot to select that domain
+          </Text>
+        </View>
+      </View>
+    );
   };
 
-  const renderDomainsByType = () => {
-    if (selectedType !== null) {
-      return renderDomainList();
-    }
+  const renderMenuView = () => {
+    return (
+      <View style={styles.menuContainer}>
+        {/* Full Disk */}
+        <TouchableOpacity
+          style={styles.menuCard}
+          onPress={() => handleDomainSelect(DOMAINS.FULL_DISK)}
+        >
+          <Ionicons name="globe" size={32} color="#2196F3" />
+          <Text style={styles.menuCardTitle}>Full Disk</Text>
+          <Text style={styles.menuCardSubtitle}>Entire hemisphere view</Text>
+        </TouchableOpacity>
 
-    return Object.entries(DOMAINS_BY_TYPE).map(([type, domains]) => (
-      <View key={type} style={styles.typeSection}>
-        <Text style={styles.typeSectionTitle}>
-          {type === DOMAIN_TYPES.FULL_DISK && 'Full Disk'}
-          {type === DOMAIN_TYPES.CONUS && 'CONUS'}
-          {type === DOMAIN_TYPES.REGIONAL && 'Regional Domains'}
-          {type === DOMAIN_TYPES.LOCAL && 'Local Domains'}
-        </Text>
-        {domains.map((domain) => (
-          <TouchableOpacity
-            key={domain.id}
-            style={styles.domainCard}
-            onPress={() => handleDomainSelect(domain)}
-          >
-            <View style={styles.domainCardContent}>
-              <Text style={styles.domainName}>{domain.name}</Text>
-              <Text style={styles.domainDescription}>{domain.description}</Text>
-              {domain.bounds && (
-                <Text style={styles.domainBounds}>
-                  Lat: {domain.bounds.minLat}° to {domain.bounds.maxLat}° |
-                  Lon: {domain.bounds.minLon}° to {domain.bounds.maxLon}°
-                </Text>
-              )}
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
-          </TouchableOpacity>
-        ))}
+        {/* CONUS */}
+        <TouchableOpacity
+          style={styles.menuCard}
+          onPress={() => handleDomainSelect(DOMAINS.CONUS)}
+        >
+          <Ionicons name="location" size={32} color="#2196F3" />
+          <Text style={styles.menuCardTitle}>CONUS</Text>
+          <Text style={styles.menuCardSubtitle}>Continental United States</Text>
+        </TouchableOpacity>
+
+        {/* Regional - Select on Map */}
+        <TouchableOpacity
+          style={styles.menuCard}
+          onPress={() => setViewMode('map')}
+        >
+          <Ionicons name="map" size={32} color="#4CAF50" />
+          <Text style={styles.menuCardTitle}>Regional</Text>
+          <Text style={styles.menuCardSubtitle}>Select on map →</Text>
+        </TouchableOpacity>
+
+        {/* Local - Select on Map */}
+        <TouchableOpacity
+          style={styles.menuCard}
+          onPress={() => setViewMode('map')}
+        >
+          <Ionicons name="navigate" size={32} color="#4CAF50" />
+          <Text style={styles.menuCardTitle}>Local</Text>
+          <Text style={styles.menuCardSubtitle}>Select on map →</Text>
+        </TouchableOpacity>
       </View>
-    ));
+    );
   };
 
   return (
     <Modal
       visible={showDomainMap}
       animationType="slide"
-      onRequestClose={() => setShowDomainMap(false)}
+      onRequestClose={() => {
+        setShowDomainMap(false);
+        setViewMode('menu');
+      }}
     >
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
+          {viewMode === 'map' && (
+            <TouchableOpacity
+              onPress={() => setViewMode('menu')}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={28} color="#fff" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            onPress={() => setShowDomainMap(false)}
+            onPress={() => {
+              setShowDomainMap(false);
+              setViewMode('menu');
+            }}
             style={styles.closeButton}
           >
             <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.title}>Select Domain on Map</Text>
+          <Text style={styles.title}>
+            {viewMode === 'map' ? 'Select Domain on Map' : 'Select Domain'}
+          </Text>
           <View style={{ width: 40 }} />
         </View>
 
-        {/* Domain type selector */}
-        <View style={styles.typeSelector}>
-          <TouchableOpacity
-            style={[
-              styles.typeButton,
-              selectedType === null && styles.typeButtonActive,
-            ]}
-            onPress={() => setSelectedType(null)}
-          >
-            <Text
-              style={[
-                styles.typeButtonText,
-                selectedType === null && styles.typeButtonTextActive,
-              ]}
-            >
-              All
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.typeButton,
-              selectedType === DOMAIN_TYPES.CONUS && styles.typeButtonActive,
-            ]}
-            onPress={() => setSelectedType(DOMAIN_TYPES.CONUS)}
-          >
-            <Text
-              style={[
-                styles.typeButtonText,
-                selectedType === DOMAIN_TYPES.CONUS &&
-                  styles.typeButtonTextActive,
-              ]}
-            >
-              CONUS
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.typeButton,
-              selectedType === DOMAIN_TYPES.REGIONAL &&
-                styles.typeButtonActive,
-            ]}
-            onPress={() => setSelectedType(DOMAIN_TYPES.REGIONAL)}
-          >
-            <Text
-              style={[
-                styles.typeButtonText,
-                selectedType === DOMAIN_TYPES.REGIONAL &&
-                  styles.typeButtonTextActive,
-              ]}
-            >
-              Regional
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.typeButton,
-              selectedType === DOMAIN_TYPES.LOCAL && styles.typeButtonActive,
-            ]}
-            onPress={() => setSelectedType(DOMAIN_TYPES.LOCAL)}
-          >
-            <Text
-              style={[
-                styles.typeButtonText,
-                selectedType === DOMAIN_TYPES.LOCAL &&
-                  styles.typeButtonTextActive,
-              ]}
-            >
-              Local
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Domain List */}
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          {renderDomainsByType()}
-        </ScrollView>
-
-        {/* Instructions */}
-        <View style={styles.instructions}>
-          <Text style={styles.instructionsText}>
-            Tap on a domain to select it
-          </Text>
-        </View>
+        {/* Content */}
+        {viewMode === 'menu' ? renderMenuView() : renderMapView()}
       </View>
     </Modal>
   );
@@ -206,6 +182,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 10,
   },
+  backButton: {
+    padding: 8,
+    position: 'absolute',
+    left: 8,
+    zIndex: 10,
+  },
   closeButton: {
     padding: 8,
   },
@@ -213,83 +195,91 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
-  },
-  typeSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
-    padding: 8,
-    justifyContent: 'space-evenly',
-  },
-  typeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#333',
-  },
-  typeButtonActive: {
-    backgroundColor: '#2196F3',
-  },
-  typeButtonText: {
-    color: '#999',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  typeButtonTextActive: {
-    color: '#fff',
-  },
-  scrollView: {
     flex: 1,
+    textAlign: 'center',
   },
-  scrollContent: {
-    padding: 16,
+  menuContainer: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+    gap: 16,
   },
-  typeSection: {
-    marginBottom: 24,
-  },
-  typeSectionTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-    paddingLeft: 4,
-  },
-  domainCard: {
+  menuCard: {
     backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 24,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#333',
   },
-  domainCardContent: {
-    flex: 1,
-  },
-  domainName: {
+  menuCardTitle: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 12,
   },
-  domainDescription: {
+  menuCardSubtitle: {
     color: '#999',
     fontSize: 14,
-    marginBottom: 6,
+    marginTop: 4,
   },
-  domainBounds: {
-    color: '#666',
-    fontSize: 11,
-    fontFamily: 'monospace',
+  mapContainer: {
+    flex: 1,
   },
-  instructions: {
+  mapBackground: {
+    flex: 1,
+    backgroundColor: '#1a3a1a',
+    margin: 16,
+    borderRadius: 12,
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  mapLabel: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    color: '#4CAF50',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  domainDot: {
+    position: 'absolute',
+    alignItems: 'center',
+    transform: [{ translateX: -20 }, { translateY: -20 }],
+  },
+  dot: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2196F3',
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  dotLabel: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginTop: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  mapInstructions: {
     backgroundColor: '#1a1a1a',
-    padding: 12,
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
   },
   instructionsText: {
     color: '#ccc',
-    fontSize: 12,
+    fontSize: 14,
     textAlign: 'center',
   },
 });
