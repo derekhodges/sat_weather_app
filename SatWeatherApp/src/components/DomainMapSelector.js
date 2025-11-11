@@ -5,80 +5,81 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
-  Dimensions,
+  ScrollView,
 } from 'react-native';
-import MapView, { Marker, Rectangle, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { DOMAINS, DOMAINS_BY_TYPE, DOMAIN_TYPES } from '../constants/domains';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const DomainMapSelector = () => {
   const { showDomainMap, setShowDomainMap, selectDomain } = useApp();
   const [selectedType, setSelectedType] = useState(null);
 
-  // Center of CONUS
-  const initialRegion = {
-    latitude: 39.8283,
-    longitude: -98.5795,
-    latitudeDelta: 30,
-    longitudeDelta: 50,
+  const handleDomainSelect = (domain) => {
+    selectDomain(domain);
+    setShowDomainMap(false);
   };
 
-  const handleMapPress = (event) => {
-    const { coordinate } = event.nativeEvent;
-
-    // Find which domain was clicked based on coordinates
-    const clickedDomain = Object.values(DOMAINS).find((domain) => {
-      if (!domain.bounds) return false;
-
-      const { minLat, maxLat, minLon, maxLon } = domain.bounds;
-      return (
-        coordinate.latitude >= minLat &&
-        coordinate.latitude <= maxLat &&
-        coordinate.longitude >= minLon &&
-        coordinate.longitude <= maxLon
-      );
-    });
-
-    if (clickedDomain) {
-      selectDomain(clickedDomain);
-    }
-  };
-
-  const renderDomainRectangles = () => {
+  const renderDomainList = () => {
     const domains = selectedType
       ? DOMAINS_BY_TYPE[selectedType]
-      : Object.values(DOMAINS).filter((d) => d.bounds);
+      : Object.values(DOMAINS);
 
-    return domains.map((domain) => {
-      if (!domain.bounds) return null;
+    return domains.map((domain) => (
+      <TouchableOpacity
+        key={domain.id}
+        style={styles.domainCard}
+        onPress={() => handleDomainSelect(domain)}
+      >
+        <View style={styles.domainCardContent}>
+          <Text style={styles.domainName}>{domain.name}</Text>
+          <Text style={styles.domainDescription}>{domain.description}</Text>
+          {domain.bounds && (
+            <Text style={styles.domainBounds}>
+              Lat: {domain.bounds.minLat}° to {domain.bounds.maxLat}° |
+              Lon: {domain.bounds.minLon}° to {domain.bounds.maxLon}°
+            </Text>
+          )}
+        </View>
+        <Ionicons name="chevron-forward" size={24} color="#666" />
+      </TouchableOpacity>
+    ));
+  };
 
-      const { minLat, maxLat, minLon, maxLon } = domain.bounds;
+  const renderDomainsByType = () => {
+    if (selectedType !== null) {
+      return renderDomainList();
+    }
 
-      return (
-        <React.Fragment key={domain.id}>
-          <Rectangle
-            coordinates={[
-              { latitude: minLat, longitude: minLon },
-              { latitude: maxLat, longitude: maxLon },
-            ]}
-            strokeColor="#2196F3"
-            strokeWidth={2}
-            fillColor="rgba(33, 150, 243, 0.2)"
-          />
-          <Marker
-            coordinate={{
-              latitude: (minLat + maxLat) / 2,
-              longitude: (minLon + maxLon) / 2,
-            }}
-            title={domain.name}
-            description={domain.description}
-          />
-        </React.Fragment>
-      );
-    });
+    return Object.entries(DOMAINS_BY_TYPE).map(([type, domains]) => (
+      <View key={type} style={styles.typeSection}>
+        <Text style={styles.typeSectionTitle}>
+          {type === DOMAIN_TYPES.FULL_DISK && 'Full Disk'}
+          {type === DOMAIN_TYPES.CONUS && 'CONUS'}
+          {type === DOMAIN_TYPES.REGIONAL && 'Regional Domains'}
+          {type === DOMAIN_TYPES.LOCAL && 'Local Domains'}
+        </Text>
+        {domains.map((domain) => (
+          <TouchableOpacity
+            key={domain.id}
+            style={styles.domainCard}
+            onPress={() => handleDomainSelect(domain)}
+          >
+            <View style={styles.domainCardContent}>
+              <Text style={styles.domainName}>{domain.name}</Text>
+              <Text style={styles.domainDescription}>{domain.description}</Text>
+              {domain.bounds && (
+                <Text style={styles.domainBounds}>
+                  Lat: {domain.bounds.minLat}° to {domain.bounds.maxLat}° |
+                  Lon: {domain.bounds.minLon}° to {domain.bounds.maxLon}°
+                </Text>
+              )}
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#666" />
+          </TouchableOpacity>
+        ))}
+      </View>
+    ));
   };
 
   return (
@@ -175,20 +176,15 @@ export const DomainMapSelector = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Map */}
-        <MapView
-          style={styles.map}
-          initialRegion={initialRegion}
-          onPress={handleMapPress}
-          provider={PROVIDER_DEFAULT}
-        >
-          {renderDomainRectangles()}
-        </MapView>
+        {/* Domain List */}
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {renderDomainsByType()}
+        </ScrollView>
 
         {/* Instructions */}
         <View style={styles.instructions}>
           <Text style={styles.instructionsText}>
-            Tap on a highlighted region to select that domain
+            Tap on a domain to select it
           </Text>
         </View>
       </View>
@@ -241,8 +237,51 @@ const styles = StyleSheet.create({
   typeButtonTextActive: {
     color: '#fff',
   },
-  map: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  typeSection: {
+    marginBottom: 24,
+  },
+  typeSectionTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+    paddingLeft: 4,
+  },
+  domainCard: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  domainCardContent: {
+    flex: 1,
+  },
+  domainName: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  domainDescription: {
+    color: '#999',
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  domainBounds: {
+    color: '#666',
+    fontSize: 11,
+    fontFamily: 'monospace',
   },
   instructions: {
     backgroundColor: '#1a1a1a',
