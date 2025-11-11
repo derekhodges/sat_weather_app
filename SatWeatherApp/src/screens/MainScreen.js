@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, StatusBar, Platform, Dimensions } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, Dimensions, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -45,6 +45,7 @@ export const MainScreen = () => {
     setShowFavoritesMenu,
     layoutOrientation,
     toggleOrientation,
+    setActiveMenu,
   } = useApp();
 
   const viewRef = useRef();
@@ -340,38 +341,95 @@ export const MainScreen = () => {
         translucent={false}
       />
       <View style={getContainerStyle()} ref={viewRef}>
-        {/* Top bar (appears on left in landscape) */}
+        {/* Top bar */}
         <TopBar
           onMenuPress={() => {}}
           onRefresh={handleRefresh}
           onFavoritesPress={handleFavoritesPress}
         />
 
-        {/* Main content area */}
-        <View style={styles.content}>
-          {/* Image viewer */}
-          <SatelliteImageViewer />
-          {isDrawingMode && <DrawingOverlay />}
-        </View>
+        {isLandscape ? (
+          // Landscape layout: ColorBar | Image | Buttons (vertical) + bottom menu/slider row
+          <>
+            <View style={styles.landscapeMainRow}>
+              {/* Vertical ColorBar on left */}
+              <ColorScaleBar orientation="vertical" />
 
-        {/* Color scale bar (appears below image in portrait, on bottom/right side in landscape) */}
-        <ColorScaleBar orientation="horizontal" />
+              {/* Image in center */}
+              <View style={styles.landscapeImageArea}>
+                <SatelliteImageViewer />
+                {isDrawingMode && <DrawingOverlay />}
+              </View>
+
+              {/* Vertical Buttons on right */}
+              <BottomControls
+                onLocationPress={handleLocationPress}
+                onPlayPress={toggleAnimation}
+                onEditPress={handleEditPress}
+                onSharePress={handleSharePress}
+                onFlipOrientation={handleFlipOrientation}
+                orientation={layoutOrientation}
+              />
+            </View>
+
+            {/* Bottom row: Menu items + Slider */}
+            <View style={styles.landscapeBottomRow}>
+              {/* Menu buttons */}
+              <View style={styles.landscapeMenuButtons}>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={() => setActiveMenu('channel')}
+                >
+                  <Text style={styles.menuButtonText}>CHANNEL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={() => setActiveMenu('rgb')}
+                >
+                  <Text style={styles.menuButtonText}>RGB</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={() => setActiveMenu('domain')}
+                >
+                  <Text style={styles.menuButtonText}>DOMAIN</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={() => setActiveMenu('overlays')}
+                >
+                  <Text style={styles.menuButtonText}>OVERLAYS</Text>
+                </TouchableOpacity>
+                <Text style={styles.separator}>|</Text>
+              </View>
+              <TimelineSlider orientation="horizontal" />
+            </View>
+          </>
+        ) : (
+          // Portrait layout: standard vertical stacking
+          <>
+            <View style={styles.content}>
+              <SatelliteImageViewer />
+              {isDrawingMode && <DrawingOverlay />}
+            </View>
+
+            <ColorScaleBar orientation="horizontal" />
+
+            <BottomControls
+              onLocationPress={handleLocationPress}
+              onPlayPress={toggleAnimation}
+              onEditPress={handleEditPress}
+              onSharePress={handleSharePress}
+              onFlipOrientation={handleFlipOrientation}
+              orientation={layoutOrientation}
+            />
+
+            <TimelineSlider orientation="horizontal" />
+          </>
+        )}
 
         {/* Menu selector */}
         <MenuSelector />
-
-        {/* Bottom controls (appears at bottom in portrait, right side in landscape) */}
-        <BottomControls
-          onLocationPress={handleLocationPress}
-          onPlayPress={toggleAnimation}
-          onEditPress={handleEditPress}
-          onSharePress={handleSharePress}
-          onFlipOrientation={handleFlipOrientation}
-          orientation={layoutOrientation}
-        />
-
-        {/* Timeline slider */}
-        <TimelineSlider orientation={layoutOrientation} />
 
         {/* Domain map selector modal */}
         <DomainMapSelector />
@@ -394,5 +452,37 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  landscapeMainRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  landscapeImageArea: {
+    flex: 1,
+  },
+  landscapeBottomRow: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  landscapeMenuButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  menuButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  menuButtonText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  separator: {
+    color: '#666',
+    fontSize: 14,
+    marginHorizontal: 8,
   },
 });

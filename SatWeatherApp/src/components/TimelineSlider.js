@@ -11,12 +11,34 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
     return null;
   }
 
-  const isLandscape = orientation === 'landscape';
+  const isVertical = orientation === 'vertical';
+  const isHorizontal = orientation === 'horizontal';
+
+  if (isVertical) {
+    // Vertical slider for landscape mode
+    return (
+      <View style={styles.containerVertical}>
+        <View style={styles.verticalSliderWrapper}>
+          <Slider
+            style={styles.sliderVertical}
+            minimumValue={0}
+            maximumValue={Math.max(0, availableTimestamps.length - 1)}
+            step={1}
+            value={currentFrameIndex}
+            onValueChange={setCurrentFrameIndex}
+            minimumTrackTintColor="#fff"
+            maximumTrackTintColor="#555"
+            thumbTintColor="#fff"
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View style={isLandscape ? styles.containerLandscape : styles.container}>
+    <View style={styles.container}>
       <Slider
-        style={isLandscape ? styles.sliderLandscape : styles.slider}
+        style={styles.slider}
         minimumValue={0}
         maximumValue={Math.max(0, availableTimestamps.length - 1)}
         step={1}
@@ -42,15 +64,23 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 40,
   },
-  containerLandscape: {
+  containerVertical: {
     backgroundColor: '#1a1a1a',
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    width: 60,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  sliderLandscape: {
-    width: '100%',
+  verticalSliderWrapper: {
+    width: 300, // This will become the height after rotation
+    height: 40,
+    transform: [{ rotate: '-90deg' }],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sliderVertical: {
+    width: 300,
     height: 40,
   },
 });

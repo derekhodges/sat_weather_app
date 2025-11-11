@@ -15,7 +15,7 @@ export const BottomControls = ({
   const isLandscape = orientation === 'landscape';
 
   return (
-    <View style={isLandscape ? styles.containerLandscape : styles.container}>
+    <View style={isLandscape ? styles.containerVertical : styles.container}>
       {/* Satellite/Change satellite button */}
       <TouchableOpacity
         style={styles.button}
@@ -70,13 +70,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-evenly',
     alignItems: 'center',
   },
-  containerLandscape: {
-    flexDirection: 'row',
+  containerVertical: {
+    flexDirection: 'column',
     backgroundColor: '#1a1a1a',
     paddingVertical: 8,
     paddingHorizontal: 8,
-    justifyContent: 'flex-start',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
+    width: 60,
   },
   button: {
     padding: 10,
