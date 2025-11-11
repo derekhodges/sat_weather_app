@@ -39,7 +39,8 @@ const ShareMenu = ({ visible, onClose, isAnimating, onSaveScreenshot, onShareIma
                   }}
                 >
                   <Ionicons name="download-outline" size={24} color="#fff" />
-                  <Text style={styles.menuText}>Save GIF</Text>
+                  <Text style={styles.menuText}>Save Animation Frames</Text>
+                  <Text style={styles.menuSubtext}>All frames as photos</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -50,7 +51,7 @@ const ShareMenu = ({ visible, onClose, isAnimating, onSaveScreenshot, onShareIma
                   }}
                 >
                   <Ionicons name="share-social-outline" size={24} color="#fff" />
-                  <Text style={styles.menuText}>Share GIF</Text>
+                  <Text style={styles.menuText}>Share Current Frame</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -128,6 +129,12 @@ const styles = StyleSheet.create({
   menuText: {
     color: '#fff',
     fontSize: 16,
+    marginLeft: 16,
+    flex: 1,
+  },
+  menuSubtext: {
+    color: '#999',
+    fontSize: 12,
     marginLeft: 16,
   },
   cancelItem: {
