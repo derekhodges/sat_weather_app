@@ -13,7 +13,7 @@ export const BottomControls = ({
 }) => {
   const { isAnimating, isDrawingMode } = useApp();
   const isLandscape = orientation === 'landscape';
-  const iconSize = isLandscape ? 20 : 24;
+  const iconSize = isLandscape ? 22 : 24;
   const buttonStyle = isLandscape ? styles.buttonVertical : styles.button;
 
   return (
@@ -75,19 +75,20 @@ const styles = StyleSheet.create({
   containerVertical: {
     flexDirection: 'column',
     backgroundColor: '#1a1a1a',
-    paddingVertical: 4,
-    paddingHorizontal: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     justifyContent: 'space-around',
     alignItems: 'center',
-    width: 50,
+    width: 60,
   },
   button: {
     padding: 10,
     borderRadius: 8,
   },
   buttonVertical: {
-    padding: 6,
-    borderRadius: 6,
+    padding: 8,
+    borderRadius: 8,
+    marginVertical: 2,
   },
   activeButton: {
     backgroundColor: '#2196F3',

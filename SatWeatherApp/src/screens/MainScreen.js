@@ -3,6 +3,7 @@ import { View, StyleSheet, StatusBar, Platform, Dimensions, TouchableOpacity, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { captureRef } from 'react-native-view-shot';
 import { useApp } from '../context/AppContext';
 import { SatelliteImageViewer } from '../components/SatelliteImageViewer';
@@ -50,10 +51,6 @@ export const MainScreen = () => {
 
   const viewRef = useRef();
   const animationIntervalRef = useRef(null);
-
-  // Get screen dimensions for rotation
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
 
   // Generate validated timestamps and prefetch frames
   useEffect(() => {
@@ -296,8 +293,22 @@ export const MainScreen = () => {
     }
   };
 
-  const handleFlipOrientation = () => {
-    toggleOrientation();
+  const handleFlipOrientation = async () => {
+    try {
+      if (layoutOrientation === 'portrait') {
+        // Switch to landscape - lock to LANDSCAPE_LEFT which rotates the phone counter-clockwise
+        // This makes the physical top of the phone go to the left
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
+        toggleOrientation();
+      } else {
+        // Switch back to portrait
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        toggleOrientation();
+      }
+    } catch (error) {
+      console.error('Error changing orientation:', error);
+      setError('Unable to change screen orientation');
+    }
   };
 
   const handleFavoritesPress = () => {
@@ -306,31 +317,6 @@ export const MainScreen = () => {
 
   const isLandscape = layoutOrientation === 'landscape';
 
-  // Calculate rotation transform for landscape mode
-  const getContainerStyle = () => {
-    if (!isLandscape) {
-      return styles.container;
-    }
-
-    // Rotate 90 degrees CLOCKWISE (to the left from user's perspective)
-    // When user rotates phone counter-clockwise (left), content rotates clockwise to compensate
-    const translateX = (screenWidth - screenHeight) / 2;
-    const translateY = (screenHeight - screenWidth) / 2;
-
-    return [
-      styles.container,
-      {
-        transform: [
-          { translateX },
-          { translateY },
-          { rotate: '90deg' },  // Clockwise rotation
-        ],
-        width: screenHeight,
-        height: screenWidth,
-      },
-    ];
-  };
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <StatusBar
@@ -338,7 +324,7 @@ export const MainScreen = () => {
         backgroundColor="#000"
         translucent={false}
       />
-      <View style={getContainerStyle()} ref={viewRef}>
+      <View style={styles.container} ref={viewRef}>
         {/* Top bar */}
         <TopBar
           onMenuPress={() => {}}
@@ -456,37 +442,44 @@ const styles = StyleSheet.create({
   landscapeMainRow: {
     flex: 1,
     flexDirection: 'row',
+    alignItems: 'stretch',
   },
   landscapeImageArea: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   landscapeBottomRow: {
     flexDirection: 'row',
     backgroundColor: '#1a1a1a',
     alignItems: 'center',
-    height: 50,
-    paddingVertical: 4,
+    height: 60,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
   },
   landscapeMenuButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    gap: 4,
   },
   landscapeSliderContainer: {
     flex: 1,
+    marginLeft: 12,
   },
   menuButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 6,
   },
   menuButtonText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
   separator: {
     color: '#666',
     fontSize: 14,
-    marginHorizontal: 8,
+    marginHorizontal: 6,
   },
 });

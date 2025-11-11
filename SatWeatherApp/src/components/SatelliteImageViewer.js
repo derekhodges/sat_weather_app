@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Text,
-  Dimensions,
 } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -15,8 +14,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const SatelliteImageViewer = () => {
   const { currentImageUrl, isLoading, error } = useApp();
@@ -248,19 +245,19 @@ const styles = StyleSheet.create({
   },
   imageWrapper: {
     position: 'absolute',
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
   image: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    width: '100%',
+    height: '100%',
   },
   loadingOverlay: {
     position: 'absolute',
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000',
