@@ -17,7 +17,9 @@ import {
   getLatestImageUrl,
   generateTimestampArray,
   generateCODImageUrl,
+  generateValidatedTimestampArray,
 } from '../utils/imageService';
+import { frameCache } from '../utils/frameCache';
 
 export const MainScreen = () => {
   const {
@@ -44,17 +46,84 @@ export const MainScreen = () => {
   const viewRef = useRef();
   const animationIntervalRef = useRef(null);
 
-  // Load initial image
+  // Generate validated timestamps and prefetch frames
   useEffect(() => {
-    loadImage();
-  }, [selectedDomain, selectedRGBProduct, selectedChannel, viewMode]);
+    let isMounted = true;
 
-  // Generate timestamps for animation
-  useEffect(() => {
-    const timestamps = generateTimestampArray(20, 5); // 5-minute intervals
-    setAvailableTimestamps(timestamps);
-    setCurrentFrameIndex(timestamps.length - 1); // Start with latest
-  }, [selectedDomain, selectedRGBProduct, viewMode]);
+    const loadAndCacheFrames = async () => {
+      const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
+
+      if (!product) {
+        console.warn('loadAndCacheFrames: No product selected');
+        return;
+      }
+
+      console.log('Loading and caching frames...');
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Clear old cache for this product
+        frameCache.clearForProduct(selectedDomain, product);
+
+        // Generate validated timestamps (only frames that exist)
+        const validFrames = await generateValidatedTimestampArray(
+          selectedDomain,
+          product,
+          20,
+          5
+        );
+
+        if (!isMounted) return;
+
+        if (validFrames.length === 0) {
+          console.error('No valid frames available');
+          setError('No satellite images available for this selection');
+          setIsLoading(false);
+          return;
+        }
+
+        // Prefetch all frames into cache
+        await frameCache.prefetchFrames(
+          validFrames.map(f => ({
+            url: f.url,
+            domain: selectedDomain,
+            product: product,
+            timestamp: f.timestamp,
+          }))
+        );
+
+        if (!isMounted) return;
+
+        // Update available timestamps (only the validated ones)
+        const timestamps = validFrames.map(f => f.timestamp);
+        setAvailableTimestamps(timestamps);
+        setCurrentFrameIndex(timestamps.length - 1); // Start with latest
+
+        console.log(`Loaded ${timestamps.length} valid frames`);
+
+        // Load the latest frame
+        if (timestamps.length > 0) {
+          loadImageForTimestamp(timestamps[timestamps.length - 1]);
+        }
+      } catch (error) {
+        console.error('Error loading and caching frames:', error);
+        if (isMounted) {
+          setError('Failed to load satellite frames. Please try refreshing.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadAndCacheFrames();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDomain, selectedRGBProduct, selectedChannel, viewMode]);
 
   // Load image for current frame
   useEffect(() => {
@@ -129,6 +198,18 @@ export const MainScreen = () => {
       return;
     }
 
+    // Try to get from cache first
+    const cachedUrl = frameCache.get(selectedDomain, product, timestamp);
+
+    if (cachedUrl) {
+      // Use cached URL - no loading delay!
+      setCurrentImageUrl(cachedUrl);
+      setImageTimestamp(timestamp);
+      return;
+    }
+
+    // Fallback: generate URL if not in cache (shouldn't happen during normal operation)
+    console.warn('Frame not in cache, generating URL:', timestamp);
     const url = generateCODImageUrl(selectedDomain, product, timestamp);
 
     if (!url) {
@@ -141,8 +222,18 @@ export const MainScreen = () => {
     setImageTimestamp(timestamp);
   };
 
-  const handleRefresh = () => {
-    loadImage();
+  const handleRefresh = async () => {
+    // Clear cache and reload
+    const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
+    if (product) {
+      frameCache.clearForProduct(selectedDomain, product);
+    }
+
+    // Reload current image
+    await loadImage();
+
+    // Trigger frame cache reload by re-running the effect
+    // This will happen automatically since selectedDomain/product dependencies will trigger it
   };
 
   const handleLocationPress = async () => {
