@@ -206,6 +206,54 @@ export const getLatestImageUrl = async (domain, product, maxAttempts = 24) => {
 };
 
 /**
+ * Generate validated timestamp array - only includes frames that actually exist
+ * This prevents the app from breaking when recent frames haven't been plotted yet
+ */
+export const generateValidatedTimestampArray = async (
+  domain,
+  product,
+  count = 20,
+  intervalMinutes = 5
+) => {
+  console.log('Generating validated timestamp array...');
+
+  // First generate all possible timestamps
+  const possibleTimestamps = generateTimestampArray(count, intervalMinutes);
+
+  // Check each timestamp in parallel
+  const validationResults = await Promise.all(
+    possibleTimestamps.map(async (timestamp) => {
+      const url = generateCODImageUrl(domain, product, timestamp);
+      if (!url) {
+        return { timestamp, url: null, exists: false };
+      }
+
+      const exists = await checkImageExists(url);
+      return { timestamp, url, exists };
+    })
+  );
+
+  // Filter to only existing frames
+  const validFrames = validationResults.filter(r => r.exists);
+
+  console.log(
+    `Validated timestamps: ${validFrames.length}/${possibleTimestamps.length} frames available`
+  );
+
+  // If no frames are valid, something is wrong - return empty array
+  if (validFrames.length === 0) {
+    console.error('No valid frames found!');
+    return [];
+  }
+
+  // Return array of timestamps and their URLs for caching
+  return validFrames.map(f => ({
+    timestamp: f.timestamp,
+    url: f.url,
+  }));
+};
+
+/**
  * Placeholder for AWS image fetching (future implementation)
  */
 export const generateAWSImageUrl = (satellite, domain, product, timestamp) => {
