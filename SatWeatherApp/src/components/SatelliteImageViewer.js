@@ -184,6 +184,10 @@ export const SatelliteImageViewer = () => {
     );
   }
 
+  // Show loading indicator during first load (both slots empty)
+  const isFirstLoad = !imageSlotA && !imageSlotB;
+  const showLoadingOverlay = isLoading || isFirstLoad;
+
   return (
     <View style={styles.container}>
       <GestureDetector gesture={composedGesture}>
@@ -217,6 +221,14 @@ export const SatelliteImageViewer = () => {
               />
             </Animated.View>
           )}
+
+          {/* Loading overlay for first load */}
+          {showLoadingOverlay && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.loadingText}>Loading satellite data...</Text>
+            </View>
+          )}
         </Animated.View>
       </GestureDetector>
     </View>
@@ -244,6 +256,14 @@ const styles = StyleSheet.create({
   image: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
   },
   centerContainer: {
     flex: 1,

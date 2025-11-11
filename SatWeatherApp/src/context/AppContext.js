@@ -51,6 +51,10 @@ export const AppProvider = ({ children }) => {
   const [activeMenu, setActiveMenu] = useState(null); // 'channel', 'rgb', 'domain', 'overlays'
   const [showDomainMap, setShowDomainMap] = useState(false);
 
+  // Favorites
+  const [favorites, setFavorites] = useState([]);
+  const [showFavoritesMenu, setShowFavoritesMenu] = useState(false);
+
   // Load saved preferences
   useEffect(() => {
     loadPreferences();
@@ -61,6 +65,11 @@ export const AppProvider = ({ children }) => {
       const savedHome = await AsyncStorage.getItem('homeLocation');
       if (savedHome) {
         setSavedHomeLocation(JSON.parse(savedHome));
+      }
+
+      const savedFavorites = await AsyncStorage.getItem('favorites');
+      if (savedFavorites) {
+        setFavorites(JSON.parse(savedFavorites));
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
@@ -116,6 +125,99 @@ export const AppProvider = ({ children }) => {
     setActiveMenu(null);
   };
 
+  // Generate display name for current view
+  const generateFavoriteName = () => {
+    const domainName = selectedDomain?.name || 'Unknown';
+    let productName = 'Unknown';
+
+    if (viewMode === 'rgb' && selectedRGBProduct) {
+      productName = selectedRGBProduct.name;
+    } else if (viewMode === 'channel' && selectedChannel) {
+      productName = `Channel ${selectedChannel.number}`;
+    }
+
+    // Check if any overlays are enabled
+    const enabledOverlays = Object.entries(overlayStates)
+      .filter(([_, overlay]) => overlay.enabled)
+      .map(([_, overlay]) => overlay.name);
+
+    if (enabledOverlays.length > 0) {
+      return `${productName} - ${domainName} (${enabledOverlays.join(', ')})`;
+    }
+
+    return `${productName} - ${domainName}`;
+  };
+
+  // Add current view to favorites
+  const addToFavorites = async () => {
+    try {
+      // Check if we already have 10 favorites
+      if (favorites.length >= 10) {
+        console.warn('Maximum of 10 favorites reached');
+        return false;
+      }
+
+      const newFavorite = {
+        id: Date.now().toString(),
+        name: generateFavoriteName(),
+        domain: selectedDomain,
+        product: viewMode === 'rgb' ? selectedRGBProduct : selectedChannel,
+        viewMode: viewMode,
+        overlays: { ...overlayStates },
+      };
+
+      const updatedFavorites = [...favorites, newFavorite];
+      setFavorites(updatedFavorites);
+      await AsyncStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+
+      console.log('Added to favorites:', newFavorite.name);
+      return true;
+    } catch (error) {
+      console.error('Error adding to favorites:', error);
+      return false;
+    }
+  };
+
+  // Remove a favorite
+  const removeFavorite = async (favoriteId) => {
+    try {
+      const updatedFavorites = favorites.filter(fav => fav.id !== favoriteId);
+      setFavorites(updatedFavorites);
+      await AsyncStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+      console.log('Removed favorite:', favoriteId);
+      return true;
+    } catch (error) {
+      console.error('Error removing favorite:', error);
+      return false;
+    }
+  };
+
+  // Load a favorite
+  const loadFavorite = (favorite) => {
+    try {
+      setSelectedDomain(favorite.domain);
+
+      if (favorite.viewMode === 'rgb') {
+        setSelectedRGBProduct(favorite.product);
+        setViewMode('rgb');
+      } else {
+        setSelectedChannel(favorite.product);
+        setViewMode('channel');
+      }
+
+      // Restore overlay states
+      setOverlayStates(favorite.overlays);
+
+      // Close menus
+      setActiveMenu(null);
+      setShowFavoritesMenu(false);
+
+      console.log('Loaded favorite:', favorite.name);
+    } catch (error) {
+      console.error('Error loading favorite:', error);
+    }
+  };
+
   const value = {
     // State
     selectedSatellite,
@@ -138,6 +240,8 @@ export const AppProvider = ({ children }) => {
     savedHomeLocation,
     activeMenu,
     showDomainMap,
+    favorites,
+    showFavoritesMenu,
 
     // Actions
     setSelectedSatellite,
@@ -161,6 +265,11 @@ export const AppProvider = ({ children }) => {
     setActiveMenu,
     setShowDomainMap,
     setViewMode,
+    setShowFavoritesMenu,
+    addToFavorites,
+    removeFavorite,
+    loadFavorite,
+    generateFavoriteName,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
