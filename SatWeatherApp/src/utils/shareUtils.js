@@ -2,6 +2,9 @@ import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { GifEncoder, quantize, applyPalette } from 'gifenc';
+import { PNG } from 'pngjs';
 
 /**
  * Captures a screenshot of the content view (excluding buttons and status bar)
@@ -67,97 +70,193 @@ export const shareImage = async (uri) => {
 };
 
 /**
- * Captures all animation frames and saves them as individual images to photo library
- * This allows users to create videos/GIFs using their device's built-in tools
+ * Helper function to decode PNG image to RGBA pixel data
+ * @param {string} uri - URI of the PNG image
+ * @returns {Promise<{data: Uint8Array, width: number, height: number}>}
+ */
+const decodePngToRgba = async (uri) => {
+  try {
+    // Read PNG file as base64
+    const base64Data = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    // Convert base64 to buffer
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Parse PNG using pngjs
+    return new Promise((resolve, reject) => {
+      const png = new PNG();
+
+      png.parse(bytes, (error, data) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve({
+          data: data.data, // RGBA pixel data
+          width: data.width,
+          height: data.height,
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error decoding PNG:', error);
+    throw error;
+  }
+};
+
+/**
+ * Creates an animated GIF from captured frames
  * @param {Object} contentRef - Reference to the content view to capture
  * @param {number} frameCount - Number of frames to capture
- * @param {number} delay - Delay between frames in milliseconds (default: 500ms)
- * @param {Function} progressCallback - Optional callback for progress updates (frameNum, totalFrames)
- * @returns {Promise<Array>} Array of saved media library assets
+ * @param {number} delay - Delay between frames in milliseconds
+ * @param {Function} progressCallback - Optional callback for progress (current, total, status)
+ * @returns {Promise<string>} URI of the created GIF file
  */
-export const captureAndSaveAnimationFrames = async (
+export const createAnimatedGif = async (
   contentRef,
   frameCount = 10,
   delay = 500,
   progressCallback = null
 ) => {
   try {
-    console.log(`Starting animation frame capture: ${frameCount} frames at ${delay}ms interval`);
+    console.log(`Starting GIF creation: ${frameCount} frames at ${delay}ms interval`);
 
-    // Request permissions first
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== 'granted') {
-      throw new Error('Permission to access media library was denied');
-    }
+    // Reduce size for faster processing
+    const gifWidth = 400;
+    const gifHeight = 400;
 
-    const assets = [];
+    // Step 1: Capture all frames
+    if (progressCallback) progressCallback(0, frameCount, 'Capturing frames...');
 
-    // Capture and save each frame
+    const frameUris = [];
     for (let i = 0; i < frameCount; i++) {
-      // Capture current frame
-      const frameUri = await captureRef(contentRef, {
+      const uri = await captureRef(contentRef, {
         format: 'png',
-        quality: 0.9,
+        quality: 0.8,
+        width: gifWidth,
+        height: gifHeight,
       });
 
-      // Save immediately to media library
-      const asset = await MediaLibrary.createAssetAsync(frameUri);
-      assets.push(asset);
+      frameUris.push(uri);
+      console.log(`Captured frame ${i + 1}/${frameCount}`);
 
-      console.log(`Saved frame ${i + 1}/${frameCount}`);
-
-      // Call progress callback if provided
       if (progressCallback) {
-        progressCallback(i + 1, frameCount);
+        progressCallback(i + 1, frameCount, `Captured ${i + 1}/${frameCount} frames`);
       }
 
-      // Wait for next frame (except on last frame)
+      // Wait for next frame
       if (i < frameCount - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
-    // Create an album for the frames
-    try {
-      const albumName = `Satellite Weather Animation ${new Date().toLocaleDateString()}`;
-      await MediaLibrary.createAlbumAsync(albumName, assets[0], false);
+    // Step 2: Process frames and create GIF
+    if (progressCallback) progressCallback(frameCount, frameCount, 'Creating GIF...');
 
-      // Add remaining assets to the album
-      const albums = await MediaLibrary.getAlbumsAsync();
-      const targetAlbum = albums.find(album => album.title === albumName);
+    const gif = GifEncoder();
 
-      if (targetAlbum) {
-        for (let i = 1; i < assets.length; i++) {
-          await MediaLibrary.addAssetsToAlbumAsync([assets[i]], targetAlbum, false);
-        }
+    for (let i = 0; i < frameUris.length; i++) {
+      const frameUri = frameUris[i];
+
+      // Decode PNG to RGBA
+      const { data: rgbaData, width, height } = await decodePngToRgba(frameUri);
+
+      // Quantize colors to 256-color palette
+      const palette = quantize(rgbaData, 256);
+
+      // Apply palette to get indexed colors
+      const indexedData = applyPalette(rgbaData, palette);
+
+      // Add frame to GIF
+      gif.writeFrame(indexedData, width, height, {
+        palette,
+        delay: Math.round(delay / 10), // Convert ms to centiseconds
+      });
+
+      console.log(`Processed frame ${i + 1}/${frameUris.length} for GIF`);
+
+      if (progressCallback) {
+        progressCallback(
+          i + 1,
+          frameUris.length,
+          `Encoding frame ${i + 1}/${frameUris.length}`
+        );
       }
-    } catch (albumError) {
-      console.warn('Could not create album, but frames were saved:', albumError);
     }
 
-    console.log(`All ${frameCount} frames saved successfully`);
-    return assets;
+    gif.finish();
+
+    // Step 3: Save GIF to file
+    if (progressCallback) progressCallback(frameCount, frameCount, 'Saving GIF...');
+
+    const gifBuffer = gif.bytes();
+
+    // Convert to base64 for React Native file system
+    const gifArray = Array.from(gifBuffer);
+    const binaryString = String.fromCharCode(...gifArray);
+    const gifBase64 = btoa(binaryString);
+
+    const gifUri = `${FileSystem.cacheDirectory}satellite_animation_${Date.now()}.gif`;
+
+    await FileSystem.writeAsStringAsync(gifUri, gifBase64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    console.log(`GIF created successfully: ${gifUri}`);
+    return gifUri;
   } catch (error) {
-    console.error('Error capturing animation frames:', error);
+    console.error('Error creating GIF:', error);
     throw error;
   }
 };
 
 /**
- * Shares the current frame as an image
- * (Renamed from shareGif for clarity - now shares current visible frame)
- * @param {Object} contentRef - Reference to the content view to capture
+ * Saves a GIF to the device's media library
+ * @param {string} uri - URI of the GIF file
  * @returns {Promise<void>}
  */
-export const shareCurrentFrame = async (contentRef) => {
+export const saveGifToLibrary = async (uri) => {
   try {
-    // Capture the current frame
-    const uri = await captureScreenshot(contentRef);
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== 'granted') {
+      throw new Error('Permission to access media library was denied');
+    }
 
-    // Share it
-    await shareImage(uri);
+    const asset = await MediaLibrary.createAssetAsync(uri);
+    await MediaLibrary.createAlbumAsync('Satellite Weather', asset, false);
+
+    return asset;
   } catch (error) {
-    console.error('Error sharing current frame:', error);
+    console.error('Error saving GIF to library:', error);
     throw error;
   }
 };
+
+/**
+ * Shares a GIF using the native share dialog
+ * @param {string} uri - URI of the GIF file
+ * @returns {Promise<void>}
+ */
+export const shareGif = async (uri) => {
+  try {
+    if (!(await Sharing.isAvailableAsync())) {
+      throw new Error('Sharing is not available on this device');
+    }
+
+    await Sharing.shareAsync(uri, {
+      mimeType: 'image/gif',
+      dialogTitle: 'Share Satellite Weather Animation',
+    });
+  } catch (error) {
+    console.error('Error sharing GIF:', error);
+    throw error;
+  }
+};
+

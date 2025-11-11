@@ -20,8 +20,9 @@ import {
   captureScreenshot,
   saveScreenshotToLibrary,
   shareImage,
-  captureAndSaveAnimationFrames,
-  shareCurrentFrame,
+  createAnimatedGif,
+  saveGifToLibrary,
+  shareGif,
 } from '../utils/shareUtils';
 import {
   getLatestImageUrl,
@@ -372,23 +373,21 @@ export const MainScreen = () => {
     }
   };
 
-  const handleSaveAnimationFrames = async () => {
+  const handleSaveGif = async () => {
     try {
-      const frameCount = Math.min(availableTimestamps.length, 15);
+      const frameCount = Math.min(availableTimestamps.length, 10);
 
       Alert.alert(
-        'Save Animation Frames',
-        `This will capture ${frameCount} frames as individual photos. The animation will play automatically while capturing.\n\nYou can later use your device's Photos app to create a video or GIF from these images.`,
+        'Create GIF',
+        `This will create an animated GIF with ${frameCount} frames. It will take about 10-20 seconds to process.\n\nThe animation will play while capturing frames.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Start Capture',
+            text: 'Create GIF',
             onPress: async () => {
               try {
                 setIsLoading(true);
                 setShowBrandingOverlay(true);
-
-                let progressText = '';
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -398,14 +397,78 @@ export const MainScreen = () => {
                   await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
-                // Capture frames with progress callback
-                await captureAndSaveAnimationFrames(
+                // Create GIF with progress tracking
+                const gifUri = await createAnimatedGif(
                   contentRef,
                   frameCount,
                   500,
-                  (current, total) => {
-                    progressText = `Saving frame ${current}/${total}...`;
-                    console.log(progressText);
+                  (current, total, status) => {
+                    console.log(status);
+                  }
+                );
+
+                // Stop animation if we started it
+                if (!wasAnimating) {
+                  toggleAnimation();
+                }
+
+                // Save to library
+                await saveGifToLibrary(gifUri);
+
+                setShowBrandingOverlay(false);
+                setIsLoading(false);
+
+                Alert.alert(
+                  'Success!',
+                  'GIF saved to your photo library!'
+                );
+              } catch (error) {
+                console.error('Error creating GIF:', error);
+                setShowBrandingOverlay(false);
+                setIsLoading(false);
+                setError(error.message || 'Unable to create GIF');
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error preparing GIF creation:', error);
+      setError(error.message);
+    }
+  };
+
+  const handleShareGif = async () => {
+    try {
+      const frameCount = Math.min(availableTimestamps.length, 10);
+
+      Alert.alert(
+        'Create and Share GIF',
+        `This will create an animated GIF with ${frameCount} frames. It will take about 10-20 seconds to process.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Create GIF',
+            onPress: async () => {
+              try {
+                setIsLoading(true);
+                setShowBrandingOverlay(true);
+
+                // Start animation if not already animating
+                const wasAnimating = isAnimating;
+                if (!wasAnimating) {
+                  toggleAnimation();
+                  // Wait for animation to start
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                // Create GIF
+                const gifUri = await createAnimatedGif(
+                  contentRef,
+                  frameCount,
+                  500,
+                  (current, total, status) => {
+                    console.log(status);
                   }
                 );
 
@@ -415,46 +478,24 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
-                setIsLoading(false);
 
-                Alert.alert(
-                  'Success!',
-                  `Saved ${frameCount} animation frames to your photo library!\n\nTip: Use your Photos app to create a video or GIF from these images.`
-                );
+                // Share the GIF
+                await shareGif(gifUri);
+
+                setIsLoading(false);
               } catch (error) {
-                console.error('Error saving animation frames:', error);
+                console.error('Error creating/sharing GIF:', error);
                 setShowBrandingOverlay(false);
                 setIsLoading(false);
-                setError(error.message || 'Unable to save animation frames');
+                setError(error.message || 'Unable to create or share GIF');
               }
             },
           },
         ]
       );
     } catch (error) {
-      console.error('Error preparing animation capture:', error);
+      console.error('Error preparing GIF share:', error);
       setError(error.message);
-    }
-  };
-
-  const handleShareCurrentFrame = async () => {
-    try {
-      setIsLoading(true);
-      setShowBrandingOverlay(true);
-
-      // Small delay to let the overlay render
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Share the current frame
-      await shareCurrentFrame(contentRef);
-
-      setShowBrandingOverlay(false);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error sharing current frame:', error);
-      setShowBrandingOverlay(false);
-      setIsLoading(false);
-      setError(error.message || 'Unable to share current frame');
     }
   };
 
@@ -646,8 +687,8 @@ export const MainScreen = () => {
           isAnimating={isAnimating}
           onSaveScreenshot={handleSaveScreenshot}
           onShareImage={handleShareImage}
-          onSaveGif={handleSaveAnimationFrames}
-          onShareGif={handleShareCurrentFrame}
+          onSaveGif={handleSaveGif}
+          onShareGif={handleShareGif}
         />
       </View>
     </SafeAreaView>
