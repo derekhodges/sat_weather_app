@@ -22,12 +22,16 @@ export const MenuSelector = () => {
     toggleOverlay,
     overlayStates,
     setShowDomainMap,
+    layoutOrientation,
   } = useApp();
+
+  const isLandscape = layoutOrientation === 'landscape';
 
   return (
     <View style={styles.container}>
-      {/* Main menu row */}
-      <View style={styles.menuRow}>
+      {/* Main menu row - only show in portrait mode (landscape has inline buttons) */}
+      {!isLandscape && (
+        <View style={styles.menuRow}>
         <MenuButton
           label="SELECT CHANNEL"
           isActive={activeMenu === 'channel'}
@@ -53,6 +57,7 @@ export const MenuSelector = () => {
           }
         />
       </View>
+      )}
 
       {/* Content panels */}
       {activeMenu === 'channel' && <ChannelPanel onSelect={selectChannel} />}

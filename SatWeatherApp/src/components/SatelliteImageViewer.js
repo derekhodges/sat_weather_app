@@ -96,20 +96,20 @@ export const SatelliteImageViewer = () => {
   const handleImageALoad = () => {
     setImageALoaded(true);
     if (imageSlotA === currentImageUrl && activeSlot !== 'A') {
-      // This is the new image, make it active
+      // This is the new image, make it active with smooth crossfade
       setActiveSlot('A');
-      opacityA.value = withTiming(1, { duration: 0 });
-      opacityB.value = withTiming(0, { duration: 0 });
+      opacityA.value = withTiming(1, { duration: 150 });
+      opacityB.value = withTiming(0, { duration: 150 });
     }
   };
 
   const handleImageBLoad = () => {
     setImageBLoaded(true);
     if (imageSlotB === currentImageUrl && activeSlot !== 'B') {
-      // This is the new image, make it active
+      // This is the new image, make it active with smooth crossfade
       setActiveSlot('B');
-      opacityB.value = withTiming(1, { duration: 0 });
-      opacityA.value = withTiming(0, { duration: 0 });
+      opacityB.value = withTiming(1, { duration: 150 });
+      opacityA.value = withTiming(0, { duration: 150 });
     }
   };
 
