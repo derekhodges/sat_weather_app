@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, Dimensions, TouchableOpacity, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { captureRef } from 'react-native-view-shot';
 import { useApp } from '../context/AppContext';
 import { SatelliteImageViewer } from '../components/SatelliteImageViewer';
@@ -50,30 +51,6 @@ export const MainScreen = () => {
 
   const viewRef = useRef();
   const animationIntervalRef = useRef(null);
-
-  // Track device orientation based on dimensions
-  const [deviceOrientation, setDeviceOrientation] = useState(() => {
-    const { width, height } = Dimensions.get('window');
-    return width > height ? 'landscape' : 'portrait';
-  });
-
-  // Listen for orientation changes
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      const { width, height } = window;
-      const newOrientation = width > height ? 'landscape' : 'portrait';
-      setDeviceOrientation(newOrientation);
-
-      // Automatically update layout orientation to match device
-      if (newOrientation === 'landscape' && layoutOrientation !== 'landscape') {
-        toggleOrientation();
-      } else if (newOrientation === 'portrait' && layoutOrientation !== 'portrait') {
-        toggleOrientation();
-      }
-    });
-
-    return () => subscription?.remove();
-  }, [layoutOrientation, toggleOrientation]);
 
   // Generate validated timestamps and prefetch frames
   useEffect(() => {
@@ -316,10 +293,21 @@ export const MainScreen = () => {
     }
   };
 
-  const handleFlipOrientation = () => {
-    // Toggle layout orientation - user should physically rotate their device
-    // for best experience (status bar position and touch alignment)
-    toggleOrientation();
+  const handleFlipOrientation = async () => {
+    try {
+      if (layoutOrientation === 'portrait') {
+        // Switch to landscape - lock to LANDSCAPE_LEFT which rotates phone counter-clockwise
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
+        toggleOrientation();
+      } else {
+        // Switch back to portrait
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        toggleOrientation();
+      }
+    } catch (error) {
+      console.error('Error changing orientation:', error);
+      setError('Unable to change screen orientation');
+    }
   };
 
   const handleFavoritesPress = () => {
@@ -412,6 +400,36 @@ export const MainScreen = () => {
 
             <ColorScaleBar orientation="horizontal" />
 
+            {/* Menu buttons row */}
+            <View style={styles.portraitMenuRow}>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => setActiveMenu('channel')}
+              >
+                <Text style={styles.menuButtonText}>CHANNEL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => setActiveMenu('rgb')}
+              >
+                <Text style={styles.menuButtonText}>RGB</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => setActiveMenu('domain')}
+              >
+                <Text style={styles.menuButtonText}>DOMAIN</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => setActiveMenu('overlays')}
+              >
+                <Text style={styles.menuButtonText}>OVERLAYS</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TimelineSlider orientation="horizontal" />
+
             <BottomControls
               onLocationPress={handleLocationPress}
               onPlayPress={toggleAnimation}
@@ -420,8 +438,6 @@ export const MainScreen = () => {
               onFlipOrientation={handleFlipOrientation}
               orientation={layoutOrientation}
             />
-
-            <TimelineSlider orientation="horizontal" />
           </>
         )}
 
@@ -449,6 +465,16 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  portraitMenuRow: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
   },
   landscapeMainRow: {
     flex: 1,

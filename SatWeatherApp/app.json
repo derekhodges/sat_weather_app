@@ -46,6 +46,12 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Satellite Weather to use your location to show local weather data."
         }
       ],
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "DEFAULT"
+        }
+      ],
       "expo-dev-client"
     ]
   }
