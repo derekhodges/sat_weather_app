@@ -50,6 +50,7 @@ export const AppProvider = ({ children }) => {
   // UI state
   const [activeMenu, setActiveMenu] = useState(null); // 'channel', 'rgb', 'domain', 'overlays'
   const [showDomainMap, setShowDomainMap] = useState(false);
+  const [layoutOrientation, setLayoutOrientation] = useState('portrait'); // 'portrait' or 'landscape'
 
   // Favorites
   const [favorites, setFavorites] = useState([]);
@@ -123,6 +124,10 @@ export const AppProvider = ({ children }) => {
     setSelectedChannel(channel);
     setViewMode('channel');
     setActiveMenu(null);
+  };
+
+  const toggleOrientation = () => {
+    setLayoutOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait');
   };
 
   // Generate display name for current view
@@ -240,6 +245,7 @@ export const AppProvider = ({ children }) => {
     savedHomeLocation,
     activeMenu,
     showDomainMap,
+    layoutOrientation,
     favorites,
     showFavoritesMenu,
 
@@ -266,6 +272,7 @@ export const AppProvider = ({ children }) => {
     setShowDomainMap,
     setViewMode,
     setShowFavoritesMenu,
+    toggleOrientation,
     addToFavorites,
     removeFavorite,
     loadFavorite,
