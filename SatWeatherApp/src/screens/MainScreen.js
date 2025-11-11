@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, StatusBar, Platform, Dimensions } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, Dimensions, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -45,6 +45,7 @@ export const MainScreen = () => {
     setShowFavoritesMenu,
     layoutOrientation,
     toggleOrientation,
+    setActiveMenu,
   } = useApp();
 
   const viewRef = useRef();
@@ -348,7 +349,7 @@ export const MainScreen = () => {
         />
 
         {isLandscape ? (
-          // Landscape layout: ColorBar | Image | Slider in a row
+          // Landscape layout: ColorBar | Image | Buttons (vertical) + bottom menu/slider row
           <>
             <View style={styles.landscapeMainRow}>
               {/* Vertical ColorBar on left */}
@@ -360,19 +361,49 @@ export const MainScreen = () => {
                 {isDrawingMode && <DrawingOverlay />}
               </View>
 
-              {/* Vertical Slider on right */}
-              <TimelineSlider orientation="vertical" />
+              {/* Vertical Buttons on right */}
+              <BottomControls
+                onLocationPress={handleLocationPress}
+                onPlayPress={toggleAnimation}
+                onEditPress={handleEditPress}
+                onSharePress={handleSharePress}
+                onFlipOrientation={handleFlipOrientation}
+                orientation={layoutOrientation}
+              />
             </View>
 
-            {/* All buttons in horizontal line at bottom */}
-            <BottomControls
-              onLocationPress={handleLocationPress}
-              onPlayPress={toggleAnimation}
-              onEditPress={handleEditPress}
-              onSharePress={handleSharePress}
-              onFlipOrientation={handleFlipOrientation}
-              orientation={layoutOrientation}
-            />
+            {/* Bottom row: Menu items + Slider */}
+            <View style={styles.landscapeBottomRow}>
+              {/* Menu buttons */}
+              <View style={styles.landscapeMenuButtons}>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={() => setActiveMenu('channel')}
+                >
+                  <Text style={styles.menuButtonText}>CHANNEL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={() => setActiveMenu('rgb')}
+                >
+                  <Text style={styles.menuButtonText}>RGB</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={() => setActiveMenu('domain')}
+                >
+                  <Text style={styles.menuButtonText}>DOMAIN</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={() => setActiveMenu('overlays')}
+                >
+                  <Text style={styles.menuButtonText}>OVERLAYS</Text>
+                </TouchableOpacity>
+                <Text style={styles.separator}>|</Text>
+              </View>
+              <TimelineSlider orientation="horizontal" />
+            </View>
           </>
         ) : (
           // Portrait layout: standard vertical stacking
@@ -428,5 +459,30 @@ const styles = StyleSheet.create({
   },
   landscapeImageArea: {
     flex: 1,
+  },
+  landscapeBottomRow: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  landscapeMenuButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  menuButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  menuButtonText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  separator: {
+    color: '#666',
+    fontSize: 14,
+    marginHorizontal: 8,
   },
 });
