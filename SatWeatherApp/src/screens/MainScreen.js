@@ -13,6 +13,7 @@ import { TimelineSlider } from '../components/TimelineSlider';
 import { ColorScaleBar } from '../components/ColorScaleBar';
 import { DomainMapSelector } from '../components/DomainMapSelector';
 import { DrawingOverlay } from '../components/DrawingOverlay';
+import { FavoritesMenu } from '../components/FavoritesMenu';
 import {
   getLatestImageUrl,
   generateTimestampArray,
@@ -41,6 +42,7 @@ export const MainScreen = () => {
     setIsDrawingMode,
     setUserLocation,
     savedHomeLocation,
+    setShowFavoritesMenu,
   } = useApp();
 
   const viewRef = useRef();
@@ -294,8 +296,7 @@ export const MainScreen = () => {
   };
 
   const handleFavoritesPress = () => {
-    console.log('Favorites feature coming soon');
-    // Could add a toast notification here instead
+    setShowFavoritesMenu(true);
   };
 
   return (
@@ -339,6 +340,9 @@ export const MainScreen = () => {
 
         {/* Domain map selector modal */}
         <DomainMapSelector />
+
+        {/* Favorites menu */}
+        <FavoritesMenu />
       </View>
     </SafeAreaView>
   );
