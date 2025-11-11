@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -51,6 +51,27 @@ export const MainScreen = () => {
 
   const viewRef = useRef();
   const animationIntervalRef = useRef(null);
+
+  // Listen for orientation changes to sync layout
+  useEffect(() => {
+    const subscription = ScreenOrientation.addOrientationChangeListener((event) => {
+      const orientation = event.orientationInfo.orientation;
+      const isDeviceLandscape =
+        orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
+        orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
+
+      // Sync layout orientation with device orientation
+      if (isDeviceLandscape && layoutOrientation !== 'landscape') {
+        toggleOrientation();
+      } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
+        toggleOrientation();
+      }
+    });
+
+    return () => {
+      ScreenOrientation.removeOrientationChangeListener(subscription);
+    };
+  }, [layoutOrientation, toggleOrientation]);
 
   // Generate validated timestamps and prefetch frames
   useEffect(() => {
@@ -317,7 +338,10 @@ export const MainScreen = () => {
   const isLandscape = layoutOrientation === 'landscape';
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={isLandscape ? ['left', 'right'] : ['top', 'bottom']}
+    >
       <StatusBar
         barStyle="light-content"
         backgroundColor="#000"
@@ -332,13 +356,10 @@ export const MainScreen = () => {
         />
 
         {isLandscape ? (
-          // Landscape layout: ColorBar | Image | Buttons (vertical) + bottom menu/slider row
+          // Landscape layout: Image | Buttons (vertical) + bottom menu/slider row
           <>
             <View style={styles.landscapeMainRow}>
-              {/* Vertical ColorBar on left */}
-              <ColorScaleBar orientation="vertical" />
-
-              {/* Image in center */}
+              {/* Image - takes full space */}
               <View style={styles.landscapeImageArea}>
                 <SatelliteImageViewer />
                 {isDrawingMode && <DrawingOverlay />}
@@ -355,36 +376,33 @@ export const MainScreen = () => {
               />
             </View>
 
-            {/* Bottom row: Menu items + Slider */}
+            {/* Bottom row: Menu buttons + Slider */}
             <View style={styles.landscapeBottomRow}>
-              {/* Menu buttons */}
-              <View style={styles.landscapeMenuButtons}>
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={() => setActiveMenu('channel')}
-                >
-                  <Text style={styles.menuButtonText}>CHANNEL</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={() => setActiveMenu('rgb')}
-                >
-                  <Text style={styles.menuButtonText}>RGB</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={() => setActiveMenu('domain')}
-                >
-                  <Text style={styles.menuButtonText}>DOMAIN</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={() => setActiveMenu('overlays')}
-                >
-                  <Text style={styles.menuButtonText}>OVERLAYS</Text>
-                </TouchableOpacity>
-                <Text style={styles.separator}>|</Text>
-              </View>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => setActiveMenu('channel')}
+              >
+                <Text style={styles.menuButtonText}>CHANNEL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => setActiveMenu('rgb')}
+              >
+                <Text style={styles.menuButtonText}>RGB</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => setActiveMenu('domain')}
+              >
+                <Text style={styles.menuButtonText}>DOMAIN</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => setActiveMenu('overlays')}
+              >
+                <Text style={styles.menuButtonText}>OVERLAYS</Text>
+              </TouchableOpacity>
+              <Text style={styles.separator}>|</Text>
               <View style={styles.landscapeSliderContainer}>
                 <TimelineSlider orientation="horizontal" />
               </View>
@@ -490,18 +508,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#1a1a1a',
     alignItems: 'center',
-    height: 60,
-    paddingVertical: 8,
+    height: 55,
+    paddingVertical: 6,
     paddingHorizontal: 8,
-  },
-  landscapeMenuButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    gap: 8,
   },
   landscapeSliderContainer: {
     flex: 1,
-    marginLeft: 12,
   },
   menuButton: {
     paddingHorizontal: 10,

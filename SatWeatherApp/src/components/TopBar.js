@@ -10,12 +10,32 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { SATELLITES } from '../constants/satellites';
 
+import { formatTimestamp } from '../utils/imageService';
+
 export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
-  const { selectedSatellite, selectedDomain, setSelectedSatellite } = useApp();
+  const {
+    selectedSatellite,
+    selectedDomain,
+    setSelectedSatellite,
+    selectedChannel,
+    selectedRGBProduct,
+    viewMode,
+    imageTimestamp,
+    layoutOrientation,
+  } = useApp();
   const [showSatelliteSelector, setShowSatelliteSelector] = useState(false);
 
+  const isLandscape = layoutOrientation === 'landscape';
+
+  // Get product/channel info
+  const productInfo = viewMode === 'rgb'
+    ? selectedRGBProduct?.name || 'RGB Product'
+    : selectedChannel
+    ? `CH${selectedChannel.number} ${selectedChannel.description}`
+    : 'No Channel';
+
   return (
-    <View style={styles.container}>
+    <View style={isLandscape ? styles.containerLandscape : styles.container}>
       {/* Menu button */}
       <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
         <Ionicons name="menu" size={24} color="#fff" />
@@ -26,10 +46,22 @@ export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
         onPress={() => setShowSatelliteSelector(true)}
         style={styles.titleContainer}
       >
-        <Text style={styles.title}>
-          {selectedSatellite.name} {selectedDomain.name}
-        </Text>
-        <Ionicons name="chevron-down" size={16} color="#fff" />
+        {isLandscape ? (
+          <View style={styles.landscapeTitleContent}>
+            <Text style={styles.titleLandscape}>
+              {selectedSatellite.name} {selectedDomain.name}
+            </Text>
+            <Text style={styles.productInfo}>{productInfo}</Text>
+            <Text style={styles.timestamp}>{formatTimestamp(imageTimestamp)}</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.title}>
+              {selectedSatellite.name} {selectedDomain.name}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#fff" />
+          </>
+        )}
       </TouchableOpacity>
 
       {/* Right buttons */}
@@ -118,6 +150,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  containerLandscape: {
+    height: 50,
+    backgroundColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
   iconButton: {
     padding: 12,
     justifyContent: 'center',
@@ -134,6 +178,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginRight: 4,
+  },
+  landscapeTitleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  titleLandscape: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  productInfo: {
+    color: '#aaa',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  timestamp: {
+    color: '#888',
+    fontSize: 11,
+    fontWeight: '500',
   },
   rightButtons: {
     flexDirection: 'row',
