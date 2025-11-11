@@ -97,9 +97,10 @@ export const SatelliteImageViewer = () => {
     setImageALoaded(true);
     if (imageSlotA === currentImageUrl && activeSlot !== 'A') {
       // This is the new image, make it active with smooth crossfade
+      // Only fade AFTER the image is loaded to ensure no gap
       setActiveSlot('A');
-      opacityA.value = withTiming(1, { duration: 150 });
-      opacityB.value = withTiming(0, { duration: 150 });
+      opacityA.value = withTiming(1, { duration: 100 });
+      opacityB.value = withTiming(0, { duration: 100 });
     }
   };
 
@@ -107,9 +108,10 @@ export const SatelliteImageViewer = () => {
     setImageBLoaded(true);
     if (imageSlotB === currentImageUrl && activeSlot !== 'B') {
       // This is the new image, make it active with smooth crossfade
+      // Only fade AFTER the image is loaded to ensure no gap
       setActiveSlot('B');
-      opacityB.value = withTiming(1, { duration: 150 });
-      opacityA.value = withTiming(0, { duration: 150 });
+      opacityB.value = withTiming(1, { duration: 100 });
+      opacityA.value = withTiming(0, { duration: 100 });
     }
   };
 
@@ -181,9 +183,10 @@ export const SatelliteImageViewer = () => {
     );
   }
 
-  // Show loading indicator during first load (both slots empty)
+  // Show loading indicator ONLY during first load (both slots empty)
+  // After first image loads, never show loading overlay again
   const isFirstLoad = !imageSlotA && !imageSlotB;
-  const showLoadingOverlay = isLoading || isFirstLoad;
+  const showLoadingOverlay = isFirstLoad;
 
   return (
     <View style={styles.container}>

@@ -46,6 +46,7 @@ export const MainScreen = () => {
     setShowFavoritesMenu,
     layoutOrientation,
     toggleOrientation,
+    activeMenu,
     setActiveMenu,
   } = useApp();
 
@@ -409,7 +410,7 @@ export const MainScreen = () => {
             </View>
           </>
         ) : (
-          // Portrait layout: standard vertical stacking
+          // Portrait layout: Image → ColorBar → Menu Buttons → Slider → Icon Buttons
           <>
             <View style={styles.content}>
               <SatelliteImageViewer />
@@ -417,6 +418,34 @@ export const MainScreen = () => {
             </View>
 
             <ColorScaleBar orientation="horizontal" />
+
+            {/* Menu buttons right beneath color bar */}
+            <View style={styles.portraitMenuRow}>
+              <TouchableOpacity
+                style={[styles.portraitMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'channel' ? null : 'channel')}
+              >
+                <Text style={styles.menuButtonText}>SELECT CHANNEL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.portraitMenuButton, activeMenu === 'rgb' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'rgb' ? null : 'rgb')}
+              >
+                <Text style={styles.menuButtonText}>RGB</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.portraitMenuButton, activeMenu === 'domain' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'domain' ? null : 'domain')}
+              >
+                <Text style={styles.menuButtonText}>DOMAIN</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.portraitMenuButton, activeMenu === 'overlays' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'overlays' ? null : 'overlays')}
+              >
+                <Text style={styles.menuButtonText}>OVERLAYS</Text>
+              </TouchableOpacity>
+            </View>
 
             <TimelineSlider orientation="horizontal" />
 
@@ -463,8 +492,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-evenly',
     paddingVertical: 8,
     paddingHorizontal: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#333',
+  },
+  portraitMenuButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   landscapeMainRow: {
     flex: 1,
