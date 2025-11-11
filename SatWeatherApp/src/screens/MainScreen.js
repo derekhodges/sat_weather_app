@@ -1,9 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, StatusBar, Platform, Dimensions, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { captureRef } from 'react-native-view-shot';
 import { useApp } from '../context/AppContext';
 import { SatelliteImageViewer } from '../components/SatelliteImageViewer';
@@ -51,6 +50,30 @@ export const MainScreen = () => {
 
   const viewRef = useRef();
   const animationIntervalRef = useRef(null);
+
+  // Track device orientation based on dimensions
+  const [deviceOrientation, setDeviceOrientation] = useState(() => {
+    const { width, height } = Dimensions.get('window');
+    return width > height ? 'landscape' : 'portrait';
+  });
+
+  // Listen for orientation changes
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      const { width, height } = window;
+      const newOrientation = width > height ? 'landscape' : 'portrait';
+      setDeviceOrientation(newOrientation);
+
+      // Automatically update layout orientation to match device
+      if (newOrientation === 'landscape' && layoutOrientation !== 'landscape') {
+        toggleOrientation();
+      } else if (newOrientation === 'portrait' && layoutOrientation !== 'portrait') {
+        toggleOrientation();
+      }
+    });
+
+    return () => subscription?.remove();
+  }, [layoutOrientation, toggleOrientation]);
 
   // Generate validated timestamps and prefetch frames
   useEffect(() => {
@@ -293,22 +316,10 @@ export const MainScreen = () => {
     }
   };
 
-  const handleFlipOrientation = async () => {
-    try {
-      if (layoutOrientation === 'portrait') {
-        // Switch to landscape - lock to LANDSCAPE_LEFT which rotates the phone counter-clockwise
-        // This makes the physical top of the phone go to the left
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
-        toggleOrientation();
-      } else {
-        // Switch back to portrait
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        toggleOrientation();
-      }
-    } catch (error) {
-      console.error('Error changing orientation:', error);
-      setError('Unable to change screen orientation');
-    }
+  const handleFlipOrientation = () => {
+    // Toggle layout orientation - user should physically rotate their device
+    // for best experience (status bar position and touch alignment)
+    toggleOrientation();
   };
 
   const handleFavoritesPress = () => {
