@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   // Vertical (landscape) styles
   containerVertical: {
     backgroundColor: '#1a1a1a',
-    width: 80,
+    width: 60,
     flexDirection: 'column',
   },
   infoVertical: {
