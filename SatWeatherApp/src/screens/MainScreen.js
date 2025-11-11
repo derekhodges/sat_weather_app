@@ -41,6 +41,7 @@ export const MainScreen = () => {
     setCurrentFrameIndex,
     isDrawingMode,
     setIsDrawingMode,
+    clearDrawings,
     setUserLocation,
     savedHomeLocation,
     setShowFavoritesMenu,
@@ -52,6 +53,7 @@ export const MainScreen = () => {
 
   const viewRef = useRef();
   const animationIntervalRef = useRef(null);
+  const [showColorPickerFromButton, setShowColorPickerFromButton] = useState(false);
 
   // Listen for orientation changes to sync layout
   useEffect(() => {
@@ -288,7 +290,19 @@ export const MainScreen = () => {
   };
 
   const handleEditPress = () => {
-    setIsDrawingMode(!isDrawingMode);
+    if (isDrawingMode) {
+      // When turning off drawing mode, clear all drawings
+      clearDrawings();
+      setIsDrawingMode(false);
+    } else {
+      // When turning on drawing mode
+      setIsDrawingMode(true);
+    }
+  };
+
+  const handleEditLongPress = () => {
+    // Long press shows color picker
+    setShowColorPickerFromButton(true);
   };
 
   const handleSharePress = async () => {
@@ -363,7 +377,10 @@ export const MainScreen = () => {
               {/* Image - takes full space */}
               <View style={styles.landscapeImageArea}>
                 <SatelliteImageViewer />
-                {isDrawingMode && <DrawingOverlay />}
+                <DrawingOverlay
+                  externalColorPicker={showColorPickerFromButton}
+                  setExternalColorPicker={setShowColorPickerFromButton}
+                />
               </View>
 
               {/* Vertical Buttons on right */}
@@ -371,9 +388,11 @@ export const MainScreen = () => {
                 onLocationPress={handleLocationPress}
                 onPlayPress={toggleAnimation}
                 onEditPress={handleEditPress}
+                onEditLongPress={handleEditLongPress}
                 onSharePress={handleSharePress}
                 onFlipOrientation={handleFlipOrientation}
                 orientation={layoutOrientation}
+                isDrawingMode={isDrawingMode}
               />
             </View>
 
@@ -414,7 +433,10 @@ export const MainScreen = () => {
           <>
             <View style={styles.content}>
               <SatelliteImageViewer />
-              {isDrawingMode && <DrawingOverlay />}
+              <DrawingOverlay
+                externalColorPicker={showColorPickerFromButton}
+                setExternalColorPicker={setShowColorPickerFromButton}
+              />
             </View>
 
             <ColorScaleBar orientation="horizontal" />
@@ -453,9 +475,11 @@ export const MainScreen = () => {
               onLocationPress={handleLocationPress}
               onPlayPress={toggleAnimation}
               onEditPress={handleEditPress}
+              onEditLongPress={handleEditLongPress}
               onSharePress={handleSharePress}
               onFlipOrientation={handleFlipOrientation}
               orientation={layoutOrientation}
+              isDrawingMode={isDrawingMode}
             />
           </>
         )}

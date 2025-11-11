@@ -7,11 +7,13 @@ export const BottomControls = ({
   onLocationPress,
   onPlayPress,
   onEditPress,
+  onEditLongPress,
   onSharePress,
   onFlipOrientation,
   orientation = 'portrait',
+  isDrawingMode,
 }) => {
-  const { isAnimating, isDrawingMode } = useApp();
+  const { isAnimating } = useApp();
   const isLandscape = orientation === 'landscape';
   const iconSize = isLandscape ? 22 : 24;
   const buttonStyle = isLandscape ? styles.buttonVertical : styles.button;
@@ -46,6 +48,8 @@ export const BottomControls = ({
       <TouchableOpacity
         style={[buttonStyle, isDrawingMode && styles.activeButton]}
         onPress={onEditPress}
+        onLongPress={onEditLongPress}
+        delayLongPress={500}
       >
         <Ionicons name="brush" size={iconSize} color="#fff" />
       </TouchableOpacity>
