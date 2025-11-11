@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -14,7 +14,7 @@ import { useApp } from '../context/AppContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const COLORS = [
+export const COLORS = [
   { name: 'Red', value: '#FF0000' },
   { name: 'Yellow', value: '#FFFF00' },
   { name: 'Green', value: '#00FF00' },
@@ -23,7 +23,7 @@ const COLORS = [
   { name: 'Orange', value: '#FF8800' },
 ];
 
-export const DrawingOverlay = () => {
+export const DrawingOverlay = ({ externalColorPicker, setExternalColorPicker }) => {
   const {
     isDrawingMode,
     drawingColor,
@@ -36,7 +36,23 @@ export const DrawingOverlay = () => {
   const [currentPath, setCurrentPath] = useState([]);
   const [showColorPicker, setShowColorPicker] = useState(false);
 
-  if (!isDrawingMode) return null;
+  // Sync external color picker state
+  useEffect(() => {
+    if (externalColorPicker) {
+      setShowColorPicker(true);
+    }
+  }, [externalColorPicker]);
+
+  // When color picker closes, reset external state
+  useEffect(() => {
+    if (!showColorPicker && externalColorPicker) {
+      setExternalColorPicker(false);
+    }
+  }, [showColorPicker, externalColorPicker, setExternalColorPicker]);
+
+  const shouldShowOverlay = isDrawingMode || showColorPicker;
+
+  if (!shouldShowOverlay) return null;
 
   const panGesture = Gesture.Pan()
     .onStart((event) => {
@@ -68,57 +84,60 @@ export const DrawingOverlay = () => {
 
   return (
     <>
-      <View style={styles.overlay} pointerEvents="box-none">
-        <GestureDetector gesture={panGesture}>
-          <Svg style={styles.svg}>
-            {/* Render saved drawings */}
-            {drawings.map((drawing) => (
-              <Path
-                key={drawing.id}
-                d={pathToSvgPath(drawing.path)}
-                stroke={drawing.color}
-                strokeWidth="3"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
+      {/* Only show drawing overlay when in drawing mode */}
+      {isDrawingMode && (
+        <View style={styles.overlay} pointerEvents="box-none">
+          <GestureDetector gesture={panGesture}>
+            <Svg style={styles.svg}>
+              {/* Render saved drawings */}
+              {drawings.map((drawing) => (
+                <Path
+                  key={drawing.id}
+                  d={pathToSvgPath(drawing.path)}
+                  stroke={drawing.color}
+                  strokeWidth="3"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
 
-            {/* Render current path being drawn */}
-            {currentPath.length > 0 && (
-              <Path
-                d={pathToSvgPath(currentPath)}
-                stroke={drawingColor}
-                strokeWidth="3"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-          </Svg>
-        </GestureDetector>
+              {/* Render current path being drawn */}
+              {currentPath.length > 0 && (
+                <Path
+                  d={pathToSvgPath(currentPath)}
+                  stroke={drawingColor}
+                  strokeWidth="3"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+            </Svg>
+          </GestureDetector>
 
-        {/* Drawing tools */}
-        <View style={styles.tools}>
-          {/* Color selector button */}
-          <TouchableOpacity
-            style={[styles.toolButton, { backgroundColor: drawingColor }]}
-            onPress={() => setShowColorPicker(true)}
-          >
-            <Ionicons name="color-palette" size={20} color="#000" />
-          </TouchableOpacity>
+          {/* Drawing tools */}
+          <View style={styles.tools}>
+            {/* Color selector button */}
+            <TouchableOpacity
+              style={[styles.toolButton, { backgroundColor: drawingColor }]}
+              onPress={() => setShowColorPicker(true)}
+            >
+              <Ionicons name="color-palette" size={20} color="#000" />
+            </TouchableOpacity>
 
-          {/* Clear button */}
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={clearDrawings}
-          >
-            <Ionicons name="trash" size={20} color="#fff" />
-          </TouchableOpacity>
+            {/* Clear button */}
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={clearDrawings}
+            >
+              <Ionicons name="trash" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
-      {/* Color Picker Modal */}
+      {/* Color Picker Modal - can show even when drawing mode is off (via long-press) */}
       <Modal
         visible={showColorPicker}
         transparent
