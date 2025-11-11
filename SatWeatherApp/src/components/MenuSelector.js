@@ -29,37 +29,7 @@ export const MenuSelector = () => {
 
   return (
     <View style={styles.container}>
-      {/* Main menu row - only show in portrait mode (landscape has inline buttons) */}
-      {!isLandscape && (
-        <View style={styles.menuRow}>
-        <MenuButton
-          label="SELECT CHANNEL"
-          isActive={activeMenu === 'channel'}
-          onPress={() =>
-            setActiveMenu(activeMenu === 'channel' ? null : 'channel')
-          }
-        />
-        <MenuButton
-          label="RGB"
-          isActive={activeMenu === 'rgb'}
-          onPress={() => setActiveMenu(activeMenu === 'rgb' ? null : 'rgb')}
-        />
-        <MenuButton
-          label="DOMAIN"
-          isActive={activeMenu === 'domain'}
-          onPress={() => setActiveMenu(activeMenu === 'domain' ? null : 'domain')}
-        />
-        <MenuButton
-          label="OVERLAYS"
-          isActive={activeMenu === 'overlays'}
-          onPress={() =>
-            setActiveMenu(activeMenu === 'overlays' ? null : 'overlays')
-          }
-        />
-      </View>
-      )}
-
-      {/* Content panels */}
+      {/* Content panels - menu buttons are now inline in MainScreen for both modes */}
       {activeMenu === 'channel' && <ChannelPanel onSelect={selectChannel} />}
       {activeMenu === 'rgb' && <RGBPanel onSelect={selectRGBProduct} />}
       {activeMenu === 'domain' && (
