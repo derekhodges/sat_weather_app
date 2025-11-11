@@ -212,7 +212,7 @@ export const getLatestImageUrl = async (domain, product, maxAttempts = 24) => {
 export const generateValidatedTimestampArray = async (
   domain,
   product,
-  count = 20,
+  count = 12,
   intervalMinutes = 5
 ) => {
   console.log('Generating validated timestamp array...');

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Image,
@@ -12,6 +12,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 
@@ -19,6 +20,18 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const SatelliteImageViewer = () => {
   const { currentImageUrl, isLoading, error } = useApp();
+
+  // Dual image state to prevent black flicker
+  // We keep two images and swap between them
+  const [imageSlotA, setImageSlotA] = useState(null);
+  const [imageSlotB, setImageSlotB] = useState(null);
+  const [activeSlot, setActiveSlot] = useState('A'); // 'A' or 'B'
+  const [imageALoaded, setImageALoaded] = useState(false);
+  const [imageBLoaded, setImageBLoaded] = useState(false);
+
+  // Opacity for crossfade
+  const opacityA = useSharedValue(1);
+  const opacityB = useSharedValue(0);
 
   // Zoom and pan state
   const scale = useSharedValue(1);
@@ -57,7 +70,53 @@ export const SatelliteImageViewer = () => {
   // Combined gesture
   const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
 
-  // Animated style
+  // Handle URL changes - load into inactive slot and swap when ready
+  useEffect(() => {
+    if (!currentImageUrl) return;
+
+    // First load - initialize slot A
+    if (!imageSlotA && !imageSlotB) {
+      setImageSlotA(currentImageUrl);
+      setActiveSlot('A');
+      opacityA.value = 1;
+      opacityB.value = 0;
+      return;
+    }
+
+    // Subsequent loads - use inactive slot
+    if (activeSlot === 'A') {
+      // Load into slot B
+      setImageBLoaded(false);
+      setImageSlotB(currentImageUrl);
+    } else {
+      // Load into slot A
+      setImageALoaded(false);
+      setImageSlotA(currentImageUrl);
+    }
+  }, [currentImageUrl]);
+
+  // Handle image load callbacks
+  const handleImageALoad = () => {
+    setImageALoaded(true);
+    if (imageSlotA === currentImageUrl && activeSlot !== 'A') {
+      // This is the new image, make it active
+      setActiveSlot('A');
+      opacityA.value = withTiming(1, { duration: 0 });
+      opacityB.value = withTiming(0, { duration: 0 });
+    }
+  };
+
+  const handleImageBLoad = () => {
+    setImageBLoaded(true);
+    if (imageSlotB === currentImageUrl && activeSlot !== 'B') {
+      // This is the new image, make it active
+      setActiveSlot('B');
+      opacityB.value = withTiming(1, { duration: 0 });
+      opacityA.value = withTiming(0, { duration: 0 });
+    }
+  };
+
+  // Animated styles for transform (zoom/pan)
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -65,6 +124,19 @@ export const SatelliteImageViewer = () => {
         { translateY: translateY.value },
         { scale: scale.value },
       ],
+    };
+  });
+
+  // Animated styles for opacity (crossfade)
+  const animatedStyleA = useAnimatedStyle(() => {
+    return {
+      opacity: opacityA.value,
+    };
+  });
+
+  const animatedStyleB = useAnimatedStyle(() => {
+    return {
+      opacity: opacityB.value,
     };
   });
 
@@ -116,14 +188,35 @@ export const SatelliteImageViewer = () => {
     <View style={styles.container}>
       <GestureDetector gesture={composedGesture}>
         <Animated.View style={[styles.imageContainer, animatedStyle]}>
-          <Image
-            source={{ uri: currentImageUrl }}
-            style={styles.image}
-            resizeMode="contain"
-            onError={(error) => {
-              console.error('Image load error:', error);
-            }}
-          />
+          {/* Image Slot A */}
+          {imageSlotA && (
+            <Animated.View style={[styles.imageWrapper, animatedStyleA]}>
+              <Image
+                source={{ uri: imageSlotA }}
+                style={styles.image}
+                resizeMode="contain"
+                onLoad={handleImageALoad}
+                onError={(error) => {
+                  console.error('Image A load error:', error);
+                }}
+              />
+            </Animated.View>
+          )}
+
+          {/* Image Slot B */}
+          {imageSlotB && (
+            <Animated.View style={[styles.imageWrapper, animatedStyleB]}>
+              <Image
+                source={{ uri: imageSlotB }}
+                style={styles.image}
+                resizeMode="contain"
+                onLoad={handleImageBLoad}
+                onError={(error) => {
+                  console.error('Image B load error:', error);
+                }}
+              />
+            </Animated.View>
+          )}
         </Animated.View>
       </GestureDetector>
     </View>
@@ -138,6 +231,13 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageWrapper: {
+    position: 'absolute',
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
   },

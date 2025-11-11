@@ -70,7 +70,7 @@ export const MainScreen = () => {
         const validFrames = await generateValidatedTimestampArray(
           selectedDomain,
           product,
-          20,
+          12,
           5
         );
 
