@@ -379,26 +379,26 @@ export const MainScreen = () => {
             {/* Bottom row: Menu buttons + Slider */}
             <View style={styles.landscapeBottomRow}>
               <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setActiveMenu('channel')}
+                style={[styles.landscapeMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'channel' ? null : 'channel')}
               >
-                <Text style={styles.menuButtonText}>CHANNEL</Text>
+                <Text style={styles.menuButtonText}>SELECT CHANNEL</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setActiveMenu('rgb')}
+                style={[styles.landscapeMenuButton, activeMenu === 'rgb' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'rgb' ? null : 'rgb')}
               >
                 <Text style={styles.menuButtonText}>RGB</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setActiveMenu('domain')}
+                style={[styles.landscapeMenuButton, activeMenu === 'domain' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'domain' ? null : 'domain')}
               >
                 <Text style={styles.menuButtonText}>DOMAIN</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setActiveMenu('overlays')}
+                style={[styles.landscapeMenuButton, activeMenu === 'overlays' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'overlays' ? null : 'overlays')}
               >
                 <Text style={styles.menuButtonText}>OVERLAYS</Text>
               </TouchableOpacity>
@@ -418,34 +418,6 @@ export const MainScreen = () => {
 
             <ColorScaleBar orientation="horizontal" />
 
-            {/* Menu buttons row */}
-            <View style={styles.portraitMenuRow}>
-              <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setActiveMenu('channel')}
-              >
-                <Text style={styles.menuButtonText}>CHANNEL</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setActiveMenu('rgb')}
-              >
-                <Text style={styles.menuButtonText}>RGB</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setActiveMenu('domain')}
-              >
-                <Text style={styles.menuButtonText}>DOMAIN</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setActiveMenu('overlays')}
-              >
-                <Text style={styles.menuButtonText}>OVERLAYS</Text>
-              </TouchableOpacity>
-            </View>
-
             <TimelineSlider orientation="horizontal" />
 
             <BottomControls
@@ -459,7 +431,7 @@ export const MainScreen = () => {
           </>
         )}
 
-        {/* Menu selector */}
+        {/* MenuSelector - shows menu buttons in portrait, panels in both modes */}
         <MenuSelector />
 
         {/* Domain map selector modal */}
@@ -501,8 +473,7 @@ const styles = StyleSheet.create({
   },
   landscapeImageArea: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#000',
   },
   landscapeBottomRow: {
     flexDirection: 'row',
@@ -515,6 +486,14 @@ const styles = StyleSheet.create({
   },
   landscapeSliderContainer: {
     flex: 1,
+  },
+  landscapeMenuButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  menuButtonActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#2196F3',
   },
   menuButton: {
     paddingHorizontal: 10,
