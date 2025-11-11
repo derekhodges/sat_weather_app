@@ -19,8 +19,16 @@ export const generateCODImageUrl = (domain, product, timestamp = null) => {
     return null;
   }
 
-  if (!product || !product.codName) {
+  if (!product) {
     console.error('generateCODImageUrl: Invalid product', product);
+    return null;
+  }
+
+  // Product can be either an RGB product (with codName) or a channel (with number)
+  const productName = product.codName || product.number?.toString();
+
+  if (!productName) {
+    console.error('generateCODImageUrl: Product missing codName and number', product);
     return null;
   }
 
@@ -29,7 +37,6 @@ export const generateCODImageUrl = (domain, product, timestamp = null) => {
   // Determine the base path based on domain type
   let basePath = '';
   let domainName = domain.codName;
-  let productName = product.codName;
 
   if (domain.type === 'full_disk') {
     basePath = 'full_disk';
@@ -44,6 +51,8 @@ export const generateCODImageUrl = (domain, product, timestamp = null) => {
   // Construct the full URL
   // Format: {base}/{domain}/{product}/{domain}.{product}.{timestamp}.jpg
   const url = `${COD_BASE_URL}/${basePath}/${productName}/${domainName}.${productName}.${ts}.jpg`;
+
+  console.log('Generated COD URL:', url);
 
   return url;
 };

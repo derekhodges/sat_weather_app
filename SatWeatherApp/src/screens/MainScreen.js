@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Alert, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
@@ -88,14 +88,20 @@ export const MainScreen = () => {
   }, [isAnimating, availableTimestamps]);
 
   const loadImage = async () => {
+    // Don't try to load if we don't have a product selected in RGB mode
+    if (viewMode === 'rgb' && !selectedRGBProduct) {
+      console.warn('Cannot load image: No RGB product selected yet');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const product = viewMode === 'rgb' ? selectedRGBProduct : null;
+      const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
 
-      if (!product && viewMode === 'rgb') {
-        throw new Error('No RGB product selected');
+      if (!product) {
+        throw new Error('No product or channel selected');
       }
 
       const result = await getLatestImageUrl(selectedDomain, product);
@@ -104,7 +110,7 @@ export const MainScreen = () => {
         setCurrentImageUrl(result.url);
         setImageTimestamp(result.timestamp);
       } else {
-        throw new Error('Unable to load satellite image');
+        throw new Error('Unable to load satellite image. Please try refreshing.');
       }
     } catch (error) {
       console.error('Error loading image:', error);
@@ -115,7 +121,7 @@ export const MainScreen = () => {
   };
 
   const loadImageForTimestamp = (timestamp) => {
-    const product = viewMode === 'rgb' ? selectedRGBProduct : null;
+    const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
 
     if (!product) {
       console.warn('loadImageForTimestamp: No product selected');
@@ -143,23 +149,21 @@ export const MainScreen = () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'Location permission is required to use this feature.'
-        );
+        console.warn('Location permission denied');
+        setError('Location permission is required to use this feature.');
         return;
       }
 
       const location = await Location.getCurrentPositionAsync({});
       setUserLocation(location.coords);
 
-      Alert.alert(
-        'Location Set',
+      console.log(
+        'Location set:',
         `Lat: ${location.coords.latitude.toFixed(4)}, Lon: ${location.coords.longitude.toFixed(4)}`
       );
     } catch (error) {
       console.error('Error getting location:', error);
-      Alert.alert('Error', 'Unable to get current location');
+      setError('Unable to get current location');
     }
   };
 
@@ -170,7 +174,8 @@ export const MainScreen = () => {
   const handleSharePress = async () => {
     try {
       if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert('Error', 'Sharing is not available on this device');
+        console.warn('Sharing not available');
+        setError('Sharing is not available on this device');
         return;
       }
 
@@ -186,20 +191,19 @@ export const MainScreen = () => {
       });
     } catch (error) {
       console.error('Error sharing:', error);
-      Alert.alert('Error', 'Unable to share image');
+      setError('Unable to share image');
     }
   };
 
   const handleFlipOrientation = () => {
     // Suggest rotating the device to landscape mode
-    Alert.alert(
-      'Rotate Device',
-      'For the best viewing experience, please rotate your device to landscape mode'
-    );
+    console.log('Flip orientation: Rotate device for best viewing experience');
+    // Could add a toast notification here instead
   };
 
   const handleFavoritesPress = () => {
-    Alert.alert('Favorites', 'Favorites feature coming soon');
+    console.log('Favorites feature coming soon');
+    // Could add a toast notification here instead
   };
 
   return (
