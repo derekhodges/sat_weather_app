@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, SafeAreaView } from 'react-native';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
@@ -50,7 +50,7 @@ export const MainScreen = () => {
 
   // Generate timestamps for animation
   useEffect(() => {
-    const timestamps = generateTimestampArray(20, 10);
+    const timestamps = generateTimestampArray(20, 5); // 5-minute intervals
     setAvailableTimestamps(timestamps);
     setCurrentFrameIndex(timestamps.length - 1); // Start with latest
   }, [selectedDomain, selectedRGBProduct, viewMode]);
@@ -207,45 +207,51 @@ export const MainScreen = () => {
   };
 
   return (
-    <View style={styles.container} ref={viewRef}>
-      {/* Top bar */}
-      <TopBar
-        onMenuPress={() => {}}
-        onRefresh={handleRefresh}
-        onFavoritesPress={handleFavoritesPress}
-      />
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container} ref={viewRef}>
+        {/* Top bar */}
+        <TopBar
+          onMenuPress={() => {}}
+          onRefresh={handleRefresh}
+          onFavoritesPress={handleFavoritesPress}
+        />
 
-      {/* Main content */}
-      <View style={styles.content}>
-        <SatelliteImageViewer />
-        {isDrawingMode && <DrawingOverlay />}
+        {/* Main content */}
+        <View style={styles.content}>
+          <SatelliteImageViewer />
+          {isDrawingMode && <DrawingOverlay />}
+        </View>
+
+        {/* Color scale bar */}
+        <ColorScaleBar />
+
+        {/* Menu selector */}
+        <MenuSelector />
+
+        {/* Bottom controls */}
+        <BottomControls
+          onLocationPress={handleLocationPress}
+          onPlayPress={toggleAnimation}
+          onEditPress={handleEditPress}
+          onSharePress={handleSharePress}
+          onFlipOrientation={handleFlipOrientation}
+        />
+
+        {/* Timeline slider */}
+        <TimelineSlider />
+
+        {/* Domain map selector modal */}
+        <DomainMapSelector />
       </View>
-
-      {/* Color scale bar */}
-      <ColorScaleBar />
-
-      {/* Menu selector */}
-      <MenuSelector />
-
-      {/* Bottom controls */}
-      <BottomControls
-        onLocationPress={handleLocationPress}
-        onPlayPress={toggleAnimation}
-        onEditPress={handleEditPress}
-        onSharePress={handleSharePress}
-        onFlipOrientation={handleFlipOrientation}
-      />
-
-      {/* Timeline slider */}
-      <TimelineSlider />
-
-      {/* Domain map selector modal */}
-      <DomainMapSelector />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
   container: {
     flex: 1,
     backgroundColor: '#000',

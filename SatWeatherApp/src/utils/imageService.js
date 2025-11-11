@@ -59,46 +59,64 @@ export const generateCODImageUrl = (domain, product, timestamp = null) => {
 
 /**
  * Generate current timestamp in COD format: YYYYMMDD.HHMMSS
+ * COD timestamps follow pattern: XX:01, XX:06, XX:11, XX:16, XX:21, XX:26, XX:31, XX:36, XX:41, XX:46, XX:51, XX:56
+ * Seconds are always 18
  */
 export const generateCurrentTimestamp = () => {
   const now = new Date();
 
-  // Round down to nearest 5 minutes (COD updates every 5-10 minutes)
-  const minutes = Math.floor(now.getUTCMinutes() / 5) * 5;
+  // COD updates at minutes: 01, 06, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56
+  // Pattern: (n * 5) + 1 where n = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+  const currentMinute = now.getUTCMinutes();
+
+  // Find the most recent valid minute
+  // Valid minutes: 1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56
+  const minuteMod = (currentMinute - 1) % 5;
+  const minutes = currentMinute - minuteMod;
+
   now.setUTCMinutes(minutes);
-  now.setUTCSeconds(0);
+  now.setUTCSeconds(18); // Always 18 seconds
 
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   const day = String(now.getUTCDate()).padStart(2, '0');
   const hours = String(now.getUTCHours()).padStart(2, '0');
   const mins = String(now.getUTCMinutes()).padStart(2, '0');
-  const secs = String(now.getUTCSeconds()).padStart(2, '0');
+  const secs = '18';
 
   return `${year}${month}${day}.${hours}${mins}${secs}`;
 };
 
 /**
  * Generate array of timestamps for animation (last N frames)
+ * COD updates every 5 minutes at: 01, 06, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56
  */
-export const generateTimestampArray = (count = 20, intervalMinutes = 10) => {
+export const generateTimestampArray = (count = 20, intervalMinutes = 5) => {
   const timestamps = [];
   const now = new Date();
 
-  for (let i = 0; i < count; i++) {
-    const time = new Date(now.getTime() - (i * intervalMinutes * 60 * 1000));
+  // Start from current time and go back
+  const currentMinute = now.getUTCMinutes();
+  const minuteMod = (currentMinute - 1) % 5;
+  const startMinute = currentMinute - minuteMod;
 
-    // Round to nearest interval
-    const minutes = Math.floor(time.getUTCMinutes() / intervalMinutes) * intervalMinutes;
-    time.setUTCMinutes(minutes);
-    time.setUTCSeconds(0);
+  for (let i = 0; i < count; i++) {
+    const time = new Date(now.getTime());
+
+    // Calculate minutes going back in 5-minute increments from the start minute
+    const totalMinutesBack = i * intervalMinutes;
+    const adjustedMinute = startMinute - totalMinutesBack;
+
+    // Handle negative minutes by adjusting hours/days
+    time.setUTCMinutes(adjustedMinute);
+    time.setUTCSeconds(18);
 
     const year = time.getUTCFullYear();
     const month = String(time.getUTCMonth() + 1).padStart(2, '0');
     const day = String(time.getUTCDate()).padStart(2, '0');
     const hours = String(time.getUTCHours()).padStart(2, '0');
     const mins = String(time.getUTCMinutes()).padStart(2, '0');
-    const secs = String(time.getUTCSeconds()).padStart(2, '0');
+    const secs = '18';
 
     timestamps.push(`${year}${month}${day}.${hours}${mins}${secs}`);
   }
@@ -141,27 +159,33 @@ export const checkImageExists = async (url) => {
  * Get the latest available image URL
  * Tries current time and works backwards
  */
-export const getLatestImageUrl = async (domain, product, maxAttempts = 12) => {
+export const getLatestImageUrl = async (domain, product, maxAttempts = 24) => {
   // Validate inputs first
   if (!domain || !product) {
     console.error('getLatestImageUrl: Invalid domain or product', { domain, product });
     return null;
   }
 
+  // Start from current time
+  const now = new Date();
+  const currentMinute = now.getUTCMinutes();
+  const minuteMod = (currentMinute - 1) % 5;
+  const startMinute = currentMinute - minuteMod;
+
   for (let i = 0; i < maxAttempts; i++) {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - (i * 10)); // Go back 10 minutes each attempt
+    const time = new Date(now.getTime());
 
-    const minutes = Math.floor(now.getUTCMinutes() / 10) * 10;
-    now.setUTCMinutes(minutes);
-    now.setUTCSeconds(0);
+    // Go back in 5-minute increments: 01, 06, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56
+    const adjustedMinute = startMinute - (i * 5);
+    time.setUTCMinutes(adjustedMinute);
+    time.setUTCSeconds(18);
 
-    const year = now.getUTCFullYear();
-    const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(now.getUTCDate()).padStart(2, '0');
-    const hours = String(now.getUTCHours()).padStart(2, '0');
-    const mins = String(now.getUTCMinutes()).padStart(2, '0');
-    const secs = '00';
+    const year = time.getUTCFullYear();
+    const month = String(time.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(time.getUTCDate()).padStart(2, '0');
+    const hours = String(time.getUTCHours()).padStart(2, '0');
+    const mins = String(time.getUTCMinutes()).padStart(2, '0');
+    const secs = '18';
 
     const timestamp = `${year}${month}${day}.${hours}${mins}${secs}`;
     const url = generateCODImageUrl(domain, product, timestamp);
