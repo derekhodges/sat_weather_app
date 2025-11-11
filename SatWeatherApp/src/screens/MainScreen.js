@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, StatusBar, Platform } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -49,6 +49,10 @@ export const MainScreen = () => {
 
   const viewRef = useRef();
   const animationIntervalRef = useRef(null);
+
+  // Get screen dimensions for rotation
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
 
   // Generate validated timestamps and prefetch frames
   useEffect(() => {
@@ -301,6 +305,33 @@ export const MainScreen = () => {
 
   const isLandscape = layoutOrientation === 'landscape';
 
+  // Calculate rotation transform for landscape mode
+  const getContainerStyle = () => {
+    if (!isLandscape) {
+      return styles.container;
+    }
+
+    // When rotated 90 degrees counter-clockwise (to the left), we need to:
+    // 1. Rotate the container -90deg
+    // 2. Translate it to the correct position
+    // 3. Swap width/height so it fits the rotated space
+    const translateX = (screenWidth - screenHeight) / 2;
+    const translateY = (screenHeight - screenWidth) / 2;
+
+    return [
+      styles.container,
+      {
+        transform: [
+          { translateX },
+          { translateY },
+          { rotate: '-90deg' },
+        ],
+        width: screenHeight,
+        height: screenWidth,
+      },
+    ];
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <StatusBar
@@ -308,47 +339,39 @@ export const MainScreen = () => {
         backgroundColor="#000"
         translucent={false}
       />
-      <View style={styles.container} ref={viewRef}>
-        {/* Top bar */}
+      <View style={getContainerStyle()} ref={viewRef}>
+        {/* Top bar (appears on left in landscape) */}
         <TopBar
           onMenuPress={() => {}}
           onRefresh={handleRefresh}
           onFavoritesPress={handleFavoritesPress}
         />
 
-        {/* Main content area - layout changes based on orientation */}
-        <View style={isLandscape ? styles.landscapeContent : styles.content}>
-          {/* Color scale bar - vertical on left in landscape */}
-          {isLandscape && <ColorScaleBar orientation="vertical" />}
-
+        {/* Main content area */}
+        <View style={styles.content}>
           {/* Image viewer */}
-          <View style={styles.imageArea}>
-            <SatelliteImageViewer />
-            {isDrawingMode && <DrawingOverlay />}
-          </View>
-
-          {/* Color scale bar - horizontal on bottom in portrait */}
-          {!isLandscape && <ColorScaleBar orientation="horizontal" />}
+          <SatelliteImageViewer />
+          {isDrawingMode && <DrawingOverlay />}
         </View>
+
+        {/* Color scale bar (appears below image in portrait, on bottom/right side in landscape) */}
+        <ColorScaleBar orientation="horizontal" />
 
         {/* Menu selector */}
         <MenuSelector />
 
-        {/* Bottom controls and timeline - layout changes based on orientation */}
-        <View style={isLandscape ? styles.landscapeBottomRow : styles.portraitBottomRow}>
-          {/* Bottom controls */}
-          <BottomControls
-            onLocationPress={handleLocationPress}
-            onPlayPress={toggleAnimation}
-            onEditPress={handleEditPress}
-            onSharePress={handleSharePress}
-            onFlipOrientation={handleFlipOrientation}
-            orientation={layoutOrientation}
-          />
+        {/* Bottom controls (appears at bottom in portrait, right side in landscape) */}
+        <BottomControls
+          onLocationPress={handleLocationPress}
+          onPlayPress={toggleAnimation}
+          onEditPress={handleEditPress}
+          onSharePress={handleSharePress}
+          onFlipOrientation={handleFlipOrientation}
+          orientation={layoutOrientation}
+        />
 
-          {/* Timeline slider */}
-          <TimelineSlider orientation={layoutOrientation} />
-        </View>
+        {/* Timeline slider */}
+        <TimelineSlider orientation={layoutOrientation} />
 
         {/* Domain map selector modal */}
         <DomainMapSelector />
@@ -371,19 +394,5 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  landscapeContent: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  imageArea: {
-    flex: 1,
-  },
-  portraitBottomRow: {
-    // Default vertical stacking
-  },
-  landscapeBottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
 });
