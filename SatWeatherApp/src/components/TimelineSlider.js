@@ -32,7 +32,9 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1a1a1a',
     paddingHorizontal: 16,
-    paddingVertical: 4,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
   },
   slider: {
     width: '100%',
