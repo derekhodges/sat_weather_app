@@ -60,7 +60,7 @@ export const generateCODImageUrl = (domain, product, timestamp = null) => {
 /**
  * Generate current timestamp in COD format: YYYYMMDD.HHMMSS
  * COD timestamps follow pattern: XX:01, XX:06, XX:11, XX:16, XX:21, XX:26, XX:31, XX:36, XX:41, XX:46, XX:51, XX:56
- * Seconds are always 18
+ * Seconds can vary (commonly 17 or 18)
  */
 export const generateCurrentTimestamp = () => {
   const now = new Date();
@@ -75,14 +75,14 @@ export const generateCurrentTimestamp = () => {
   const minutes = currentMinute - minuteMod;
 
   now.setUTCMinutes(minutes);
-  now.setUTCSeconds(18); // Always 18 seconds
+  now.setUTCSeconds(17); // COD typically uses 17 seconds
 
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   const day = String(now.getUTCDate()).padStart(2, '0');
   const hours = String(now.getUTCHours()).padStart(2, '0');
   const mins = String(now.getUTCMinutes()).padStart(2, '0');
-  const secs = '18';
+  const secs = '17';
 
   return `${year}${month}${day}.${hours}${mins}${secs}`;
 };
@@ -109,14 +109,14 @@ export const generateTimestampArray = (count = 20, intervalMinutes = 5) => {
 
     // Handle negative minutes by adjusting hours/days
     time.setUTCMinutes(adjustedMinute);
-    time.setUTCSeconds(18);
+    time.setUTCSeconds(17);
 
     const year = time.getUTCFullYear();
     const month = String(time.getUTCMonth() + 1).padStart(2, '0');
     const day = String(time.getUTCDate()).padStart(2, '0');
     const hours = String(time.getUTCHours()).padStart(2, '0');
     const mins = String(time.getUTCMinutes()).padStart(2, '0');
-    const secs = '18';
+    const secs = '17';
 
     timestamps.push(`${year}${month}${day}.${hours}${mins}${secs}`);
   }
@@ -178,14 +178,14 @@ export const getLatestImageUrl = async (domain, product, maxAttempts = 24) => {
     // Go back in 5-minute increments: 01, 06, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56
     const adjustedMinute = startMinute - (i * 5);
     time.setUTCMinutes(adjustedMinute);
-    time.setUTCSeconds(18);
+    time.setUTCSeconds(17);
 
     const year = time.getUTCFullYear();
     const month = String(time.getUTCMonth() + 1).padStart(2, '0');
     const day = String(time.getUTCDate()).padStart(2, '0');
     const hours = String(time.getUTCHours()).padStart(2, '0');
     const mins = String(time.getUTCMinutes()).padStart(2, '0');
-    const secs = '18';
+    const secs = '17';
 
     const timestamp = `${year}${month}${day}.${hours}${mins}${secs}`;
     const url = generateCODImageUrl(domain, product, timestamp);

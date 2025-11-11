@@ -25,11 +25,7 @@ export const FavoritesMenu = () => {
 
   const handleAddToFavorites = async () => {
     const success = await addToFavorites();
-    if (success) {
-      Alert.alert('Success', 'Added to favorites!');
-    } else {
-      Alert.alert('Error', 'Maximum of 10 favorites reached or error occurred.');
-    }
+    // Menu will update automatically, no need for alert
   };
 
   const handleRemoveFavorite = (favorite) => {
