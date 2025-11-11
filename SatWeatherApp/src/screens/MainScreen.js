@@ -3,7 +3,6 @@ import { View, StyleSheet, StatusBar, Platform, Dimensions, TouchableOpacity, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { captureRef } from 'react-native-view-shot';
 import { useApp } from '../context/AppContext';
 import { SatelliteImageViewer } from '../components/SatelliteImageViewer';
@@ -55,24 +54,6 @@ export const MainScreen = () => {
   // Get screen dimensions for rotation
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
-
-  // Lock screen orientation based on layoutOrientation
-  useEffect(() => {
-    const lockOrientation = async () => {
-      if (layoutOrientation === 'landscape') {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
-      } else {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-      }
-    };
-
-    lockOrientation();
-
-    // Cleanup: unlock orientation when component unmounts
-    return () => {
-      ScreenOrientation.unlockAsync();
-    };
-  }, [layoutOrientation]);
 
   // Generate validated timestamps and prefetch frames
   useEffect(() => {
