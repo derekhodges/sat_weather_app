@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Svg, Path } from 'react-native-svg';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 
@@ -35,6 +36,7 @@ export const DrawingOverlay = ({ externalColorPicker, setExternalColorPicker }) 
 
   const [currentPath, setCurrentPath] = useState([]);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const pathRef = useRef([]);
 
   // Sync external color picker state
   useEffect(() => {
@@ -54,22 +56,38 @@ export const DrawingOverlay = ({ externalColorPicker, setExternalColorPicker }) 
 
   if (!shouldShowOverlay) return null;
 
+  // Worklet-safe functions to be called from gesture handlers
+  const updatePath = (point) => {
+    pathRef.current = [...pathRef.current, point];
+    setCurrentPath([...pathRef.current]);
+  };
+
+  const startPath = (point) => {
+    pathRef.current = [point];
+    setCurrentPath([point]);
+  };
+
+  const finishPath = () => {
+    if (pathRef.current.length > 0) {
+      addDrawing({
+        path: pathRef.current,
+        color: drawingColor,
+        id: Date.now(),
+      });
+      pathRef.current = [];
+      setCurrentPath([]);
+    }
+  };
+
   const panGesture = Gesture.Pan()
     .onStart((event) => {
-      setCurrentPath([{ x: event.x, y: event.y }]);
+      runOnJS(startPath)({ x: event.x, y: event.y });
     })
     .onUpdate((event) => {
-      setCurrentPath((prev) => [...prev, { x: event.x, y: event.y }]);
+      runOnJS(updatePath)({ x: event.x, y: event.y });
     })
     .onEnd(() => {
-      if (currentPath.length > 0) {
-        addDrawing({
-          path: currentPath,
-          color: drawingColor,
-          id: Date.now(),
-        });
-        setCurrentPath([]);
-      }
+      runOnJS(finishPath)();
     });
 
   const pathToSvgPath = (points) => {
