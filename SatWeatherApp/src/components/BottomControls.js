@@ -9,11 +9,13 @@ export const BottomControls = ({
   onEditPress,
   onSharePress,
   onFlipOrientation,
+  orientation = 'portrait',
 }) => {
   const { isAnimating, isDrawingMode } = useApp();
+  const isLandscape = orientation === 'landscape';
 
   return (
-    <View style={styles.container}>
+    <View style={isLandscape ? styles.containerLandscape : styles.container}>
       {/* Satellite/Change satellite button */}
       <TouchableOpacity
         style={styles.button}
@@ -66,6 +68,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 4,
     justifyContent: 'space-evenly',
+    alignItems: 'center',
+  },
+  containerLandscape: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    justifyContent: 'flex-start',
     alignItems: 'center',
   },
   button: {

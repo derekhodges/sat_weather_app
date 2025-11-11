@@ -43,6 +43,8 @@ export const MainScreen = () => {
     setUserLocation,
     savedHomeLocation,
     setShowFavoritesMenu,
+    layoutOrientation,
+    toggleOrientation,
   } = useApp();
 
   const viewRef = useRef();
@@ -290,14 +292,14 @@ export const MainScreen = () => {
   };
 
   const handleFlipOrientation = () => {
-    // Suggest rotating the device to landscape mode
-    console.log('Flip orientation: Rotate device for best viewing experience');
-    // Could add a toast notification here instead
+    toggleOrientation();
   };
 
   const handleFavoritesPress = () => {
     setShowFavoritesMenu(true);
   };
+
+  const isLandscape = layoutOrientation === 'landscape';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -314,29 +316,39 @@ export const MainScreen = () => {
           onFavoritesPress={handleFavoritesPress}
         />
 
-        {/* Main content */}
-        <View style={styles.content}>
-          <SatelliteImageViewer />
-          {isDrawingMode && <DrawingOverlay />}
-        </View>
+        {/* Main content area - layout changes based on orientation */}
+        <View style={isLandscape ? styles.landscapeContent : styles.content}>
+          {/* Color scale bar - vertical on left in landscape */}
+          {isLandscape && <ColorScaleBar orientation="vertical" />}
 
-        {/* Color scale bar */}
-        <ColorScaleBar />
+          {/* Image viewer */}
+          <View style={styles.imageArea}>
+            <SatelliteImageViewer />
+            {isDrawingMode && <DrawingOverlay />}
+          </View>
+
+          {/* Color scale bar - horizontal on bottom in portrait */}
+          {!isLandscape && <ColorScaleBar orientation="horizontal" />}
+        </View>
 
         {/* Menu selector */}
         <MenuSelector />
 
-        {/* Bottom controls */}
-        <BottomControls
-          onLocationPress={handleLocationPress}
-          onPlayPress={toggleAnimation}
-          onEditPress={handleEditPress}
-          onSharePress={handleSharePress}
-          onFlipOrientation={handleFlipOrientation}
-        />
+        {/* Bottom controls and timeline - layout changes based on orientation */}
+        <View style={isLandscape ? styles.landscapeBottomRow : styles.portraitBottomRow}>
+          {/* Bottom controls */}
+          <BottomControls
+            onLocationPress={handleLocationPress}
+            onPlayPress={toggleAnimation}
+            onEditPress={handleEditPress}
+            onSharePress={handleSharePress}
+            onFlipOrientation={handleFlipOrientation}
+            orientation={layoutOrientation}
+          />
 
-        {/* Timeline slider */}
-        <TimelineSlider />
+          {/* Timeline slider */}
+          <TimelineSlider orientation={layoutOrientation} />
+        </View>
 
         {/* Domain map selector modal */}
         <DomainMapSelector />
@@ -359,5 +371,19 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  landscapeContent: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  imageArea: {
+    flex: 1,
+  },
+  portraitBottomRow: {
+    // Default vertical stacking
+  },
+  landscapeBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
