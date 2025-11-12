@@ -22,6 +22,7 @@ export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
     viewMode,
     imageTimestamp,
     layoutOrientation,
+    settings,
   } = useApp();
   const [showSatelliteSelector, setShowSatelliteSelector] = useState(false);
 
@@ -52,7 +53,7 @@ export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
               {selectedSatellite.name} {selectedDomain.name}
             </Text>
             <Text style={styles.productInfo}>{productInfo}</Text>
-            <Text style={styles.timestamp}>{formatTimestamp(imageTimestamp)}</Text>
+            <Text style={styles.timestamp}>{formatTimestamp(imageTimestamp, settings.useLocalTime)}</Text>
           </View>
         ) : (
           <>

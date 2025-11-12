@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
   View,
   Image,
   StyleSheet,
   ActivityIndicator,
   Text,
+  Dimensions,
 } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -12,11 +13,12 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  runOnJS,
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
 
-export const SatelliteImageViewer = () => {
+export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { currentImageUrl, isLoading, error, settings } = useApp();
 
   // Dual image state to prevent black flicker
@@ -39,28 +41,70 @@ export const SatelliteImageViewer = () => {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // Pinch gesture for zoom
+  // Get screen dimensions for bounds checking
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+
+  // Helper function to constrain translation based on current scale
+  const constrainTranslation = (x, y, currentScale) => {
+    'worklet';
+
+    // For contain mode, image fits in screen, so constrain more tightly
+    // For cover mode, image is 200% size, so allow more movement
+    const imageSize = settings.imageDisplayMode === 'cover' ? 2 : 1;
+
+    // Calculate maximum allowed translation based on zoom level
+    // When zoomed in, allow more panning. When zoomed out, constrain more.
+    // The idea: don't let more than 20% of the image go off screen
+    const maxOffsetX = (screenWidth * (currentScale - 1) * imageSize) / 2 + (screenWidth * 0.2);
+    const maxOffsetY = (screenHeight * (currentScale - 1) * imageSize) / 2 + (screenHeight * 0.2);
+
+    // Constrain to bounds
+    const constrainedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, x));
+    const constrainedY = Math.max(-maxOffsetY, Math.min(maxOffsetY, y));
+
+    return { x: constrainedX, y: constrainedY };
+  };
+
+  // Pinch gesture for zoom - more responsive with faster spring config
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
-      scale.value = savedScale.value * event.scale;
+      const newScale = savedScale.value * event.scale;
+      // Limit scale during gesture
+      scale.value = Math.max(1, Math.min(5, newScale));
     })
     .onEnd(() => {
-      // Limit scale
+      // Limit scale and apply spring for smooth finish
       if (scale.value < 1) {
-        scale.value = withSpring(1);
+        scale.value = withSpring(1, { damping: 20, stiffness: 300 });
       } else if (scale.value > 5) {
-        scale.value = withSpring(5);
+        scale.value = withSpring(5, { damping: 20, stiffness: 300 });
       }
       savedScale.value = scale.value;
+
+      // After zoom, constrain translation to keep image on screen
+      const constrained = constrainTranslation(translateX.value, translateY.value, scale.value);
+      if (constrained.x !== translateX.value || constrained.y !== translateY.value) {
+        translateX.value = withSpring(constrained.x, { damping: 20, stiffness: 300 });
+        translateY.value = withSpring(constrained.y, { damping: 20, stiffness: 300 });
+        savedTranslateX.value = constrained.x;
+        savedTranslateY.value = constrained.y;
+      }
     });
 
-  // Pan gesture for panning
+  // Pan gesture for panning - more responsive with immediate feedback
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
-      translateX.value = savedTranslateX.value + event.translationX;
-      translateY.value = savedTranslateY.value + event.translationY;
+      const newX = savedTranslateX.value + event.translationX;
+      const newY = savedTranslateY.value + event.translationY;
+
+      // Apply constraints during panning for immediate feedback
+      const constrained = constrainTranslation(newX, newY, scale.value);
+      translateX.value = constrained.x;
+      translateY.value = constrained.y;
     })
     .onEnd(() => {
+      // Save final constrained position
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
     });
@@ -181,24 +225,20 @@ export const SatelliteImageViewer = () => {
     };
   });
 
-  // Reset zoom/pan
+  // Reset zoom/pan - faster spring config for more responsive feel
   const resetView = () => {
-    scale.value = withSpring(1);
+    scale.value = withSpring(1, { damping: 20, stiffness: 300 });
     savedScale.value = 1;
-    translateX.value = withSpring(0);
-    translateY.value = withSpring(0);
+    translateX.value = withSpring(0, { damping: 20, stiffness: 300 });
+    translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
   };
 
-  // Expose reset function (will be used by parent via ref or context)
-  React.useImperativeHandle(
-    useRef(),
-    () => ({
-      resetView,
-    }),
-    []
-  );
+  // Expose reset function via ref for parent component
+  useImperativeHandle(ref, () => ({
+    resetView,
+  }));
 
   if (isLoading) {
     return (
@@ -288,7 +328,7 @@ export const SatelliteImageViewer = () => {
       <LocationMarker />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

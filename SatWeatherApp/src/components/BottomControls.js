@@ -10,6 +10,7 @@ export const BottomControls = ({
   onEditLongPress,
   onSharePress,
   onFlipOrientation,
+  onResetView,
   orientation = 'portrait',
   isDrawingMode,
 }) => {
@@ -57,6 +58,11 @@ export const BottomControls = ({
       {/* Share button */}
       <TouchableOpacity style={buttonStyle} onPress={onSharePress}>
         <Ionicons name="share-social" size={iconSize} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Reset zoom/pan button */}
+      <TouchableOpacity style={buttonStyle} onPress={onResetView}>
+        <MaterialCommunityIcons name="image-filter-center-focus" size={iconSize} color="#fff" />
       </TouchableOpacity>
 
       {/* Flip orientation button */}

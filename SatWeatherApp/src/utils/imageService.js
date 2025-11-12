@@ -126,21 +126,43 @@ export const generateTimestampArray = (count = 20, intervalMinutes = 5) => {
 
 /**
  * Format timestamp for display
+ * @param {string} timestamp - Timestamp in COD format (YYYYMMDD.HHMMSS)
+ * @param {boolean} useLocalTime - If true, convert to local time. If false, show UTC
  */
-export const formatTimestamp = (timestamp) => {
-  if (!timestamp) return '--:-- UTC';
+export const formatTimestamp = (timestamp, useLocalTime = false) => {
+  if (!timestamp) return useLocalTime ? '--:-- Local' : '--:-- UTC';
 
   // Parse timestamp: YYYYMMDD.HHMMSS
   const dateStr = timestamp.split('.')[0];
   const timeStr = timestamp.split('.')[1];
 
-  const year = dateStr.substring(0, 4);
-  const month = dateStr.substring(4, 6);
-  const day = dateStr.substring(6, 8);
-  const hours = timeStr.substring(0, 2);
-  const minutes = timeStr.substring(2, 4);
+  const year = parseInt(dateStr.substring(0, 4));
+  const month = parseInt(dateStr.substring(4, 6));
+  const day = parseInt(dateStr.substring(6, 8));
+  const hours = parseInt(timeStr.substring(0, 2));
+  const minutes = parseInt(timeStr.substring(2, 4));
+  const seconds = parseInt(timeStr.substring(4, 6));
 
-  return `${month}/${day} ${hours}:${minutes} UTC`;
+  // Create Date object in UTC
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
+
+  if (useLocalTime) {
+    // Convert to local time
+    const localMonth = String(utcDate.getMonth() + 1).padStart(2, '0');
+    const localDay = String(utcDate.getDate()).padStart(2, '0');
+    const localHours = String(utcDate.getHours()).padStart(2, '0');
+    const localMinutes = String(utcDate.getMinutes()).padStart(2, '0');
+
+    return `${localMonth}/${localDay} ${localHours}:${localMinutes} Local`;
+  } else {
+    // Display UTC time
+    const monthStr = String(month).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const hoursStr = String(hours).padStart(2, '0');
+    const minutesStr = String(minutes).padStart(2, '0');
+
+    return `${monthStr}/${dayStr} ${hoursStr}:${minutesStr} UTC`;
+  }
 };
 
 /**
