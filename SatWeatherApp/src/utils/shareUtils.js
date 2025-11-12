@@ -3,7 +3,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { GifEncoder, quantize, applyPalette } from 'gifenc';
+import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 import UPNG from 'upng-js';
 
 /**
@@ -154,7 +154,7 @@ export const createAnimatedGif = async (
     // Step 2: Process frames and create GIF
     if (progressCallback) progressCallback(frameCount, frameCount, 'Creating GIF...');
 
-    const gif = GifEncoder();
+    const gif = GIFEncoder();
 
     for (let i = 0; i < frameUris.length; i++) {
       const frameUri = frameUris[i];
