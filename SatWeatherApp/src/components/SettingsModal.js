@@ -16,6 +16,8 @@ export const SettingsModal = ({ visible, onClose }) => {
   const { settings, updateSettings } = useApp();
   const [localAnimationSpeed, setLocalAnimationSpeed] = useState(settings.animationSpeed.toString());
   const [localFrameCount, setLocalFrameCount] = useState(settings.frameCount.toString());
+  const [localFrameSkip, setLocalFrameSkip] = useState(settings.frameSkip.toString());
+  const [showCustomFrameSkip, setShowCustomFrameSkip] = useState(false);
 
   const handleAnimationSpeedChange = (value) => {
     setLocalAnimationSpeed(value);
@@ -31,6 +33,24 @@ export const SettingsModal = ({ visible, onClose }) => {
     if (!isNaN(numValue) && numValue >= 5 && numValue <= 50) {
       updateSettings({ frameCount: numValue });
     }
+  };
+
+  const handleFrameSkipChange = (value) => {
+    setLocalFrameSkip(value);
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 12) {
+      updateSettings({ frameSkip: numValue });
+    }
+  };
+
+  const handleFrameSkipPreset = (skip) => {
+    updateSettings({ frameSkip: skip });
+    setLocalFrameSkip(skip.toString());
+    setShowCustomFrameSkip(false);
+  };
+
+  const handleCustomFrameSkipToggle = () => {
+    setShowCustomFrameSkip(true);
   };
 
   return (
@@ -87,6 +107,62 @@ export const SettingsModal = ({ visible, onClose }) => {
                 placeholder="12"
                 placeholderTextColor="#666"
               />
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Frame Skip</Text>
+                <Text style={styles.settingDescription}>
+                  Skip frames for longer time periods (0-12)
+                </Text>
+              </View>
+              <View style={styles.frameSkipButtons}>
+                {[0, 1, 2, 5, 10].map((skip) => (
+                  <TouchableOpacity
+                    key={skip}
+                    style={[
+                      styles.frameSkipButton,
+                      settings.frameSkip === skip && !showCustomFrameSkip && styles.frameSkipButtonActive
+                    ]}
+                    onPress={() => handleFrameSkipPreset(skip)}
+                  >
+                    <Text
+                      style={[
+                        styles.frameSkipButtonText,
+                        settings.frameSkip === skip && !showCustomFrameSkip && styles.frameSkipButtonTextActive
+                      ]}
+                    >
+                      {skip === 0 ? 'None' : skip}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.frameSkipCustomButton,
+                  showCustomFrameSkip && styles.frameSkipButtonActive
+                ]}
+                onPress={handleCustomFrameSkipToggle}
+              >
+                <Text
+                  style={[
+                    styles.frameSkipButtonText,
+                    showCustomFrameSkip && styles.frameSkipButtonTextActive
+                  ]}
+                >
+                  Custom
+                </Text>
+              </TouchableOpacity>
+              {showCustomFrameSkip && (
+                <TextInput
+                  style={[styles.settingInput, { marginTop: 12 }]}
+                  value={localFrameSkip}
+                  onChangeText={handleFrameSkipChange}
+                  keyboardType="numeric"
+                  placeholder="0-12"
+                  placeholderTextColor="#666"
+                />
+              )}
             </View>
           </View>
 
@@ -203,6 +279,64 @@ export const SettingsModal = ({ visible, onClose }) => {
                 </View>
               </View>
             )}
+          </View>
+
+          {/* Subscription Settings */}
+          <View style={styles.settingsSection}>
+            <Text style={styles.settingsSectionTitle}>Subscription</Text>
+
+            {/* Free Tier */}
+            <TouchableOpacity style={styles.subscriptionTier}>
+              <View style={styles.subscriptionTierHeader}>
+                <Text style={styles.subscriptionTierName}>Free</Text>
+                <Text style={styles.subscriptionTierPrice}>$0</Text>
+              </View>
+              <View style={styles.subscriptionFeatures}>
+                <Text style={styles.subscriptionFeature}>✓ Geocolor RGB product</Text>
+                <Text style={styles.subscriptionFeature}>✓ Channel 13 (Clean IR)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Basic animation (6 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ All domains</Text>
+              </View>
+              <View style={styles.subscriptionBadge}>
+                <Text style={styles.subscriptionBadgeText}>CURRENT</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Pro Subscription */}
+            <TouchableOpacity style={styles.subscriptionTier}>
+              <View style={styles.subscriptionTierHeader}>
+                <Text style={styles.subscriptionTierName}>Pro</Text>
+                <Text style={styles.subscriptionTierPrice}>$0.99/mo or $10/year</Text>
+              </View>
+              <View style={styles.subscriptionFeatures}>
+                <Text style={styles.subscriptionFeature}>✓ All RGB products</Text>
+                <Text style={styles.subscriptionFeature}>✓ All 16 channels</Text>
+                <Text style={styles.subscriptionFeature}>✓ Extended animation (24 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Basic overlays</Text>
+                <Text style={styles.subscriptionFeature}>✓ Drawing tools</Text>
+              </View>
+              <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
+                <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Pro Plus Subscription */}
+            <TouchableOpacity style={styles.subscriptionTier}>
+              <View style={styles.subscriptionTierHeader}>
+                <Text style={styles.subscriptionTierName}>Pro Plus</Text>
+                <Text style={styles.subscriptionTierPrice}>$2.99/mo or $30/year</Text>
+              </View>
+              <View style={styles.subscriptionFeatures}>
+                <Text style={styles.subscriptionFeature}>✓ Everything in Pro</Text>
+                <Text style={styles.subscriptionFeature}>✓ Extended animation (48 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ All overlays</Text>
+                <Text style={styles.subscriptionFeature}>✓ Priority support</Text>
+                <Text style={styles.subscriptionFeature}>✓ Export high-res images</Text>
+              </View>
+              <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
+                <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
@@ -326,5 +460,101 @@ const styles = StyleSheet.create({
   },
   intervalButtonTextActive: {
     color: '#fff',
+  },
+  frameSkipButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  frameSkipButton: {
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  frameSkipButtonActive: {
+    backgroundColor: '#2196F3',
+    borderColor: '#2196F3',
+  },
+  frameSkipButtonText: {
+    color: '#999',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  frameSkipButtonTextActive: {
+    color: '#fff',
+  },
+  frameSkipCustomButton: {
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  subscriptionTier: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  subscriptionTierHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  subscriptionTierName: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  subscriptionTierPrice: {
+    color: '#2196F3',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  subscriptionFeatures: {
+    marginBottom: 16,
+  },
+  subscriptionFeature: {
+    color: '#ccc',
+    fontSize: 14,
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  subscriptionBadge: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignSelf: 'center',
+  },
+  subscriptionBadgeText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  subscriptionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  subscriptionButtonInactive: {
+    backgroundColor: '#333',
+  },
+  subscriptionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

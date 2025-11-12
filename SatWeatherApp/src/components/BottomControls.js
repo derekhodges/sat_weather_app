@@ -27,7 +27,7 @@ export const BottomControls = ({
           // Will be handled by top bar satellite selector
         }}
       >
-        <MaterialCommunityIcons name="satellite-variant" size={iconSize} color="#fff" />
+        <MaterialCommunityIcons name="radar" size={iconSize} color="#fff" />
       </TouchableOpacity>
 
       {/* Location button */}
