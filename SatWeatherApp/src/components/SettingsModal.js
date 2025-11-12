@@ -136,23 +136,23 @@ export const SettingsModal = ({ visible, onClose }) => {
                     </Text>
                   </TouchableOpacity>
                 ))}
-                <TouchableOpacity
-                  style={[
-                    styles.frameSkipButton,
-                    showCustomFrameSkip && styles.frameSkipButtonActive
-                  ]}
-                  onPress={handleCustomFrameSkipToggle}
-                >
-                  <Text
-                    style={[
-                      styles.frameSkipButtonText,
-                      showCustomFrameSkip && styles.frameSkipButtonTextActive
-                    ]}
-                  >
-                    Custom
-                  </Text>
-                </TouchableOpacity>
               </View>
+              <TouchableOpacity
+                style={[
+                  styles.frameSkipCustomButton,
+                  showCustomFrameSkip && styles.frameSkipButtonActive
+                ]}
+                onPress={handleCustomFrameSkipToggle}
+              >
+                <Text
+                  style={[
+                    styles.frameSkipButtonText,
+                    showCustomFrameSkip && styles.frameSkipButtonTextActive
+                  ]}
+                >
+                  Custom
+                </Text>
+              </TouchableOpacity>
               {showCustomFrameSkip && (
                 <TextInput
                   style={[styles.settingInput, { marginTop: 12 }]}
@@ -487,6 +487,16 @@ const styles = StyleSheet.create({
   },
   frameSkipButtonTextActive: {
     color: '#fff',
+  },
+  frameSkipCustomButton: {
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    alignItems: 'center',
+    marginTop: 8,
   },
   subscriptionTier: {
     backgroundColor: '#1a1a1a',
