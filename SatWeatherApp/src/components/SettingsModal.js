@@ -16,6 +16,8 @@ export const SettingsModal = ({ visible, onClose }) => {
   const { settings, updateSettings } = useApp();
   const [localAnimationSpeed, setLocalAnimationSpeed] = useState(settings.animationSpeed.toString());
   const [localFrameCount, setLocalFrameCount] = useState(settings.frameCount.toString());
+  const [localFrameSkip, setLocalFrameSkip] = useState(settings.frameSkip.toString());
+  const [showCustomFrameSkip, setShowCustomFrameSkip] = useState(false);
 
   const handleAnimationSpeedChange = (value) => {
     setLocalAnimationSpeed(value);
@@ -31,6 +33,24 @@ export const SettingsModal = ({ visible, onClose }) => {
     if (!isNaN(numValue) && numValue >= 5 && numValue <= 50) {
       updateSettings({ frameCount: numValue });
     }
+  };
+
+  const handleFrameSkipChange = (value) => {
+    setLocalFrameSkip(value);
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 12) {
+      updateSettings({ frameSkip: numValue });
+    }
+  };
+
+  const handleFrameSkipPreset = (skip) => {
+    updateSettings({ frameSkip: skip });
+    setLocalFrameSkip(skip.toString());
+    setShowCustomFrameSkip(false);
+  };
+
+  const handleCustomFrameSkipToggle = () => {
+    setShowCustomFrameSkip(true);
   };
 
   return (
@@ -97,26 +117,52 @@ export const SettingsModal = ({ visible, onClose }) => {
                 </Text>
               </View>
               <View style={styles.frameSkipButtons}>
-                {[0, 1, 2, 3, 6, 12].map((skip) => (
+                {[0, 1, 2, 5, 10].map((skip) => (
                   <TouchableOpacity
                     key={skip}
                     style={[
                       styles.frameSkipButton,
-                      settings.frameSkip === skip && styles.frameSkipButtonActive
+                      settings.frameSkip === skip && !showCustomFrameSkip && styles.frameSkipButtonActive
                     ]}
-                    onPress={() => updateSettings({ frameSkip: skip })}
+                    onPress={() => handleFrameSkipPreset(skip)}
                   >
                     <Text
                       style={[
                         styles.frameSkipButtonText,
-                        settings.frameSkip === skip && styles.frameSkipButtonTextActive
+                        settings.frameSkip === skip && !showCustomFrameSkip && styles.frameSkipButtonTextActive
                       ]}
                     >
                       {skip === 0 ? 'None' : skip}
                     </Text>
                   </TouchableOpacity>
                 ))}
+                <TouchableOpacity
+                  style={[
+                    styles.frameSkipButton,
+                    showCustomFrameSkip && styles.frameSkipButtonActive
+                  ]}
+                  onPress={handleCustomFrameSkipToggle}
+                >
+                  <Text
+                    style={[
+                      styles.frameSkipButtonText,
+                      showCustomFrameSkip && styles.frameSkipButtonTextActive
+                    ]}
+                  >
+                    Custom
+                  </Text>
+                </TouchableOpacity>
               </View>
+              {showCustomFrameSkip && (
+                <TextInput
+                  style={[styles.settingInput, { marginTop: 12 }]}
+                  value={localFrameSkip}
+                  onChangeText={handleFrameSkipChange}
+                  keyboardType="numeric"
+                  placeholder="0-12"
+                  placeholderTextColor="#666"
+                />
+              )}
             </View>
           </View>
 
