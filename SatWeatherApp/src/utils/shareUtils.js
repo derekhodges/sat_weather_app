@@ -4,7 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { GifEncoder, quantize, applyPalette } from 'gifenc';
-import { PNG } from 'pngjs';
+import UPNG from 'upng-js';
 
 /**
  * Captures a screenshot of the content view (excluding buttons and status bar)
@@ -70,7 +70,7 @@ export const shareImage = async (uri) => {
 };
 
 /**
- * Helper function to decode PNG image to RGBA pixel data
+ * Helper function to decode PNG image to RGBA pixel data using UPNG.js (pure JS, no Node dependencies)
  * @param {string} uri - URI of the PNG image
  * @returns {Promise<{data: Uint8Array, width: number, height: number}>}
  */
@@ -81,30 +81,24 @@ const decodePngToRgba = async (uri) => {
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    // Convert base64 to buffer
+    // Convert base64 to ArrayBuffer
     const binaryString = atob(base64Data);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // Parse PNG using pngjs
-    return new Promise((resolve, reject) => {
-      const png = new PNG();
+    // Decode PNG using UPNG (pure JavaScript, no Node dependencies)
+    const decoded = UPNG.decode(bytes.buffer);
 
-      png.parse(bytes, (error, data) => {
-        if (error) {
-          reject(error);
-          return;
-        }
+    // Convert to RGBA format
+    const rgba = UPNG.toRGBA8(decoded)[0]; // Get first frame as RGBA8
 
-        resolve({
-          data: data.data, // RGBA pixel data
-          width: data.width,
-          height: data.height,
-        });
-      });
-    });
+    return {
+      data: new Uint8Array(rgba), // RGBA pixel data
+      width: decoded.width,
+      height: decoded.height,
+    };
   } catch (error) {
     console.error('Error decoding PNG:', error);
     throw error;
