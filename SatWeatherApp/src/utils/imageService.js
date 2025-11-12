@@ -147,13 +147,17 @@ export const formatTimestamp = (timestamp, useLocalTime = false) => {
   const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
 
   if (useLocalTime) {
-    // Convert to local time
+    // Convert to local time with 12-hour format and AM/PM
     const localMonth = String(utcDate.getMonth() + 1).padStart(2, '0');
     const localDay = String(utcDate.getDate()).padStart(2, '0');
-    const localHours = String(utcDate.getHours()).padStart(2, '0');
+    const localHours24 = utcDate.getHours();
     const localMinutes = String(utcDate.getMinutes()).padStart(2, '0');
 
-    return `${localMonth}/${localDay} ${localHours}:${localMinutes} Local`;
+    // Convert to 12-hour format
+    const period = localHours24 >= 12 ? 'PM' : 'AM';
+    const localHours12 = localHours24 % 12 || 12; // Convert 0 to 12 for midnight
+
+    return `${localMonth}/${localDay} ${localHours12}:${localMinutes} ${period} Local`;
   } else {
     // Display UTC time
     const monthStr = String(month).padStart(2, '0');
