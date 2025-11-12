@@ -78,7 +78,7 @@ const decodePngToRgba = async (uri) => {
   try {
     // Read PNG file as base64
     const base64Data = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     // Convert base64 to ArrayBuffer
@@ -200,7 +200,7 @@ export const createAnimatedGif = async (
     const gifUri = `${FileSystem.cacheDirectory}satellite_animation_${Date.now()}.gif`;
 
     await FileSystem.writeAsStringAsync(gifUri, gifBase64, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     console.log(`GIF created successfully: ${gifUri}`);
