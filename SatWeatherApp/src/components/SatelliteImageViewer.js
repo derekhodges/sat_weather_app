@@ -98,10 +98,13 @@ export const SatelliteImageViewer = () => {
     setImageALoaded(true);
     if (imageSlotA === currentImageUrl && activeSlot !== 'A') {
       // This is the new image, make it active with smooth crossfade
-      // Only fade AFTER the image is loaded to ensure no gap
-      setActiveSlot('A');
-      opacityA.value = withTiming(1, { duration: 100 });
-      opacityB.value = withTiming(0, { duration: 100 });
+      // Wait one frame after onLoad to ensure the image is fully rendered
+      // before starting the opacity transition (prevents black flicker)
+      requestAnimationFrame(() => {
+        setActiveSlot('A');
+        opacityA.value = withTiming(1, { duration: 100 });
+        opacityB.value = withTiming(0, { duration: 100 });
+      });
     }
   };
 
@@ -109,10 +112,13 @@ export const SatelliteImageViewer = () => {
     setImageBLoaded(true);
     if (imageSlotB === currentImageUrl && activeSlot !== 'B') {
       // This is the new image, make it active with smooth crossfade
-      // Only fade AFTER the image is loaded to ensure no gap
-      setActiveSlot('B');
-      opacityB.value = withTiming(1, { duration: 100 });
-      opacityA.value = withTiming(0, { duration: 100 });
+      // Wait one frame after onLoad to ensure the image is fully rendered
+      // before starting the opacity transition (prevents black flicker)
+      requestAnimationFrame(() => {
+        setActiveSlot('B');
+        opacityB.value = withTiming(1, { duration: 100 });
+        opacityA.value = withTiming(0, { duration: 100 });
+      });
     }
   };
 
