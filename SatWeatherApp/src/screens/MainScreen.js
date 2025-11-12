@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -15,6 +15,15 @@ import { ColorScaleBar } from '../components/ColorScaleBar';
 import { DomainMapSelector } from '../components/DomainMapSelector';
 import { DrawingOverlay } from '../components/DrawingOverlay';
 import { FavoritesMenu } from '../components/FavoritesMenu';
+import ShareMenu from '../components/ShareMenu';
+import {
+  captureScreenshot,
+  saveScreenshotToLibrary,
+  shareImage,
+  createAnimatedGif,
+  saveGifToLibrary,
+  shareGif,
+} from '../utils/shareUtils';
 import {
   getLatestImageUrl,
   generateTimestampArray,
@@ -52,8 +61,11 @@ export const MainScreen = () => {
   } = useApp();
 
   const viewRef = useRef();
+  const contentRef = useRef(); // Reference to content area (for screenshots without buttons)
   const animationIntervalRef = useRef(null);
   const [showColorPickerFromButton, setShowColorPickerFromButton] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
 
   // Listen for orientation changes to sync layout
   useEffect(() => {
@@ -305,27 +317,197 @@ export const MainScreen = () => {
     setShowColorPickerFromButton(true);
   };
 
-  const handleSharePress = async () => {
+  const handleSharePress = () => {
+    // Open the share menu instead of directly sharing
+    setShowShareMenu(true);
+  };
+
+  const handleSaveScreenshot = async () => {
     try {
-      if (!(await Sharing.isAvailableAsync())) {
-        console.warn('Sharing not available');
-        setError('Sharing is not available on this device');
-        return;
-      }
+      // Show branding overlay WITHOUT triggering loading state
+      setShowBrandingOverlay(true);
 
-      // Capture the current view
-      const uri = await captureRef(viewRef, {
-        format: 'jpg',
-        quality: 0.9,
-      });
+      // Delay to let the overlay render
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      await Sharing.shareAsync(uri, {
-        mimeType: 'image/jpeg',
-        dialogTitle: 'Share Satellite Image',
-      });
+      // Capture the content area (excluding buttons)
+      const uri = await captureScreenshot(contentRef);
+
+      // NOW show loading while saving
+      setIsLoading(true);
+      setShowBrandingOverlay(false);
+
+      // Save to media library
+      await saveScreenshotToLibrary(uri);
+
+      setIsLoading(false);
+
+      Alert.alert('Success', 'Screenshot saved to your photo library!');
     } catch (error) {
-      console.error('Error sharing:', error);
-      setError('Unable to share image');
+      console.error('Error saving screenshot:', error);
+      setShowBrandingOverlay(false);
+      setIsLoading(false);
+      setError(error.message || 'Unable to save screenshot');
+    }
+  };
+
+  const handleShareImage = async () => {
+    try {
+      // Show branding overlay WITHOUT triggering loading state
+      setShowBrandingOverlay(true);
+
+      // Delay to let the overlay render
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Capture the content area
+      const uri = await captureScreenshot(contentRef);
+
+      // NOW show loading while sharing
+      setIsLoading(true);
+      setShowBrandingOverlay(false);
+
+      // Share the image
+      await shareImage(uri);
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error sharing image:', error);
+      setShowBrandingOverlay(false);
+      setIsLoading(false);
+      setError(error.message || 'Unable to share image');
+    }
+  };
+
+  const handleSaveGif = async () => {
+    try {
+      const frameCount = Math.min(availableTimestamps.length, 10);
+
+      Alert.alert(
+        'Create GIF',
+        `This will create an animated GIF with ${frameCount} frames. It will take about 10-20 seconds to process.\n\nThe animation will play while capturing frames.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Create GIF',
+            onPress: async () => {
+              try {
+                // Show branding overlay WITHOUT loading state during capture
+                setShowBrandingOverlay(true);
+
+                // Start animation if not already animating
+                const wasAnimating = isAnimating;
+                if (!wasAnimating) {
+                  toggleAnimation();
+                  // Wait for animation to start and first frame to load
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                // Create GIF with progress tracking (captures frames while animating)
+                const gifUri = await createAnimatedGif(
+                  contentRef,
+                  frameCount,
+                  500,
+                  (current, total, status) => {
+                    console.log(status);
+                  }
+                );
+
+                // Stop animation if we started it
+                if (!wasAnimating) {
+                  toggleAnimation();
+                }
+
+                setShowBrandingOverlay(false);
+
+                // NOW show loading while saving to library
+                setIsLoading(true);
+
+                // Save to library
+                await saveGifToLibrary(gifUri);
+
+                setIsLoading(false);
+
+                Alert.alert(
+                  'Success!',
+                  'GIF saved to your photo library!'
+                );
+              } catch (error) {
+                console.error('Error creating GIF:', error);
+                setShowBrandingOverlay(false);
+                setIsLoading(false);
+                setError(error.message || 'Unable to create GIF');
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error preparing GIF creation:', error);
+      setError(error.message);
+    }
+  };
+
+  const handleShareGif = async () => {
+    try {
+      const frameCount = Math.min(availableTimestamps.length, 10);
+
+      Alert.alert(
+        'Create and Share GIF',
+        `This will create an animated GIF with ${frameCount} frames. It will take about 10-20 seconds to process.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Create GIF',
+            onPress: async () => {
+              try {
+                // Show branding overlay WITHOUT loading state during capture
+                setShowBrandingOverlay(true);
+
+                // Start animation if not already animating
+                const wasAnimating = isAnimating;
+                if (!wasAnimating) {
+                  toggleAnimation();
+                  // Wait for animation to start and first frame to load
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                // Create GIF (captures frames while animating)
+                const gifUri = await createAnimatedGif(
+                  contentRef,
+                  frameCount,
+                  500,
+                  (current, total, status) => {
+                    console.log(status);
+                  }
+                );
+
+                // Stop animation if we started it
+                if (!wasAnimating) {
+                  toggleAnimation();
+                }
+
+                setShowBrandingOverlay(false);
+
+                // NOW show loading while sharing
+                setIsLoading(true);
+
+                // Share the GIF
+                await shareGif(gifUri);
+
+                setIsLoading(false);
+              } catch (error) {
+                console.error('Error creating/sharing GIF:', error);
+                setShowBrandingOverlay(false);
+                setIsLoading(false);
+                setError(error.message || 'Unable to create or share GIF');
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error preparing GIF share:', error);
+      setError(error.message);
     }
   };
 
@@ -374,13 +556,20 @@ export const MainScreen = () => {
           // Landscape layout: Image | Buttons (vertical) + bottom menu/slider row
           <>
             <View style={styles.landscapeMainRow}>
-              {/* Image - takes full space */}
-              <View style={styles.landscapeImageArea}>
+              {/* Image - takes full space with ref for capture */}
+              <View ref={contentRef} style={styles.landscapeImageArea} collapsable={false}>
                 <SatelliteImageViewer />
                 <DrawingOverlay
                   externalColorPicker={showColorPickerFromButton}
                   setExternalColorPicker={setShowColorPickerFromButton}
                 />
+
+                {/* Branding overlay for screenshots */}
+                {showBrandingOverlay && (
+                  <View style={styles.brandingOverlay}>
+                    <Text style={styles.brandingText}>Satellite Weather</Text>
+                  </View>
+                )}
               </View>
 
               {/* Vertical Buttons on right */}
@@ -431,15 +620,25 @@ export const MainScreen = () => {
         ) : (
           // Portrait layout: Image → ColorBar → Menu Buttons → Slider → Icon Buttons
           <>
-            <View style={styles.content}>
-              <SatelliteImageViewer />
-              <DrawingOverlay
-                externalColorPicker={showColorPickerFromButton}
-                setExternalColorPicker={setShowColorPickerFromButton}
-              />
-            </View>
+            {/* Content area for screenshot capture */}
+            <View ref={contentRef} style={styles.captureArea} collapsable={false}>
+              <View style={styles.content}>
+                <SatelliteImageViewer />
+                <DrawingOverlay
+                  externalColorPicker={showColorPickerFromButton}
+                  setExternalColorPicker={setShowColorPickerFromButton}
+                />
+              </View>
 
-            <ColorScaleBar orientation="horizontal" />
+              <ColorScaleBar orientation="horizontal" />
+
+              {/* Branding overlay for screenshots */}
+              {showBrandingOverlay && (
+                <View style={styles.brandingOverlay}>
+                  <Text style={styles.brandingText}>Satellite Weather</Text>
+                </View>
+              )}
+            </View>
 
             {/* Menu buttons right beneath color bar */}
             <View style={styles.portraitMenuRow}>
@@ -492,6 +691,17 @@ export const MainScreen = () => {
 
         {/* Favorites menu */}
         <FavoritesMenu />
+
+        {/* Share menu */}
+        <ShareMenu
+          visible={showShareMenu}
+          onClose={() => setShowShareMenu(false)}
+          isAnimating={isAnimating}
+          onSaveScreenshot={handleSaveScreenshot}
+          onShareImage={handleShareImage}
+          onSaveGif={handleSaveGif}
+          onShareGif={handleShareGif}
+        />
       </View>
     </SafeAreaView>
   );
@@ -565,5 +775,26 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
     marginHorizontal: 6,
+  },
+  captureArea: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  brandingOverlay: {
+    position: 'absolute',
+    bottom: 10,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  brandingText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 1,
   },
 });
