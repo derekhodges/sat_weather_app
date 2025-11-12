@@ -536,11 +536,11 @@ export const MainScreen = () => {
       if (layoutOrientation === 'portrait') {
         // Switch to landscape - lock to LANDSCAPE_LEFT which rotates phone counter-clockwise
         await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
-        toggleOrientation();
+        // Don't manually toggle - let the orientation change listener handle it
       } else {
         // Switch back to portrait
         await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        toggleOrientation();
+        // Don't manually toggle - let the orientation change listener handle it
       }
     } catch (error) {
       console.error('Error changing orientation:', error);
@@ -564,7 +564,7 @@ export const MainScreen = () => {
   return (
     <SafeAreaView
       style={styles.safeArea}
-      edges={isLandscape ? ['left', 'right'] : ['top', 'bottom']}
+      edges={isLandscape ? ['left', 'right', 'bottom'] : ['top', 'bottom']}
     >
       <StatusBar
         barStyle="light-content"
