@@ -225,12 +225,12 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     };
   });
 
-  // Reset zoom/pan - faster spring config for more responsive feel
+  // Reset zoom/pan - smooth timing animation without bounce
   const resetView = () => {
-    scale.value = withSpring(1, { damping: 20, stiffness: 300 });
+    scale.value = withTiming(1, { duration: 300 });
     savedScale.value = 1;
-    translateX.value = withSpring(0, { damping: 20, stiffness: 300 });
-    translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+    translateX.value = withTiming(0, { duration: 300 });
+    translateY.value = withTiming(0, { duration: 300 });
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
   };
