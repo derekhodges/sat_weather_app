@@ -16,7 +16,7 @@ export const BottomControls = ({
 }) => {
   const { isAnimating } = useApp();
   const isLandscape = orientation === 'landscape';
-  const iconSize = isLandscape ? 22 : 24;
+  const iconSize = isLandscape ? 20 : 24;
   const buttonStyle = isLandscape ? styles.buttonVertical : styles.button;
 
   return (
@@ -85,20 +85,20 @@ const styles = StyleSheet.create({
   containerVertical: {
     flexDirection: 'column',
     backgroundColor: '#1a1a1a',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     justifyContent: 'space-around',
     alignItems: 'center',
-    width: 60,
+    width: 56,
   },
   button: {
     padding: 10,
     borderRadius: 8,
   },
   buttonVertical: {
-    padding: 8,
-    borderRadius: 8,
-    marginVertical: 2,
+    padding: 6,
+    borderRadius: 6,
+    marginVertical: 1,
   },
   activeButton: {
     backgroundColor: '#2196F3',
