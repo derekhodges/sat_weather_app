@@ -52,7 +52,6 @@ export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
               {selectedSatellite.name} {selectedDomain.name}
             </Text>
             <Text style={styles.productInfo}>{productInfo}</Text>
-            <Text style={styles.timestamp}>{formatTimestamp(imageTimestamp)}</Text>
           </View>
         ) : (
           <>
@@ -192,11 +191,6 @@ const styles = StyleSheet.create({
   productInfo: {
     color: '#aaa',
     fontSize: 12,
-    fontWeight: '500',
-  },
-  timestamp: {
-    color: '#888',
-    fontSize: 11,
     fontWeight: '500',
   },
   rightButtons: {

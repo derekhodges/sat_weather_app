@@ -68,6 +68,7 @@ export const AppProvider = ({ children }) => {
     autoRefreshInterval: 5, // minutes
     showColorScale: true, // show color scale bar
     defaultDomain: DEFAULT_DOMAIN,
+    useLocalTime: false, // false = UTC, true = local time
   });
 
   // Load saved preferences
@@ -105,6 +106,7 @@ export const AppProvider = ({ children }) => {
           autoRefreshInterval: 5,
           showColorScale: true,
           defaultDomain: DEFAULT_DOMAIN,
+          useLocalTime: false,
         };
         const mergedSettings = { ...defaultSettings, ...parsed };
         setSettings(mergedSettings);
@@ -165,6 +167,11 @@ export const AppProvider = ({ children }) => {
     setSelectedDomain(domain);
     setActiveMenu(null);
     setShowDomainMap(false);
+    // Stop animation and reset to most recent frame when domain changes
+    if (isAnimating) {
+      setIsAnimating(false);
+    }
+    // setCurrentFrameIndex will be updated to latest in MainScreen's useEffect
   };
 
   const selectRGBProduct = (product) => {

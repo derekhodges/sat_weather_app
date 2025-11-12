@@ -172,6 +172,49 @@ export const SettingsModal = ({ visible, onClose }) => {
 
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Time Display</Text>
+                <Text style={styles.settingDescription}>
+                  Show times in UTC or local timezone
+                </Text>
+              </View>
+              <View style={styles.segmentedControl}>
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    !settings.useLocalTime && styles.segmentButtonActive
+                  ]}
+                  onPress={() => updateSettings({ useLocalTime: false })}
+                >
+                  <Text
+                    style={[
+                      styles.segmentButtonText,
+                      !settings.useLocalTime && styles.segmentButtonTextActive
+                    ]}
+                  >
+                    UTC
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    settings.useLocalTime && styles.segmentButtonActive
+                  ]}
+                  onPress={() => updateSettings({ useLocalTime: true })}
+                >
+                  <Text
+                    style={[
+                      styles.segmentButtonText,
+                      settings.useLocalTime && styles.segmentButtonTextActive
+                    ]}
+                  >
+                    Local
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
                 <Text style={styles.settingLabel}>Image Display Mode</Text>
                 <Text style={styles.settingDescription}>
                   Contain: Entire image visible | Cover: Full image, pan to explore

@@ -10,12 +10,13 @@ export const BottomControls = ({
   onEditLongPress,
   onSharePress,
   onFlipOrientation,
+  onResetView,
   orientation = 'portrait',
   isDrawingMode,
 }) => {
   const { isAnimating } = useApp();
   const isLandscape = orientation === 'landscape';
-  const iconSize = isLandscape ? 22 : 24;
+  const iconSize = isLandscape ? 20 : 24;
   const buttonStyle = isLandscape ? styles.buttonVertical : styles.button;
 
   return (
@@ -59,6 +60,11 @@ export const BottomControls = ({
         <Ionicons name="share-social" size={iconSize} color="#fff" />
       </TouchableOpacity>
 
+      {/* Reset zoom/pan button */}
+      <TouchableOpacity style={buttonStyle} onPress={onResetView}>
+        <MaterialCommunityIcons name="image-filter-center-focus" size={iconSize} color="#fff" />
+      </TouchableOpacity>
+
       {/* Flip orientation button */}
       <TouchableOpacity style={buttonStyle} onPress={onFlipOrientation}>
         <MaterialCommunityIcons name="phone-rotate-landscape" size={iconSize} color="#fff" />
@@ -79,20 +85,20 @@ const styles = StyleSheet.create({
   containerVertical: {
     flexDirection: 'column',
     backgroundColor: '#1a1a1a',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     justifyContent: 'space-around',
     alignItems: 'center',
-    width: 60,
+    width: 56,
   },
   button: {
     padding: 10,
     borderRadius: 8,
   },
   buttonVertical: {
-    padding: 8,
-    borderRadius: 8,
-    marginVertical: 2,
+    padding: 6,
+    borderRadius: 6,
+    marginVertical: 1,
   },
   activeButton: {
     backgroundColor: '#2196F3',

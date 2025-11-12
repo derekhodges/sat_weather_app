@@ -69,6 +69,7 @@ export const MainScreen = () => {
 
   const viewRef = useRef();
   const contentRef = useRef(); // Reference to content area (for screenshots without buttons)
+  const satelliteImageViewerRef = useRef(); // Reference to SatelliteImageViewer for reset function
   const animationIntervalRef = useRef(null);
   const [showColorPickerFromButton, setShowColorPickerFromButton] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
@@ -551,6 +552,13 @@ export const MainScreen = () => {
     setShowFavoritesMenu(true);
   };
 
+  const handleResetView = () => {
+    // Call the reset function on SatelliteImageViewer via ref
+    if (satelliteImageViewerRef.current) {
+      satelliteImageViewerRef.current.resetView();
+    }
+  };
+
   const isLandscape = layoutOrientation === 'landscape';
 
   return (
@@ -587,7 +595,7 @@ export const MainScreen = () => {
                 )}
 
                 <View style={styles.content}>
-                  <SatelliteImageViewer />
+                  <SatelliteImageViewer ref={satelliteImageViewerRef} />
                   <DrawingOverlay
                     externalColorPicker={showColorPickerFromButton}
                     setExternalColorPicker={setShowColorPickerFromButton}
@@ -611,6 +619,7 @@ export const MainScreen = () => {
                 onEditPress={handleEditPress}
                 onEditLongPress={handleEditLongPress}
                 onSharePress={handleSharePress}
+                onResetView={handleResetView}
                 onFlipOrientation={handleFlipOrientation}
                 orientation={layoutOrientation}
                 isDrawingMode={isDrawingMode}
@@ -664,7 +673,7 @@ export const MainScreen = () => {
               )}
 
               <View style={styles.content}>
-                <SatelliteImageViewer />
+                <SatelliteImageViewer ref={satelliteImageViewerRef} />
                 <DrawingOverlay
                   externalColorPicker={showColorPickerFromButton}
                   setExternalColorPicker={setShowColorPickerFromButton}
@@ -717,6 +726,7 @@ export const MainScreen = () => {
               onEditPress={handleEditPress}
               onEditLongPress={handleEditLongPress}
               onSharePress={handleSharePress}
+              onResetView={handleResetView}
               onFlipOrientation={handleFlipOrientation}
               orientation={layoutOrientation}
               isDrawingMode={isDrawingMode}
