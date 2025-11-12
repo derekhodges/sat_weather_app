@@ -1,0 +1,330 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Switch,
+  Modal,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useApp } from '../context/AppContext';
+
+export const SettingsModal = ({ visible, onClose }) => {
+  const { settings, updateSettings } = useApp();
+  const [localAnimationSpeed, setLocalAnimationSpeed] = useState(settings.animationSpeed.toString());
+  const [localFrameCount, setLocalFrameCount] = useState(settings.frameCount.toString());
+
+  const handleAnimationSpeedChange = (value) => {
+    setLocalAnimationSpeed(value);
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 100 && numValue <= 2000) {
+      updateSettings({ animationSpeed: numValue });
+    }
+  };
+
+  const handleFrameCountChange = (value) => {
+    setLocalFrameCount(value);
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 5 && numValue <= 50) {
+      updateSettings({ frameCount: numValue });
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Settings</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        {/* Content */}
+        <ScrollView style={styles.content}>
+          {/* Animation Settings */}
+          <View style={styles.settingsSection}>
+            <Text style={styles.settingsSectionTitle}>Animation</Text>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Animation Speed (ms per frame)</Text>
+                <Text style={styles.settingDescription}>
+                  Lower = faster animation (100-2000ms)
+                </Text>
+              </View>
+              <TextInput
+                style={styles.settingInput}
+                value={localAnimationSpeed}
+                onChangeText={handleAnimationSpeedChange}
+                keyboardType="numeric"
+                placeholder="500"
+                placeholderTextColor="#666"
+              />
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Number of Frames</Text>
+                <Text style={styles.settingDescription}>
+                  Frames to load for animation (5-50)
+                </Text>
+              </View>
+              <TextInput
+                style={styles.settingInput}
+                value={localFrameCount}
+                onChangeText={handleFrameCountChange}
+                keyboardType="numeric"
+                placeholder="12"
+                placeholderTextColor="#666"
+              />
+            </View>
+          </View>
+
+          {/* Display Settings */}
+          <View style={styles.settingsSection}>
+            <Text style={styles.settingsSectionTitle}>Display</Text>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Image Display Mode</Text>
+                <Text style={styles.settingDescription}>
+                  Contain: Entire image visible | Cover: Full image, pan to explore
+                </Text>
+              </View>
+              <View style={styles.segmentedControl}>
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    settings.imageDisplayMode === 'contain' && styles.segmentButtonActive
+                  ]}
+                  onPress={() => updateSettings({ imageDisplayMode: 'contain' })}
+                >
+                  <Text
+                    style={[
+                      styles.segmentButtonText,
+                      settings.imageDisplayMode === 'contain' && styles.segmentButtonTextActive
+                    ]}
+                  >
+                    Contain
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    settings.imageDisplayMode === 'cover' && styles.segmentButtonActive
+                  ]}
+                  onPress={() => updateSettings({ imageDisplayMode: 'cover' })}
+                >
+                  <Text
+                    style={[
+                      styles.segmentButtonText,
+                      settings.imageDisplayMode === 'cover' && styles.segmentButtonTextActive
+                    ]}
+                  >
+                    Cover
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Show Color Scale</Text>
+                <Text style={styles.settingDescription}>
+                  Display color scale bar in portrait mode
+                </Text>
+              </View>
+              <Switch
+                value={settings.showColorScale}
+                onValueChange={(value) => updateSettings({ showColorScale: value })}
+                trackColor={{ false: '#666', true: '#2196F3' }}
+                thumbColor="#fff"
+              />
+            </View>
+          </View>
+
+          {/* Auto-Refresh Settings */}
+          <View style={styles.settingsSection}>
+            <Text style={styles.settingsSectionTitle}>Auto-Refresh</Text>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Enable Auto-Refresh</Text>
+                <Text style={styles.settingDescription}>
+                  Automatically refresh latest image
+                </Text>
+              </View>
+              <Switch
+                value={settings.autoRefresh}
+                onValueChange={(value) => updateSettings({ autoRefresh: value })}
+                trackColor={{ false: '#666', true: '#2196F3' }}
+                thumbColor="#fff"
+              />
+            </View>
+
+            {settings.autoRefresh && (
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Refresh Interval (minutes)</Text>
+                  <Text style={styles.settingDescription}>
+                    How often to refresh (1-60 min)
+                  </Text>
+                </View>
+                <View style={styles.intervalButtons}>
+                  {[1, 5, 10, 15, 30].map((interval) => (
+                    <TouchableOpacity
+                      key={interval}
+                      style={[
+                        styles.intervalButton,
+                        settings.autoRefreshInterval === interval && styles.intervalButtonActive
+                      ]}
+                      onPress={() => updateSettings({ autoRefreshInterval: interval })}
+                    >
+                      <Text
+                        style={[
+                          styles.intervalButtonText,
+                          settings.autoRefreshInterval === interval && styles.intervalButtonTextActive
+                        ]}
+                      >
+                        {interval}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  header: {
+    height: 60,
+    backgroundColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingTop: 10,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  title: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  settingsSection: {
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  settingsSectionTitle: {
+    color: '#2196F3',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textTransform: 'uppercase',
+  },
+  settingRow: {
+    marginBottom: 20,
+  },
+  settingInfo: {
+    marginBottom: 8,
+  },
+  settingLabel: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  settingDescription: {
+    color: '#999',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  settingInput: {
+    backgroundColor: '#1a1a1a',
+    color: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  segmentButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  segmentButtonActive: {
+    backgroundColor: '#2196F3',
+  },
+  segmentButtonText: {
+    color: '#999',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  segmentButtonTextActive: {
+    color: '#fff',
+  },
+  intervalButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  intervalButton: {
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  intervalButtonActive: {
+    backgroundColor: '#2196F3',
+    borderColor: '#2196F3',
+  },
+  intervalButtonText: {
+    color: '#999',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  intervalButtonTextActive: {
+    color: '#fff',
+  },
+});

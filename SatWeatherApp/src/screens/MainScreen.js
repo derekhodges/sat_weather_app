@@ -16,6 +16,7 @@ import { DomainMapSelector } from '../components/DomainMapSelector';
 import { DrawingOverlay } from '../components/DrawingOverlay';
 import { FavoritesMenu } from '../components/FavoritesMenu';
 import ShareMenu from '../components/ShareMenu';
+import { SettingsModal } from '../components/SettingsModal';
 import {
   captureScreenshot,
   saveScreenshotToLibrary,
@@ -58,6 +59,11 @@ export const MainScreen = () => {
     toggleOrientation,
     activeMenu,
     setActiveMenu,
+    settings,
+    toggleLocationMarker,
+    showLocationMarker,
+    showSettingsModal,
+    setShowSettingsModal,
   } = useApp();
 
   const viewRef = useRef();
@@ -112,7 +118,7 @@ export const MainScreen = () => {
         const validFrames = await generateValidatedTimestampArray(
           selectedDomain,
           product,
-          12,
+          settings.frameCount,
           5
         );
 
@@ -185,7 +191,7 @@ export const MainScreen = () => {
           }
           return prev + 1;
         });
-      }, 500); // 500ms per frame = 2 fps
+      }, settings.animationSpeed);
     } else {
       if (animationIntervalRef.current) {
         clearInterval(animationIntervalRef.current);
@@ -197,7 +203,7 @@ export const MainScreen = () => {
         clearInterval(animationIntervalRef.current);
       }
     };
-  }, [isAnimating, availableTimestamps]);
+  }, [isAnimating, availableTimestamps, settings.animationSpeed]);
 
   const loadImage = async () => {
     // Don't try to load if we don't have a product selected in RGB mode
@@ -279,6 +285,13 @@ export const MainScreen = () => {
   };
 
   const handleLocationPress = async () => {
+    // If location is already shown, just toggle it off
+    if (showLocationMarker) {
+      toggleLocationMarker();
+      return;
+    }
+
+    // Otherwise, get location and show marker
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
 
@@ -290,6 +303,7 @@ export const MainScreen = () => {
 
       const location = await Location.getCurrentPositionAsync({});
       setUserLocation(location.coords);
+      toggleLocationMarker(); // Show the marker
 
       console.log(
         'Location set:',
@@ -547,7 +561,7 @@ export const MainScreen = () => {
       <View style={styles.container} ref={viewRef}>
         {/* Top bar */}
         <TopBar
-          onMenuPress={() => {}}
+          onMenuPress={() => setShowSettingsModal(true)}
           onRefresh={handleRefresh}
           onFavoritesPress={handleFavoritesPress}
         />
@@ -646,7 +660,7 @@ export const MainScreen = () => {
                 style={[styles.portraitMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
                 onPress={() => setActiveMenu(activeMenu === 'channel' ? null : 'channel')}
               >
-                <Text style={styles.menuButtonText}>SELECT CHANNEL</Text>
+                <Text style={styles.menuButtonText}>CHANNEL</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.portraitMenuButton, activeMenu === 'rgb' && styles.menuButtonActive]}
@@ -701,6 +715,12 @@ export const MainScreen = () => {
           onShareImage={handleShareImage}
           onSaveGif={handleSaveGif}
           onShareGif={handleShareGif}
+        />
+
+        {/* Settings modal */}
+        <SettingsModal
+          visible={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
         />
       </View>
     </SafeAreaView>
