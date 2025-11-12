@@ -97,12 +97,17 @@ export const SatelliteImageViewer = () => {
   const handleImageALoad = () => {
     setImageALoaded(true);
     if (imageSlotA === currentImageUrl && activeSlot !== 'A') {
-      // This is the new image, make it active with smooth crossfade
-      // Wait one frame after onLoad to ensure the image is fully rendered
-      // before starting the opacity transition (prevents black flicker)
+      // CRITICAL: To prevent black flicker, we use a two-step process:
+      // Step 1: Make the new image fully visible INSTANTLY (no animation)
+      // Step 2: THEN fade out the old image
+      // This ensures both images overlap briefly, so there's never a gap
+
+      // Step 1: Make new image fully opaque immediately
+      opacityA.value = 1;
+
+      // Step 2: After new image is visible, fade out the old image
       requestAnimationFrame(() => {
         setActiveSlot('A');
-        opacityA.value = withTiming(1, { duration: 100 });
         opacityB.value = withTiming(0, { duration: 100 });
       });
     }
@@ -111,12 +116,17 @@ export const SatelliteImageViewer = () => {
   const handleImageBLoad = () => {
     setImageBLoaded(true);
     if (imageSlotB === currentImageUrl && activeSlot !== 'B') {
-      // This is the new image, make it active with smooth crossfade
-      // Wait one frame after onLoad to ensure the image is fully rendered
-      // before starting the opacity transition (prevents black flicker)
+      // CRITICAL: To prevent black flicker, we use a two-step process:
+      // Step 1: Make the new image fully visible INSTANTLY (no animation)
+      // Step 2: THEN fade out the old image
+      // This ensures both images overlap briefly, so there's never a gap
+
+      // Step 1: Make new image fully opaque immediately
+      opacityB.value = 1;
+
+      // Step 2: After new image is visible, fade out the old image
       requestAnimationFrame(() => {
         setActiveSlot('B');
-        opacityB.value = withTiming(1, { duration: 100 });
         opacityA.value = withTiming(0, { duration: 100 });
       });
     }
