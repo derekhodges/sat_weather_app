@@ -22,7 +22,6 @@ export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
     viewMode,
     imageTimestamp,
     layoutOrientation,
-    settings,
   } = useApp();
   const [showSatelliteSelector, setShowSatelliteSelector] = useState(false);
 
@@ -53,18 +52,14 @@ export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
               {selectedSatellite.name} {selectedDomain.name}
             </Text>
             <Text style={styles.productInfo}>{productInfo}</Text>
-            <Text style={styles.timestamp}>{formatTimestamp(imageTimestamp, settings.useLocalTime)}</Text>
           </View>
         ) : (
-          <View style={styles.portraitTitleContent}>
-            <View style={styles.portraitTitleRow}>
-              <Text style={styles.title}>
-                {selectedSatellite.name} {selectedDomain.name}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color="#fff" />
-            </View>
-            <Text style={styles.timestampPortrait}>{formatTimestamp(imageTimestamp, settings.useLocalTime)}</Text>
-          </View>
+          <>
+            <Text style={styles.title}>
+              {selectedSatellite.name} {selectedDomain.name}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#fff" />
+          </>
         )}
       </TouchableOpacity>
 
@@ -173,6 +168,7 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -181,21 +177,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginRight: 4,
-  },
-  portraitTitleContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  portraitTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timestampPortrait: {
-    color: '#888',
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 2,
   },
   landscapeTitleContent: {
     flexDirection: 'row',
@@ -210,11 +191,6 @@ const styles = StyleSheet.create({
   productInfo: {
     color: '#aaa',
     fontSize: 12,
-    fontWeight: '500',
-  },
-  timestamp: {
-    color: '#888',
-    fontSize: 11,
     fontWeight: '500',
   },
   rightButtons: {

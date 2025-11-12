@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { formatTimestamp } from '../utils/imageService';
 
 export const ColorScaleBar = ({ orientation = 'horizontal' }) => {
-  const { selectedChannel, selectedRGBProduct, viewMode, imageTimestamp } =
+  const { selectedChannel, selectedRGBProduct, viewMode, imageTimestamp, settings } =
     useApp();
 
   const isVertical = orientation === 'vertical';
@@ -24,7 +24,7 @@ export const ColorScaleBar = ({ orientation = 'horizontal' }) => {
             : 'Select a channel or RGB product'}
         </Text>
         <Text style={isVertical ? styles.timestampVertical : styles.timestamp}>
-          {formatTimestamp(imageTimestamp)}
+          {formatTimestamp(imageTimestamp, settings.useLocalTime)}
         </Text>
       </View>
 
