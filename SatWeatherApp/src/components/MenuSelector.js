@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
-import { CHANNELS } from '../constants/satellites';
+import { CHANNELS, SATELLITES } from '../constants/satellites';
 import { RGB_PRODUCTS } from '../constants/products';
 import { DOMAINS, DOMAINS_BY_TYPE, DOMAIN_TYPES } from '../constants/domains';
 import { OVERLAYS, OVERLAYS_BY_CATEGORY } from '../constants/overlays';
@@ -25,6 +25,8 @@ export const MenuSelector = () => {
     overlayStates,
     setShowDomainMap,
     layoutOrientation,
+    selectedSatellite,
+    setSelectedSatellite,
   } = useApp();
 
   const isLandscape = layoutOrientation === 'landscape';
@@ -41,6 +43,8 @@ export const MenuSelector = () => {
             setShowDomainMap(true);
             setActiveMenu(null);
           }}
+          selectedSatellite={selectedSatellite}
+          onSelectSatellite={setSelectedSatellite}
         />
       )}
       {activeMenu === 'overlays' && (
@@ -80,7 +84,7 @@ const ChannelPanel = ({ onSelect }) => {
                   <Text style={styles.channelListTitle}>
                     Channel {channel.number} - {channel.name} ({channel.wavelength})
                   </Text>
-                  <Text style={styles.channelListDescription}>{channel.useCase}</Text>
+                  <Text style={styles.channelListDescription} numberOfLines={2}>{channel.useCase}</Text>
                 </View>
               </TouchableOpacity>
               <TouchableOpacity
@@ -118,7 +122,7 @@ const RGBPanel = ({ onSelect }) => {
                 onPress={() => onSelect(product)}
               >
                 <Text style={styles.rgbName}>{product.name}</Text>
-                <Text style={styles.rgbDescription}>{product.description}</Text>
+                <Text style={styles.rgbDescription} numberOfLines={2}>{product.description}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.infoButton}
@@ -140,7 +144,7 @@ const RGBPanel = ({ onSelect }) => {
   );
 };
 
-const DomainPanel = ({ onSelect, onShowMap }) => {
+const DomainPanel = ({ onSelect, onShowMap, selectedSatellite, onSelectSatellite }) => {
   return (
     <ScrollView style={styles.panel}>
       <Text style={styles.panelTitle}>SELECT DOMAIN</Text>
@@ -258,6 +262,48 @@ const DomainPanel = ({ onSelect, onShowMap }) => {
         >
           <Text style={styles.domainName}>Southeast</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Satellite Selector */}
+      <Text style={styles.sectionTitle}>Select Satellite</Text>
+      <View style={styles.satelliteGrid}>
+        {Object.values(SATELLITES).map((satellite) => (
+          <TouchableOpacity
+            key={satellite.id}
+            style={[
+              styles.satelliteButton,
+              selectedSatellite?.id === satellite.id && styles.satelliteButtonActive,
+              !satellite.available && styles.satelliteButtonDisabled,
+            ]}
+            onPress={() => {
+              if (satellite.available) {
+                onSelectSatellite(satellite);
+              }
+            }}
+            disabled={!satellite.available}
+          >
+            <Text
+              style={[
+                styles.satelliteName,
+                selectedSatellite?.id === satellite.id && styles.satelliteNameActive,
+                !satellite.available && styles.satelliteNameDisabled,
+              ]}
+            >
+              {satellite.name}
+            </Text>
+            <Text
+              style={[
+                styles.satelliteLocation,
+                !satellite.available && styles.satelliteLocationDisabled,
+              ]}
+            >
+              {satellite.location}
+            </Text>
+            {!satellite.available && (
+              <Text style={styles.satelliteUnavailable}>Unavailable</Text>
+            )}
+          </TouchableOpacity>
+        ))}
       </View>
     </ScrollView>
   );
@@ -407,9 +453,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   channelList: {
-    gap: 8,
+    paddingBottom: 8,
   },
   channelListItem: {
+    flex: 1,
     backgroundColor: '#424242',
     padding: 12,
     borderRadius: 6,
@@ -429,9 +476,10 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   rgbGrid: {
-    gap: 8,
+    paddingBottom: 8,
   },
   rgbButton: {
+    flex: 1,
     backgroundColor: '#424242',
     padding: 12,
     borderRadius: 6,
@@ -533,11 +581,13 @@ const styles = StyleSheet.create({
   },
   listItemWrapper: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
+    marginBottom: 8,
   },
   infoButton: {
     padding: 8,
+    marginTop: 4,
   },
   infoModalOverlay: {
     flex: 1,
@@ -594,5 +644,52 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  satelliteGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  satelliteButton: {
+    flex: 1,
+    backgroundColor: '#424242',
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  satelliteButtonActive: {
+    borderColor: '#2196F3',
+    backgroundColor: '#1a3a52',
+  },
+  satelliteButtonDisabled: {
+    backgroundColor: '#2a2a2a',
+    opacity: 0.5,
+  },
+  satelliteName: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  satelliteNameActive: {
+    color: '#2196F3',
+  },
+  satelliteNameDisabled: {
+    color: '#666',
+  },
+  satelliteLocation: {
+    color: '#999',
+    fontSize: 11,
+  },
+  satelliteLocationDisabled: {
+    color: '#555',
+  },
+  satelliteUnavailable: {
+    color: '#ff6666',
+    fontSize: 10,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });

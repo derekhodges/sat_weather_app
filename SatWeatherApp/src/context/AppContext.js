@@ -62,6 +62,7 @@ export const AppProvider = ({ children }) => {
   const [settings, setSettings] = useState({
     animationSpeed: 800, // ms per frame
     frameCount: 12, // number of frames to load
+    frameSkip: 0, // number of frames to skip (0-12)
     imageDisplayMode: 'contain', // 'contain' or 'cover'
     autoRefresh: false, // auto-refresh latest image
     autoRefreshInterval: 5, // minutes
@@ -98,6 +99,7 @@ export const AppProvider = ({ children }) => {
         const defaultSettings = {
           animationSpeed: 800,
           frameCount: 12,
+          frameSkip: 0,
           imageDisplayMode: 'contain',
           autoRefresh: false,
           autoRefreshInterval: 5,

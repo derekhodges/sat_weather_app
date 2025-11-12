@@ -88,6 +88,36 @@ export const SettingsModal = ({ visible, onClose }) => {
                 placeholderTextColor="#666"
               />
             </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Frame Skip</Text>
+                <Text style={styles.settingDescription}>
+                  Skip frames for longer time periods (0-12)
+                </Text>
+              </View>
+              <View style={styles.frameSkipButtons}>
+                {[0, 1, 2, 3, 6, 12].map((skip) => (
+                  <TouchableOpacity
+                    key={skip}
+                    style={[
+                      styles.frameSkipButton,
+                      settings.frameSkip === skip && styles.frameSkipButtonActive
+                    ]}
+                    onPress={() => updateSettings({ frameSkip: skip })}
+                  >
+                    <Text
+                      style={[
+                        styles.frameSkipButtonText,
+                        settings.frameSkip === skip && styles.frameSkipButtonTextActive
+                      ]}
+                    >
+                      {skip === 0 ? 'None' : skip}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
 
           {/* Display Settings */}
@@ -218,7 +248,7 @@ export const SettingsModal = ({ visible, onClose }) => {
               <View style={styles.subscriptionFeatures}>
                 <Text style={styles.subscriptionFeature}>✓ Geocolor RGB product</Text>
                 <Text style={styles.subscriptionFeature}>✓ Channel 13 (Clean IR)</Text>
-                <Text style={styles.subscriptionFeature}>✓ Basic animation (10 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Basic animation (6 frames)</Text>
                 <Text style={styles.subscriptionFeature}>✓ All domains</Text>
               </View>
               <View style={styles.subscriptionBadge}>
@@ -226,16 +256,16 @@ export const SettingsModal = ({ visible, onClose }) => {
               </View>
             </TouchableOpacity>
 
-            {/* Level 1 Subscription */}
+            {/* Pro Subscription */}
             <TouchableOpacity style={styles.subscriptionTier}>
               <View style={styles.subscriptionTierHeader}>
-                <Text style={styles.subscriptionTierName}>Level 1</Text>
-                <Text style={styles.subscriptionTierPrice}>$4.99/mo</Text>
+                <Text style={styles.subscriptionTierName}>Pro</Text>
+                <Text style={styles.subscriptionTierPrice}>$0.99/mo or $10/year</Text>
               </View>
               <View style={styles.subscriptionFeatures}>
                 <Text style={styles.subscriptionFeature}>✓ All RGB products</Text>
                 <Text style={styles.subscriptionFeature}>✓ All 16 channels</Text>
-                <Text style={styles.subscriptionFeature}>✓ Extended animation (25 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Extended animation (24 frames)</Text>
                 <Text style={styles.subscriptionFeature}>✓ Basic overlays</Text>
                 <Text style={styles.subscriptionFeature}>✓ Drawing tools</Text>
               </View>
@@ -244,15 +274,15 @@ export const SettingsModal = ({ visible, onClose }) => {
               </View>
             </TouchableOpacity>
 
-            {/* Level 2 Subscription */}
+            {/* Pro Plus Subscription */}
             <TouchableOpacity style={styles.subscriptionTier}>
               <View style={styles.subscriptionTierHeader}>
-                <Text style={styles.subscriptionTierName}>Level 2</Text>
-                <Text style={styles.subscriptionTierPrice}>$9.99/mo</Text>
+                <Text style={styles.subscriptionTierName}>Pro Plus</Text>
+                <Text style={styles.subscriptionTierPrice}>$2.99/mo or $30/year</Text>
               </View>
               <View style={styles.subscriptionFeatures}>
-                <Text style={styles.subscriptionFeature}>✓ Everything in Level 1</Text>
-                <Text style={styles.subscriptionFeature}>✓ Extended animation (50 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Everything in Pro</Text>
+                <Text style={styles.subscriptionFeature}>✓ Extended animation (48 frames)</Text>
                 <Text style={styles.subscriptionFeature}>✓ All overlays</Text>
                 <Text style={styles.subscriptionFeature}>✓ Priority support</Text>
                 <Text style={styles.subscriptionFeature}>✓ Export high-res images</Text>
@@ -383,6 +413,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   intervalButtonTextActive: {
+    color: '#fff',
+  },
+  frameSkipButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  frameSkipButton: {
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  frameSkipButtonActive: {
+    backgroundColor: '#2196F3',
+    borderColor: '#2196F3',
+  },
+  frameSkipButtonText: {
+    color: '#999',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  frameSkipButtonTextActive: {
     color: '#fff',
   },
   subscriptionTier: {
