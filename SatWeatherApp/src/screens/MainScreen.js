@@ -765,6 +765,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
   captureArea: {
+    flex: 1,
     backgroundColor: '#000',
   },
   brandingOverlay: {
