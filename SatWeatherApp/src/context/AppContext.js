@@ -46,15 +46,27 @@ export const AppProvider = ({ children }) => {
   // Location
   const [userLocation, setUserLocation] = useState(null);
   const [savedHomeLocation, setSavedHomeLocation] = useState(null);
+  const [showLocationMarker, setShowLocationMarker] = useState(false);
 
   // UI state
-  const [activeMenu, setActiveMenu] = useState(null); // 'channel', 'rgb', 'domain', 'overlays'
+  const [activeMenu, setActiveMenu] = useState(null); // 'channel', 'rgb', 'domain', 'overlays', 'settings'
   const [showDomainMap, setShowDomainMap] = useState(false);
   const [layoutOrientation, setLayoutOrientation] = useState('portrait'); // 'portrait' or 'landscape'
 
   // Favorites
   const [favorites, setFavorites] = useState([]);
   const [showFavoritesMenu, setShowFavoritesMenu] = useState(false);
+
+  // Settings
+  const [settings, setSettings] = useState({
+    animationSpeed: 500, // ms per frame
+    frameCount: 12, // number of frames to load
+    imageDisplayMode: 'contain', // 'contain' or 'cover'
+    autoRefresh: false, // auto-refresh latest image
+    autoRefreshInterval: 5, // minutes
+    showColorScale: true, // show color scale bar
+    defaultDomain: DEFAULT_DOMAIN,
+  });
 
   // Load saved preferences
   useEffect(() => {
@@ -72,9 +84,28 @@ export const AppProvider = ({ children }) => {
       if (savedFavorites) {
         setFavorites(JSON.parse(savedFavorites));
       }
+
+      const savedSettings = await AsyncStorage.getItem('settings');
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings));
+      }
     } catch (error) {
       console.error('Error loading preferences:', error);
     }
+  };
+
+  const updateSettings = async (newSettings) => {
+    try {
+      const updatedSettings = { ...settings, ...newSettings };
+      setSettings(updatedSettings);
+      await AsyncStorage.setItem('settings', JSON.stringify(updatedSettings));
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    }
+  };
+
+  const toggleLocationMarker = () => {
+    setShowLocationMarker(prev => !prev);
   };
 
   const saveHomeLocation = async (location) => {
@@ -243,11 +274,13 @@ export const AppProvider = ({ children }) => {
     drawings,
     userLocation,
     savedHomeLocation,
+    showLocationMarker,
     activeMenu,
     showDomainMap,
     layoutOrientation,
     favorites,
     showFavoritesMenu,
+    settings,
 
     // Actions
     setSelectedSatellite,
@@ -268,6 +301,7 @@ export const AppProvider = ({ children }) => {
     clearDrawings,
     setUserLocation,
     saveHomeLocation,
+    toggleLocationMarker,
     setActiveMenu,
     setShowDomainMap,
     setViewMode,
@@ -277,6 +311,7 @@ export const AppProvider = ({ children }) => {
     removeFavorite,
     loadFavorite,
     generateFavoriteName,
+    updateSettings,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

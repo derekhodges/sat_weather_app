@@ -58,6 +58,9 @@ export const MainScreen = () => {
     toggleOrientation,
     activeMenu,
     setActiveMenu,
+    settings,
+    toggleLocationMarker,
+    showLocationMarker,
   } = useApp();
 
   const viewRef = useRef();
@@ -112,7 +115,7 @@ export const MainScreen = () => {
         const validFrames = await generateValidatedTimestampArray(
           selectedDomain,
           product,
-          12,
+          settings.frameCount,
           5
         );
 
@@ -185,7 +188,7 @@ export const MainScreen = () => {
           }
           return prev + 1;
         });
-      }, 500); // 500ms per frame = 2 fps
+      }, settings.animationSpeed);
     } else {
       if (animationIntervalRef.current) {
         clearInterval(animationIntervalRef.current);
@@ -197,7 +200,7 @@ export const MainScreen = () => {
         clearInterval(animationIntervalRef.current);
       }
     };
-  }, [isAnimating, availableTimestamps]);
+  }, [isAnimating, availableTimestamps, settings.animationSpeed]);
 
   const loadImage = async () => {
     // Don't try to load if we don't have a product selected in RGB mode
@@ -279,6 +282,13 @@ export const MainScreen = () => {
   };
 
   const handleLocationPress = async () => {
+    // If location is already shown, just toggle it off
+    if (showLocationMarker) {
+      toggleLocationMarker();
+      return;
+    }
+
+    // Otherwise, get location and show marker
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
 
@@ -290,6 +300,7 @@ export const MainScreen = () => {
 
       const location = await Location.getCurrentPositionAsync({});
       setUserLocation(location.coords);
+      toggleLocationMarker(); // Show the marker
 
       console.log(
         'Location set:',
@@ -611,6 +622,12 @@ export const MainScreen = () => {
               >
                 <Text style={styles.menuButtonText}>OVERLAYS</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.landscapeMenuButton, activeMenu === 'settings' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'settings' ? null : 'settings')}
+              >
+                <Text style={styles.menuButtonText}>SETTINGS</Text>
+              </TouchableOpacity>
               <Text style={styles.separator}>|</Text>
               <View style={styles.landscapeSliderContainer}>
                 <TimelineSlider orientation="horizontal" />
@@ -646,7 +663,7 @@ export const MainScreen = () => {
                 style={[styles.portraitMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
                 onPress={() => setActiveMenu(activeMenu === 'channel' ? null : 'channel')}
               >
-                <Text style={styles.menuButtonText}>SELECT CHANNEL</Text>
+                <Text style={styles.menuButtonText}>CHANNEL</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.portraitMenuButton, activeMenu === 'rgb' && styles.menuButtonActive]}
@@ -665,6 +682,12 @@ export const MainScreen = () => {
                 onPress={() => setActiveMenu(activeMenu === 'overlays' ? null : 'overlays')}
               >
                 <Text style={styles.menuButtonText}>OVERLAYS</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.portraitMenuButton, activeMenu === 'settings' && styles.menuButtonActive]}
+                onPress={() => setActiveMenu(activeMenu === 'settings' ? null : 'settings')}
+              >
+                <Text style={styles.menuButtonText}>SETTINGS</Text>
               </TouchableOpacity>
             </View>
 

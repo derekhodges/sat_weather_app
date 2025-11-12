@@ -14,9 +14,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
+import { LocationMarker } from './LocationMarker';
 
 export const SatelliteImageViewer = () => {
-  const { currentImageUrl, isLoading, error } = useApp();
+  const { currentImageUrl, isLoading, error, settings } = useApp();
 
   // Dual image state to prevent black flicker
   // We keep two images and swap between them
@@ -198,7 +199,7 @@ export const SatelliteImageViewer = () => {
               <Image
                 source={{ uri: imageSlotA }}
                 style={styles.image}
-                resizeMode="contain"
+                resizeMode={settings.imageDisplayMode}
                 onLoad={handleImageALoad}
                 onError={(error) => {
                   console.error('Image A load error:', error);
@@ -213,7 +214,7 @@ export const SatelliteImageViewer = () => {
               <Image
                 source={{ uri: imageSlotB }}
                 style={styles.image}
-                resizeMode="contain"
+                resizeMode={settings.imageDisplayMode}
                 onLoad={handleImageBLoad}
                 onError={(error) => {
                   console.error('Image B load error:', error);
@@ -231,6 +232,9 @@ export const SatelliteImageViewer = () => {
           )}
         </Animated.View>
       </GestureDetector>
+
+      {/* Location marker overlay */}
+      <LocationMarker />
     </View>
   );
 };
