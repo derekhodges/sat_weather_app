@@ -192,8 +192,13 @@ export const createAnimatedGif = async (
     const gifBuffer = gif.bytes();
 
     // Convert to base64 for React Native file system
-    const gifArray = Array.from(gifBuffer);
-    const binaryString = String.fromCharCode(...gifArray);
+    // Process in chunks to avoid stack overflow with large arrays
+    const chunkSize = 8192;
+    let binaryString = '';
+    for (let i = 0; i < gifBuffer.length; i += chunkSize) {
+      const chunk = gifBuffer.slice(i, i + chunkSize);
+      binaryString += String.fromCharCode(...chunk);
+    }
     const gifBase64 = btoa(binaryString);
 
     const gifUri = `${FileSystem.cacheDirectory}satellite_animation_${Date.now()}.gif`;

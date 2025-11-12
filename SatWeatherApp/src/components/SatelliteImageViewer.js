@@ -72,11 +72,12 @@ export const SatelliteImageViewer = () => {
   useEffect(() => {
     if (!currentImageUrl) return;
 
-    // First load - initialize slot A
+    // First load - initialize slot A with opacity 0
+    // It will become visible when handleImageALoad fires
     if (!imageSlotA && !imageSlotB) {
       setImageSlotA(currentImageUrl);
       setActiveSlot('A');
-      opacityA.value = 1;
+      opacityA.value = 0; // Start invisible, will become visible when loaded
       opacityB.value = 0;
       return;
     }
@@ -96,39 +97,49 @@ export const SatelliteImageViewer = () => {
   // Handle image load callbacks
   const handleImageALoad = () => {
     setImageALoaded(true);
-    if (imageSlotA === currentImageUrl && activeSlot !== 'A') {
-      // CRITICAL: To prevent black flicker, we use a two-step process:
-      // Step 1: Make the new image fully visible INSTANTLY (no animation)
-      // Step 2: THEN fade out the old image
-      // This ensures both images overlap briefly, so there's never a gap
+    if (imageSlotA === currentImageUrl) {
+      if (activeSlot === 'A') {
+        // First load case - just make visible instantly
+        opacityA.value = 1;
+      } else {
+        // CRITICAL: To prevent black flicker, we use a two-step process:
+        // Step 1: Make the new image fully visible INSTANTLY (no animation)
+        // Step 2: THEN fade out the old image
+        // This ensures both images overlap briefly, so there's never a gap
 
-      // Step 1: Make new image fully opaque immediately
-      opacityA.value = 1;
+        // Step 1: Make new image fully opaque immediately
+        opacityA.value = 1;
 
-      // Step 2: After new image is visible, fade out the old image
-      requestAnimationFrame(() => {
-        setActiveSlot('A');
-        opacityB.value = withTiming(0, { duration: 100 });
-      });
+        // Step 2: After new image is visible, fade out the old image
+        requestAnimationFrame(() => {
+          setActiveSlot('A');
+          opacityB.value = withTiming(0, { duration: 100 });
+        });
+      }
     }
   };
 
   const handleImageBLoad = () => {
     setImageBLoaded(true);
-    if (imageSlotB === currentImageUrl && activeSlot !== 'B') {
-      // CRITICAL: To prevent black flicker, we use a two-step process:
-      // Step 1: Make the new image fully visible INSTANTLY (no animation)
-      // Step 2: THEN fade out the old image
-      // This ensures both images overlap briefly, so there's never a gap
+    if (imageSlotB === currentImageUrl) {
+      if (activeSlot === 'B') {
+        // First load case (rare) - just make visible instantly
+        opacityB.value = 1;
+      } else {
+        // CRITICAL: To prevent black flicker, we use a two-step process:
+        // Step 1: Make the new image fully visible INSTANTLY (no animation)
+        // Step 2: THEN fade out the old image
+        // This ensures both images overlap briefly, so there's never a gap
 
-      // Step 1: Make new image fully opaque immediately
-      opacityB.value = 1;
+        // Step 1: Make new image fully opaque immediately
+        opacityB.value = 1;
 
-      // Step 2: After new image is visible, fade out the old image
-      requestAnimationFrame(() => {
-        setActiveSlot('B');
-        opacityA.value = withTiming(0, { duration: 100 });
-      });
+        // Step 2: After new image is visible, fade out the old image
+        requestAnimationFrame(() => {
+          setActiveSlot('B');
+          opacityA.value = withTiming(0, { duration: 100 });
+        });
+      }
     }
   };
 
