@@ -327,8 +327,8 @@ export const MainScreen = () => {
       setIsLoading(true);
       setShowBrandingOverlay(true);
 
-      // Small delay to let the overlay render
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Delay to let the overlay render and ensure content is ready
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // Capture the content area (excluding buttons)
       const uri = await captureScreenshot(contentRef);
@@ -353,8 +353,8 @@ export const MainScreen = () => {
       setIsLoading(true);
       setShowBrandingOverlay(true);
 
-      // Small delay to let the overlay render
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Delay to let the overlay render and ensure content is ready
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // Capture the content area
       const uri = await captureScreenshot(contentRef);
@@ -545,7 +545,7 @@ export const MainScreen = () => {
           <>
             <View style={styles.landscapeMainRow}>
               {/* Image - takes full space with ref for capture */}
-              <View ref={contentRef} style={styles.landscapeImageArea}>
+              <View ref={contentRef} style={styles.landscapeImageArea} collapsable={false}>
                 <SatelliteImageViewer />
                 <DrawingOverlay
                   externalColorPicker={showColorPickerFromButton}
@@ -609,7 +609,7 @@ export const MainScreen = () => {
           // Portrait layout: Image → ColorBar → Menu Buttons → Slider → Icon Buttons
           <>
             {/* Content area for screenshot capture */}
-            <View ref={contentRef} style={styles.captureArea}>
+            <View ref={contentRef} style={styles.captureArea} collapsable={false}>
               <View style={styles.content}>
                 <SatelliteImageViewer />
                 <DrawingOverlay
