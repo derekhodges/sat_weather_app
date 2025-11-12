@@ -31,15 +31,14 @@ export const captureScreenshot = async (contentRef) => {
  */
 export const saveScreenshotToLibrary = async (uri) => {
   try {
-    // Request permissions
+    // Request permissions (only asks once, then remembers)
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== 'granted') {
       throw new Error('Permission to access media library was denied');
     }
 
-    // Save to library
+    // Just save the asset - don't try to create album (avoids repeated permission prompts)
     const asset = await MediaLibrary.createAssetAsync(uri);
-    await MediaLibrary.createAlbumAsync('Satellite Weather', asset, false);
 
     return asset;
   } catch (error) {
@@ -218,13 +217,14 @@ export const createAnimatedGif = async (
  */
 export const saveGifToLibrary = async (uri) => {
   try {
+    // Request permissions (only asks once, then remembers)
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== 'granted') {
       throw new Error('Permission to access media library was denied');
     }
 
+    // Just save the asset - don't try to create album (avoids repeated permission prompts)
     const asset = await MediaLibrary.createAssetAsync(uri);
-    await MediaLibrary.createAlbumAsync('Satellite Weather', asset, false);
 
     return asset;
   } catch (error) {

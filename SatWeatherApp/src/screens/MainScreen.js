@@ -324,19 +324,22 @@ export const MainScreen = () => {
 
   const handleSaveScreenshot = async () => {
     try {
-      setIsLoading(true);
+      // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the overlay render and ensure content is ready
+      // Delay to let the overlay render
       await new Promise(resolve => setTimeout(resolve, 300));
 
       // Capture the content area (excluding buttons)
       const uri = await captureScreenshot(contentRef);
 
+      // NOW show loading while saving
+      setIsLoading(true);
+      setShowBrandingOverlay(false);
+
       // Save to media library
       await saveScreenshotToLibrary(uri);
 
-      setShowBrandingOverlay(false);
       setIsLoading(false);
 
       Alert.alert('Success', 'Screenshot saved to your photo library!');
@@ -350,15 +353,17 @@ export const MainScreen = () => {
 
   const handleShareImage = async () => {
     try {
-      setIsLoading(true);
+      // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the overlay render and ensure content is ready
+      // Delay to let the overlay render
       await new Promise(resolve => setTimeout(resolve, 300));
 
       // Capture the content area
       const uri = await captureScreenshot(contentRef);
 
+      // NOW show loading while sharing
+      setIsLoading(true);
       setShowBrandingOverlay(false);
 
       // Share the image
@@ -386,18 +391,18 @@ export const MainScreen = () => {
             text: 'Create GIF',
             onPress: async () => {
               try {
-                setIsLoading(true);
+                // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
                 if (!wasAnimating) {
                   toggleAnimation();
-                  // Wait for animation to start
-                  await new Promise(resolve => setTimeout(resolve, 500));
+                  // Wait for animation to start and first frame to load
+                  await new Promise(resolve => setTimeout(resolve, 1000));
                 }
 
-                // Create GIF with progress tracking
+                // Create GIF with progress tracking (captures frames while animating)
                 const gifUri = await createAnimatedGif(
                   contentRef,
                   frameCount,
@@ -412,10 +417,14 @@ export const MainScreen = () => {
                   toggleAnimation();
                 }
 
+                setShowBrandingOverlay(false);
+
+                // NOW show loading while saving to library
+                setIsLoading(true);
+
                 // Save to library
                 await saveGifToLibrary(gifUri);
 
-                setShowBrandingOverlay(false);
                 setIsLoading(false);
 
                 Alert.alert(
@@ -451,18 +460,18 @@ export const MainScreen = () => {
             text: 'Create GIF',
             onPress: async () => {
               try {
-                setIsLoading(true);
+                // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
                 if (!wasAnimating) {
                   toggleAnimation();
-                  // Wait for animation to start
-                  await new Promise(resolve => setTimeout(resolve, 500));
+                  // Wait for animation to start and first frame to load
+                  await new Promise(resolve => setTimeout(resolve, 1000));
                 }
 
-                // Create GIF
+                // Create GIF (captures frames while animating)
                 const gifUri = await createAnimatedGif(
                   contentRef,
                   frameCount,
@@ -478,6 +487,9 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
+
+                // NOW show loading while sharing
+                setIsLoading(true);
 
                 // Share the GIF
                 await shareGif(gifUri);
