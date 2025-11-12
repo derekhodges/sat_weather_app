@@ -56,6 +56,7 @@ export const AppProvider = ({ children }) => {
   // Favorites
   const [favorites, setFavorites] = useState([]);
   const [showFavoritesMenu, setShowFavoritesMenu] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Settings
   const [settings, setSettings] = useState({
@@ -280,6 +281,7 @@ export const AppProvider = ({ children }) => {
     layoutOrientation,
     favorites,
     showFavoritesMenu,
+    showSettingsModal,
     settings,
 
     // Actions
@@ -306,6 +308,7 @@ export const AppProvider = ({ children }) => {
     setShowDomainMap,
     setViewMode,
     setShowFavoritesMenu,
+    setShowSettingsModal,
     toggleOrientation,
     addToFavorites,
     removeFavorite,

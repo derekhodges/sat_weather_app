@@ -16,6 +16,7 @@ import { DomainMapSelector } from '../components/DomainMapSelector';
 import { DrawingOverlay } from '../components/DrawingOverlay';
 import { FavoritesMenu } from '../components/FavoritesMenu';
 import ShareMenu from '../components/ShareMenu';
+import { SettingsModal } from '../components/SettingsModal';
 import {
   captureScreenshot,
   saveScreenshotToLibrary,
@@ -61,6 +62,8 @@ export const MainScreen = () => {
     settings,
     toggleLocationMarker,
     showLocationMarker,
+    showSettingsModal,
+    setShowSettingsModal,
   } = useApp();
 
   const viewRef = useRef();
@@ -558,7 +561,7 @@ export const MainScreen = () => {
       <View style={styles.container} ref={viewRef}>
         {/* Top bar */}
         <TopBar
-          onMenuPress={() => {}}
+          onMenuPress={() => setShowSettingsModal(true)}
           onRefresh={handleRefresh}
           onFavoritesPress={handleFavoritesPress}
         />
@@ -622,12 +625,6 @@ export const MainScreen = () => {
               >
                 <Text style={styles.menuButtonText}>OVERLAYS</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.landscapeMenuButton, activeMenu === 'settings' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'settings' ? null : 'settings')}
-              >
-                <Text style={styles.menuButtonText}>SETTINGS</Text>
-              </TouchableOpacity>
               <Text style={styles.separator}>|</Text>
               <View style={styles.landscapeSliderContainer}>
                 <TimelineSlider orientation="horizontal" />
@@ -683,12 +680,6 @@ export const MainScreen = () => {
               >
                 <Text style={styles.menuButtonText}>OVERLAYS</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.portraitMenuButton, activeMenu === 'settings' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'settings' ? null : 'settings')}
-              >
-                <Text style={styles.menuButtonText}>SETTINGS</Text>
-              </TouchableOpacity>
             </View>
 
             <TimelineSlider orientation="horizontal" />
@@ -724,6 +715,12 @@ export const MainScreen = () => {
           onShareImage={handleShareImage}
           onSaveGif={handleSaveGif}
           onShareGif={handleShareGif}
+        />
+
+        {/* Settings modal */}
+        <SettingsModal
+          visible={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
         />
       </View>
     </SafeAreaView>

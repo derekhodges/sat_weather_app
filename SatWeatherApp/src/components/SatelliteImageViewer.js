@@ -189,17 +189,27 @@ export const SatelliteImageViewer = () => {
   const isFirstLoad = !imageSlotA && !imageSlotB;
   const showLoadingOverlay = isFirstLoad;
 
+  // For cover mode, we want the image to be larger so it can extend beyond the viewport
+  // This allows panning to see all parts without cropping
+  const imageWrapperStyle = settings.imageDisplayMode === 'cover'
+    ? [styles.imageWrapper, styles.imageWrapperCover]
+    : styles.imageWrapper;
+
+  const imageStyle = settings.imageDisplayMode === 'cover'
+    ? [styles.image, styles.imageCover]
+    : styles.image;
+
   return (
     <View style={styles.container}>
       <GestureDetector gesture={composedGesture}>
         <Animated.View style={[styles.imageContainer, animatedStyle]}>
           {/* Image Slot A */}
           {imageSlotA && (
-            <Animated.View style={[styles.imageWrapper, animatedStyleA]}>
+            <Animated.View style={[imageWrapperStyle, animatedStyleA]}>
               <Image
                 source={{ uri: imageSlotA }}
-                style={styles.image}
-                resizeMode={settings.imageDisplayMode}
+                style={imageStyle}
+                resizeMode="contain"
                 onLoad={handleImageALoad}
                 onError={(error) => {
                   console.error('Image A load error:', error);
@@ -210,11 +220,11 @@ export const SatelliteImageViewer = () => {
 
           {/* Image Slot B */}
           {imageSlotB && (
-            <Animated.View style={[styles.imageWrapper, animatedStyleB]}>
+            <Animated.View style={[imageWrapperStyle, animatedStyleB]}>
               <Image
                 source={{ uri: imageSlotB }}
-                style={styles.image}
-                resizeMode={settings.imageDisplayMode}
+                style={imageStyle}
+                resizeMode="contain"
                 onLoad={handleImageBLoad}
                 onError={(error) => {
                   console.error('Image B load error:', error);
@@ -257,7 +267,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  imageWrapperCover: {
+    width: '200%',
+    height: '200%',
+  },
   image: {
+    width: '100%',
+    height: '100%',
+  },
+  imageCover: {
     width: '100%',
     height: '100%',
   },
