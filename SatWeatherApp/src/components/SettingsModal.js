@@ -204,6 +204,64 @@ export const SettingsModal = ({ visible, onClose }) => {
               </View>
             )}
           </View>
+
+          {/* Subscription Settings */}
+          <View style={styles.settingsSection}>
+            <Text style={styles.settingsSectionTitle}>Subscription</Text>
+
+            {/* Free Tier */}
+            <TouchableOpacity style={styles.subscriptionTier}>
+              <View style={styles.subscriptionTierHeader}>
+                <Text style={styles.subscriptionTierName}>Free</Text>
+                <Text style={styles.subscriptionTierPrice}>$0</Text>
+              </View>
+              <View style={styles.subscriptionFeatures}>
+                <Text style={styles.subscriptionFeature}>✓ Geocolor RGB product</Text>
+                <Text style={styles.subscriptionFeature}>✓ Channel 13 (Clean IR)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Basic animation (10 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ All domains</Text>
+              </View>
+              <View style={styles.subscriptionBadge}>
+                <Text style={styles.subscriptionBadgeText}>CURRENT</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Level 1 Subscription */}
+            <TouchableOpacity style={styles.subscriptionTier}>
+              <View style={styles.subscriptionTierHeader}>
+                <Text style={styles.subscriptionTierName}>Level 1</Text>
+                <Text style={styles.subscriptionTierPrice}>$4.99/mo</Text>
+              </View>
+              <View style={styles.subscriptionFeatures}>
+                <Text style={styles.subscriptionFeature}>✓ All RGB products</Text>
+                <Text style={styles.subscriptionFeature}>✓ All 16 channels</Text>
+                <Text style={styles.subscriptionFeature}>✓ Extended animation (25 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Basic overlays</Text>
+                <Text style={styles.subscriptionFeature}>✓ Drawing tools</Text>
+              </View>
+              <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
+                <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Level 2 Subscription */}
+            <TouchableOpacity style={styles.subscriptionTier}>
+              <View style={styles.subscriptionTierHeader}>
+                <Text style={styles.subscriptionTierName}>Level 2</Text>
+                <Text style={styles.subscriptionTierPrice}>$9.99/mo</Text>
+              </View>
+              <View style={styles.subscriptionFeatures}>
+                <Text style={styles.subscriptionFeature}>✓ Everything in Level 1</Text>
+                <Text style={styles.subscriptionFeature}>✓ Extended animation (50 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ All overlays</Text>
+                <Text style={styles.subscriptionFeature}>✓ Priority support</Text>
+                <Text style={styles.subscriptionFeature}>✓ Export high-res images</Text>
+              </View>
+              <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
+                <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </View>
     </Modal>
@@ -326,5 +384,64 @@ const styles = StyleSheet.create({
   },
   intervalButtonTextActive: {
     color: '#fff',
+  },
+  subscriptionTier: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  subscriptionTierHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  subscriptionTierName: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  subscriptionTierPrice: {
+    color: '#2196F3',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  subscriptionFeatures: {
+    marginBottom: 16,
+  },
+  subscriptionFeature: {
+    color: '#ccc',
+    fontSize: 14,
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  subscriptionBadge: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignSelf: 'center',
+  },
+  subscriptionBadgeText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  subscriptionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  subscriptionButtonInactive: {
+    backgroundColor: '#333',
+  },
+  subscriptionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

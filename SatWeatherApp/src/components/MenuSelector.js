@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { CHANNELS } from '../constants/satellites';
 import { RGB_PRODUCTS } from '../constants/products';
@@ -61,61 +63,80 @@ const MenuButton = ({ label, isActive, onPress }) => (
 );
 
 const ChannelPanel = ({ onSelect }) => {
-  const visibleChannels = CHANNELS.filter((c) => c.type === 'visible');
-  const infraredChannels = CHANNELS.filter((c) => c.type === 'infrared');
+  const [selectedInfo, setSelectedInfo] = useState(null);
 
   return (
-    <ScrollView style={styles.panel}>
-      <Text style={styles.panelTitle}>SELECT SATELLITE CHANNEL</Text>
+    <>
+      <ScrollView style={styles.panel}>
+        <Text style={styles.panelTitle}>SELECT SATELLITE CHANNEL</Text>
+        <View style={styles.channelList}>
+          {CHANNELS.map((channel) => (
+            <View key={channel.id} style={styles.listItemWrapper}>
+              <TouchableOpacity
+                style={styles.channelListItem}
+                onPress={() => onSelect(channel)}
+              >
+                <View style={styles.channelListContent}>
+                  <Text style={styles.channelListTitle}>
+                    Channel {channel.number} - {channel.name} ({channel.wavelength})
+                  </Text>
+                  <Text style={styles.channelListDescription}>{channel.useCase}</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.infoButton}
+                onPress={() => setSelectedInfo({ type: 'channel', data: channel })}
+              >
+                <Ionicons name="information-circle-outline" size={24} color="#2196F3" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
 
-      <Text style={styles.sectionTitle}>Visible & Near-IR Channels</Text>
-      <View style={styles.channelGrid}>
-        {visibleChannels.map((channel) => (
-          <TouchableOpacity
-            key={channel.id}
-            style={styles.channelButton}
-            onPress={() => onSelect(channel)}
-          >
-            <Text style={styles.channelNumber}>CH {channel.number}</Text>
-            <Text style={styles.channelName}>{channel.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.sectionTitle}>Infrared Channels</Text>
-      <View style={styles.channelGrid}>
-        {infraredChannels.map((channel) => (
-          <TouchableOpacity
-            key={channel.id}
-            style={styles.channelButton}
-            onPress={() => onSelect(channel)}
-          >
-            <Text style={styles.channelNumber}>CH {channel.number}</Text>
-            <Text style={styles.channelName}>{channel.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </ScrollView>
+      <InfoModal
+        visible={selectedInfo !== null}
+        info={selectedInfo}
+        onClose={() => setSelectedInfo(null)}
+      />
+    </>
   );
 };
 
 const RGBPanel = ({ onSelect }) => {
+  const [selectedInfo, setSelectedInfo] = useState(null);
+
   return (
-    <ScrollView style={styles.panel}>
-      <Text style={styles.panelTitle}>SELECT RGB PRODUCT</Text>
-      <View style={styles.rgbGrid}>
-        {RGB_PRODUCTS.map((product) => (
-          <TouchableOpacity
-            key={product.id}
-            style={styles.rgbButton}
-            onPress={() => onSelect(product)}
-          >
-            <Text style={styles.rgbName}>{product.name}</Text>
-            <Text style={styles.rgbDescription}>{product.description}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </ScrollView>
+    <>
+      <ScrollView style={styles.panel}>
+        <Text style={styles.panelTitle}>SELECT RGB PRODUCT</Text>
+        <View style={styles.rgbGrid}>
+          {RGB_PRODUCTS.map((product) => (
+            <View key={product.id} style={styles.listItemWrapper}>
+              <TouchableOpacity
+                style={styles.rgbButton}
+                onPress={() => onSelect(product)}
+              >
+                <Text style={styles.rgbName}>{product.name}</Text>
+                <Text style={styles.rgbDescription}>{product.description}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.infoButton}
+                onPress={() => setSelectedInfo({ type: 'rgb', data: product })}
+              >
+                <Ionicons name="information-circle-outline" size={24} color="#2196F3" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+
+      <InfoModal
+        visible={selectedInfo !== null}
+        info={selectedInfo}
+        onClose={() => setSelectedInfo(null)}
+      />
+    </>
   );
 };
 
@@ -153,32 +174,90 @@ const DomainPanel = ({ onSelect, onShowMap }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Quick regional domains */}
-      <Text style={styles.sectionTitle}>Quick Regional Access</Text>
-      <View style={styles.domainGrid}>
-        {DOMAINS_BY_TYPE[DOMAIN_TYPES.REGIONAL].map((domain) => (
-          <TouchableOpacity
-            key={domain.id}
-            style={styles.domainButton}
-            onPress={() => onSelect(domain)}
-          >
-            <Text style={styles.domainName}>{domain.name}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.domainTypeRow}>
+        <TouchableOpacity
+          style={styles.domainTypeButton}
+          onPress={() => onSelect(DOMAINS.MESOSCALE_1)}
+        >
+          <Text style={styles.domainTypeName}>Mesoscale 1</Text>
+          <Text style={styles.domainTypeDesc}>Meso Domain 1</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.domainTypeButton}
+          onPress={() => onSelect(DOMAINS.MESOSCALE_2)}
+        >
+          <Text style={styles.domainTypeName}>Mesoscale 2</Text>
+          <Text style={styles.domainTypeDesc}>Meso Domain 2</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Quick local domains */}
-      <Text style={styles.sectionTitle}>Quick Local Access</Text>
+      {/* Quick regional domains */}
+      <Text style={styles.sectionTitle}>Quick Regional Access</Text>
+
+      {/* First row: Northwest, North Central, Northeast */}
       <View style={styles.domainGrid}>
-        {DOMAINS_BY_TYPE[DOMAIN_TYPES.LOCAL].map((domain) => (
-          <TouchableOpacity
-            key={domain.id}
-            style={styles.domainButton}
-            onPress={() => onSelect(domain)}
-          >
-            <Text style={styles.domainName}>{domain.name}</Text>
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity
+          style={styles.domainButton}
+          onPress={() => onSelect(DOMAINS.NORTHWEST)}
+        >
+          <Text style={styles.domainName}>Northwest</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.domainButton}
+          onPress={() => onSelect(DOMAINS.NORTH_CENTRAL)}
+        >
+          <Text style={styles.domainName}>North Central</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.domainButton}
+          onPress={() => onSelect(DOMAINS.NORTHEAST)}
+        >
+          <Text style={styles.domainName}>Northeast</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Second row: West-Central, Central, East-Central */}
+      <View style={styles.domainGrid}>
+        <TouchableOpacity
+          style={styles.domainButton}
+          onPress={() => onSelect(DOMAINS.WEST_CENTRAL)}
+        >
+          <Text style={styles.domainName}>West-Central</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.domainButton}
+          onPress={() => onSelect(DOMAINS.CENTRAL)}
+        >
+          <Text style={styles.domainName}>Central</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.domainButton}
+          onPress={() => onSelect(DOMAINS.EAST_CENTRAL)}
+        >
+          <Text style={styles.domainName}>East-Central</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Third row: Southwest, South Central, Southeast */}
+      <View style={styles.domainGrid}>
+        <TouchableOpacity
+          style={styles.domainButton}
+          onPress={() => onSelect(DOMAINS.SOUTHWEST)}
+        >
+          <Text style={styles.domainName}>Southwest</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.domainButton}
+          onPress={() => onSelect(DOMAINS.SOUTH_CENTRAL)}
+        >
+          <Text style={styles.domainName}>South Central</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.domainButton}
+          onPress={() => onSelect(DOMAINS.SOUTHEAST)}
+        >
+          <Text style={styles.domainName}>Southeast</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -226,6 +305,66 @@ const OverlaysPanel = ({ overlayStates, onToggle }) => {
   );
 };
 
+const InfoModal = ({ visible, info, onClose }) => {
+  if (!info) return null;
+
+  const { type, data } = info;
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={styles.infoModalOverlay}>
+        <View style={styles.infoModalContent}>
+          <View style={styles.infoModalHeader}>
+            <Text style={styles.infoModalTitle}>
+              {type === 'channel'
+                ? `Channel ${data.number} - ${data.name}`
+                : data.name}
+            </Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.infoModalBody}>
+            {type === 'channel' ? (
+              <>
+                <Text style={styles.infoLabel}>Wavelength:</Text>
+                <Text style={styles.infoValue}>{data.wavelength}</Text>
+
+                <Text style={styles.infoLabel}>Type:</Text>
+                <Text style={styles.infoValue}>{data.type === 'visible' ? 'Visible/Near-IR' : 'Infrared'}</Text>
+
+                <Text style={styles.infoLabel}>Description:</Text>
+                <Text style={styles.infoValue}>{data.description}</Text>
+
+                <Text style={styles.infoLabel}>Typical Uses:</Text>
+                <Text style={styles.infoValue}>{data.useCase}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.infoLabel}>Description:</Text>
+                <Text style={styles.infoValue}>{data.description}</Text>
+
+                <Text style={styles.infoLabel}>Typical Uses:</Text>
+                <Text style={styles.infoValue}>{data.useCase || 'Multi-channel composite imagery for enhanced visualization of atmospheric features.'}</Text>
+              </>
+            )}
+          </ScrollView>
+
+          <TouchableOpacity style={styles.infoModalCloseButton} onPress={onClose}>
+            <Text style={styles.infoModalCloseButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1a1a1a',
@@ -267,27 +406,27 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 8,
   },
-  channelGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  channelList: {
     gap: 8,
   },
-  channelButton: {
+  channelListItem: {
     backgroundColor: '#424242',
-    padding: 10,
+    padding: 12,
     borderRadius: 6,
-    minWidth: 80,
-    alignItems: 'center',
   },
-  channelNumber: {
+  channelListContent: {
+    flex: 1,
+  },
+  channelListTitle: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
+    marginBottom: 4,
   },
-  channelName: {
-    color: '#ccc',
-    fontSize: 10,
-    marginTop: 2,
+  channelListDescription: {
+    color: '#999',
+    fontSize: 11,
+    lineHeight: 16,
   },
   rgbGrid: {
     gap: 8,
@@ -331,14 +470,14 @@ const styles = StyleSheet.create({
   },
   domainGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
+    marginBottom: 8,
   },
   domainButton: {
+    flex: 1,
     backgroundColor: '#424242',
     padding: 10,
     borderRadius: 6,
-    minWidth: 100,
     alignItems: 'center',
   },
   domainName: {
@@ -388,6 +527,70 @@ const styles = StyleSheet.create({
     borderColor: '#2196F3',
   },
   checkmark: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  listItemWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoButton: {
+    padding: 8,
+  },
+  infoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  infoModalContent: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    width: '100%',
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  infoModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  infoModalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  infoModalBody: {
+    padding: 16,
+  },
+  infoLabel: {
+    color: '#2196F3',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  infoValue: {
+    color: '#fff',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  infoModalCloseButton: {
+    backgroundColor: '#2196F3',
+    padding: 14,
+    margin: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  infoModalCloseButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

@@ -35,6 +35,7 @@ import { frameCache } from '../utils/frameCache';
 
 export const MainScreen = () => {
   const {
+    selectedSatellite,
     selectedDomain,
     selectedRGBProduct,
     selectedChannel,
@@ -576,13 +577,26 @@ export const MainScreen = () => {
             <View style={styles.landscapeMainRow}>
               {/* Image - takes full space with ref for capture */}
               <View ref={contentRef} style={styles.landscapeImageArea} collapsable={false}>
-                <SatelliteImageViewer />
-                <DrawingOverlay
-                  externalColorPicker={showColorPickerFromButton}
-                  setExternalColorPicker={setShowColorPickerFromButton}
-                />
+                {/* Top info bar for screenshots */}
+                {showBrandingOverlay && (
+                  <View style={styles.topInfoBar}>
+                    <Text style={styles.topInfoText}>
+                      {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
+                    </Text>
+                  </View>
+                )}
 
-                {/* Branding overlay for screenshots */}
+                <View style={styles.content}>
+                  <SatelliteImageViewer />
+                  <DrawingOverlay
+                    externalColorPicker={showColorPickerFromButton}
+                    setExternalColorPicker={setShowColorPickerFromButton}
+                  />
+                </View>
+
+                <ColorScaleBar orientation="horizontal" />
+
+                {/* Branding overlay for screenshots - positioned directly below colorbar */}
                 {showBrandingOverlay && (
                   <View style={styles.brandingOverlay}>
                     <Text style={styles.brandingText}>Satellite Weather</Text>
@@ -640,6 +654,15 @@ export const MainScreen = () => {
           <>
             {/* Content area for screenshot capture */}
             <View ref={contentRef} style={styles.captureArea} collapsable={false}>
+              {/* Top info bar for screenshots */}
+              {showBrandingOverlay && (
+                <View style={styles.topInfoBar}>
+                  <Text style={styles.topInfoText}>
+                    {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
+                  </Text>
+                </View>
+              )}
+
               <View style={styles.content}>
                 <SatelliteImageViewer />
                 <DrawingOverlay
@@ -650,7 +673,7 @@ export const MainScreen = () => {
 
               <ColorScaleBar orientation="horizontal" />
 
-              {/* Branding overlay for screenshots */}
+              {/* Branding overlay for screenshots - positioned directly below colorbar */}
               {showBrandingOverlay && (
                 <View style={styles.brandingOverlay}>
                   <Text style={styles.brandingText}>Satellite Weather</Text>
@@ -804,14 +827,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  brandingOverlay: {
-    position: 'absolute',
-    bottom: 10,
-    left: 0,
-    right: 0,
+  topInfoBar: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  topInfoText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  brandingOverlay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   brandingText: {
