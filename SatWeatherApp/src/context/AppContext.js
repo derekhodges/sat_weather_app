@@ -60,7 +60,7 @@ export const AppProvider = ({ children }) => {
 
   // Settings
   const [settings, setSettings] = useState({
-    animationSpeed: 500, // ms per frame
+    animationSpeed: 800, // ms per frame
     frameCount: 12, // number of frames to load
     imageDisplayMode: 'contain', // 'contain' or 'cover'
     autoRefresh: false, // auto-refresh latest image

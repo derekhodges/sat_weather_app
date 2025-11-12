@@ -420,7 +420,7 @@ export const MainScreen = () => {
                 const gifUri = await createAnimatedGif(
                   contentRef,
                   frameCount,
-                  500,
+                  settings.animationSpeed,
                   (current, total, status) => {
                     console.log(status);
                   }
@@ -489,7 +489,7 @@ export const MainScreen = () => {
                 const gifUri = await createAnimatedGif(
                   contentRef,
                   frameCount,
-                  500,
+                  settings.animationSpeed,
                   (current, total, status) => {
                     console.log(status);
                   }

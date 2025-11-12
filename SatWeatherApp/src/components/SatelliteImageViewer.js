@@ -211,9 +211,9 @@ export const SatelliteImageViewer = () => {
     );
   }
 
-  // Show loading indicator ONLY during first load (both slots empty)
-  // After first image loads, never show loading overlay again
-  const isFirstLoad = !imageSlotA && !imageSlotB;
+  // Show loading indicator until at least one image has actually LOADED
+  // (not just assigned to a slot)
+  const isFirstLoad = !imageALoaded && !imageBLoaded;
   const showLoadingOverlay = isFirstLoad;
 
   // For cover mode, we want the image to be larger so it can extend beyond the viewport
