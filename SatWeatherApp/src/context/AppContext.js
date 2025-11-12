@@ -88,7 +88,26 @@ export const AppProvider = ({ children }) => {
 
       const savedSettings = await AsyncStorage.getItem('settings');
       if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+        const parsed = JSON.parse(savedSettings);
+        // Migrate old default (500ms) to new default (800ms)
+        if (parsed.animationSpeed === 500) {
+          parsed.animationSpeed = 800;
+          console.log('Migrated animation speed from 500ms to 800ms');
+        }
+        // Merge with defaults to ensure new settings are applied
+        const defaultSettings = {
+          animationSpeed: 800,
+          frameCount: 12,
+          imageDisplayMode: 'contain',
+          autoRefresh: false,
+          autoRefreshInterval: 5,
+          showColorScale: true,
+          defaultDomain: DEFAULT_DOMAIN,
+        };
+        const mergedSettings = { ...defaultSettings, ...parsed };
+        setSettings(mergedSettings);
+        // Save migrated settings back to storage
+        await AsyncStorage.setItem('settings', JSON.stringify(mergedSettings));
       }
     } catch (error) {
       console.error('Error loading preferences:', error);

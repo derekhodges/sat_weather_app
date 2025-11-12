@@ -96,12 +96,19 @@ export const SatelliteImageViewer = () => {
 
   // Handle image load callbacks
   const handleImageALoad = () => {
-    setImageALoaded(true);
     if (imageSlotA === currentImageUrl) {
       if (activeSlot === 'A') {
-        // First load case - just make visible instantly
+        // First load case - make visible instantly
         opacityA.value = 1;
+        // CRITICAL: Wait for the opacity change to actually render on screen
+        // before removing the loading overlay (prevents black flash)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setImageALoaded(true);
+          });
+        });
       } else {
+        setImageALoaded(true);
         // CRITICAL: To prevent black flicker, we use a two-step process:
         // Step 1: Make the new image fully visible INSTANTLY (no animation)
         // Step 2: THEN fade out the old image
@@ -120,12 +127,19 @@ export const SatelliteImageViewer = () => {
   };
 
   const handleImageBLoad = () => {
-    setImageBLoaded(true);
     if (imageSlotB === currentImageUrl) {
       if (activeSlot === 'B') {
         // First load case (rare) - just make visible instantly
         opacityB.value = 1;
+        // CRITICAL: Wait for the opacity change to actually render on screen
+        // before removing the loading overlay (prevents black flash)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setImageBLoaded(true);
+          });
+        });
       } else {
+        setImageBLoaded(true);
         // CRITICAL: To prevent black flicker, we use a two-step process:
         // Step 1: Make the new image fully visible INSTANTLY (no animation)
         // Step 2: THEN fade out the old image
