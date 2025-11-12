@@ -72,11 +72,12 @@ export const SatelliteImageViewer = () => {
   useEffect(() => {
     if (!currentImageUrl) return;
 
-    // First load - initialize slot A
+    // First load - initialize slot A with opacity 0
+    // It will become visible when handleImageALoad fires
     if (!imageSlotA && !imageSlotB) {
       setImageSlotA(currentImageUrl);
       setActiveSlot('A');
-      opacityA.value = 1;
+      opacityA.value = 0; // Start invisible, will become visible when loaded
       opacityB.value = 0;
       return;
     }
@@ -95,24 +96,64 @@ export const SatelliteImageViewer = () => {
 
   // Handle image load callbacks
   const handleImageALoad = () => {
-    setImageALoaded(true);
-    if (imageSlotA === currentImageUrl && activeSlot !== 'A') {
-      // This is the new image, make it active with smooth crossfade
-      // Only fade AFTER the image is loaded to ensure no gap
-      setActiveSlot('A');
-      opacityA.value = withTiming(1, { duration: 100 });
-      opacityB.value = withTiming(0, { duration: 100 });
+    if (imageSlotA === currentImageUrl) {
+      if (activeSlot === 'A') {
+        // First load case - make visible instantly
+        opacityA.value = 1;
+        // CRITICAL: Wait for the opacity change to actually render on screen
+        // before removing the loading overlay (prevents black flash)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setImageALoaded(true);
+          });
+        });
+      } else {
+        setImageALoaded(true);
+        // CRITICAL: To prevent black flicker, we use a two-step process:
+        // Step 1: Make the new image fully visible INSTANTLY (no animation)
+        // Step 2: THEN fade out the old image
+        // This ensures both images overlap briefly, so there's never a gap
+
+        // Step 1: Make new image fully opaque immediately
+        opacityA.value = 1;
+
+        // Step 2: After new image is visible, fade out the old image
+        requestAnimationFrame(() => {
+          setActiveSlot('A');
+          opacityB.value = withTiming(0, { duration: 100 });
+        });
+      }
     }
   };
 
   const handleImageBLoad = () => {
-    setImageBLoaded(true);
-    if (imageSlotB === currentImageUrl && activeSlot !== 'B') {
-      // This is the new image, make it active with smooth crossfade
-      // Only fade AFTER the image is loaded to ensure no gap
-      setActiveSlot('B');
-      opacityB.value = withTiming(1, { duration: 100 });
-      opacityA.value = withTiming(0, { duration: 100 });
+    if (imageSlotB === currentImageUrl) {
+      if (activeSlot === 'B') {
+        // First load case (rare) - just make visible instantly
+        opacityB.value = 1;
+        // CRITICAL: Wait for the opacity change to actually render on screen
+        // before removing the loading overlay (prevents black flash)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setImageBLoaded(true);
+          });
+        });
+      } else {
+        setImageBLoaded(true);
+        // CRITICAL: To prevent black flicker, we use a two-step process:
+        // Step 1: Make the new image fully visible INSTANTLY (no animation)
+        // Step 2: THEN fade out the old image
+        // This ensures both images overlap briefly, so there's never a gap
+
+        // Step 1: Make new image fully opaque immediately
+        opacityB.value = 1;
+
+        // Step 2: After new image is visible, fade out the old image
+        requestAnimationFrame(() => {
+          setActiveSlot('B');
+          opacityA.value = withTiming(0, { duration: 100 });
+        });
+      }
     }
   };
 
@@ -184,9 +225,9 @@ export const SatelliteImageViewer = () => {
     );
   }
 
-  // Show loading indicator ONLY during first load (both slots empty)
-  // After first image loads, never show loading overlay again
-  const isFirstLoad = !imageSlotA && !imageSlotB;
+  // Show loading indicator until at least one image has actually LOADED
+  // (not just assigned to a slot)
+  const isFirstLoad = !imageALoaded && !imageBLoaded;
   const showLoadingOverlay = isFirstLoad;
 
   // For cover mode, we want the image to be larger so it can extend beyond the viewport

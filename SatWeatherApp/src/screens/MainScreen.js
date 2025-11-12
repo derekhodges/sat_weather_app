@@ -183,7 +183,14 @@ export const MainScreen = () => {
 
   // Animation loop
   useEffect(() => {
+    // Always clear any existing interval first to prevent multiple timers
+    if (animationIntervalRef.current) {
+      clearInterval(animationIntervalRef.current);
+      animationIntervalRef.current = null;
+    }
+
     if (isAnimating) {
+      console.log(`Starting animation with speed: ${settings.animationSpeed}ms per frame`);
       animationIntervalRef.current = setInterval(() => {
         setCurrentFrameIndex((prev) => {
           if (prev >= availableTimestamps.length - 1) {
@@ -192,18 +199,15 @@ export const MainScreen = () => {
           return prev + 1;
         });
       }, settings.animationSpeed);
-    } else {
-      if (animationIntervalRef.current) {
-        clearInterval(animationIntervalRef.current);
-      }
     }
 
     return () => {
       if (animationIntervalRef.current) {
         clearInterval(animationIntervalRef.current);
+        animationIntervalRef.current = null;
       }
     };
-  }, [isAnimating, availableTimestamps, settings.animationSpeed]);
+  }, [isAnimating, availableTimestamps.length, settings.animationSpeed]);
 
   const loadImage = async () => {
     // Don't try to load if we don't have a product selected in RGB mode
@@ -420,7 +424,7 @@ export const MainScreen = () => {
                 const gifUri = await createAnimatedGif(
                   contentRef,
                   frameCount,
-                  500,
+                  settings.animationSpeed,
                   (current, total, status) => {
                     console.log(status);
                   }
@@ -489,7 +493,7 @@ export const MainScreen = () => {
                 const gifUri = await createAnimatedGif(
                   contentRef,
                   frameCount,
-                  500,
+                  settings.animationSpeed,
                   (current, total, status) => {
                     console.log(status);
                   }
