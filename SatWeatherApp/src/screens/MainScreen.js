@@ -702,7 +702,10 @@ export const MainScreen = () => {
             <View style={styles.landscapeLeftColumn}>
               <View
                 ref={contentRef}
-                style={styles.landscapeCaptureWrapper}
+                style={[
+                  styles.landscapeCaptureWrapper,
+                  forceContainForCapture && { flex: 0, alignSelf: 'flex-start' }
+                ]}
                 collapsable={false}
                 onLayout={(event) => {
                   const { width, height } = event.nativeEvent.layout;
