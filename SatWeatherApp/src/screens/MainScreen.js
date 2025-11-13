@@ -41,6 +41,7 @@ export const MainScreen = () => {
     selectedRGBProduct,
     selectedChannel,
     viewMode,
+    currentImageUrl,
     setCurrentImageUrl,
     imageTimestamp,
     setImageTimestamp,
@@ -79,7 +80,6 @@ export const MainScreen = () => {
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
   const [isRotating, setIsRotating] = useState(false); // Track rotation state
-  const [forceContainForCapture, setForceContainForCapture] = useState(false); // Force contain mode during screenshot
 
   const isLandscape = layoutOrientation === 'landscape';
 
@@ -397,20 +397,14 @@ export const MainScreen = () => {
         satelliteImageViewerRef.current.resetViewInstant();
       }
 
-      // Force image to contain mode so it fits in viewport
-      setForceContainForCapture(true);
-
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Short delay to let overlay and layout changes render
+      // Short delay to let overlay render
       await new Promise(resolve => setTimeout(resolve, 150));
 
       // Capture the content area - should now include image + UI elements
       const uri = await captureScreenshot(contentRef);
-
-      // Reset contain mode
-      setForceContainForCapture(false);
 
       // NOW show loading while saving
       setIsLoading(true);
@@ -425,7 +419,6 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error saving screenshot:', error);
       setShowBrandingOverlay(false);
-      setForceContainForCapture(false);
       setIsLoading(false);
       setError(error.message || 'Unable to save screenshot');
     }
@@ -438,20 +431,14 @@ export const MainScreen = () => {
         satelliteImageViewerRef.current.resetViewInstant();
       }
 
-      // Force image to contain mode so it fits in viewport
-      setForceContainForCapture(true);
-
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the overlay and layout changes render
+      // Delay to let the overlay render
       await new Promise(resolve => setTimeout(resolve, 150));
 
       // Capture the content area
       const uri = await captureScreenshot(contentRef);
-
-      // Reset contain mode
-      setForceContainForCapture(false);
 
       // NOW show loading while sharing
       setIsLoading(true);
@@ -464,7 +451,6 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error sharing image:', error);
       setShowBrandingOverlay(false);
-      setForceContainForCapture(false);
       setIsLoading(false);
       setError(error.message || 'Unable to share image');
     }
@@ -487,9 +473,6 @@ export const MainScreen = () => {
                 if (satelliteImageViewerRef.current?.resetViewInstant) {
                   satelliteImageViewerRef.current.resetViewInstant();
                 }
-
-                // Force image to contain mode
-                setForceContainForCapture(true);
 
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
@@ -523,7 +506,6 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
-                setForceContainForCapture(false);
 
                 // NOW show loading while saving to library
                 setIsLoading(true);
@@ -540,7 +522,6 @@ export const MainScreen = () => {
               } catch (error) {
                 console.error('Error creating GIF:', error);
                 setShowBrandingOverlay(false);
-                setForceContainForCapture(false);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create GIF');
               }
@@ -571,9 +552,6 @@ export const MainScreen = () => {
                 if (satelliteImageViewerRef.current?.resetViewInstant) {
                   satelliteImageViewerRef.current.resetViewInstant();
                 }
-
-                // Force image to contain mode
-                setForceContainForCapture(true);
 
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
@@ -608,6 +586,7 @@ export const MainScreen = () => {
 
                 setShowBrandingOverlay(false);
                 setForceContainForCapture(false);
+                setActualImageHeight(null);
 
                 // NOW show loading while sharing
                 setIsLoading(true);
@@ -619,7 +598,6 @@ export const MainScreen = () => {
               } catch (error) {
                 console.error('Error creating/sharing GIF:', error);
                 setShowBrandingOverlay(false);
-                setForceContainForCapture(false);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create or share GIF');
               }
@@ -702,10 +680,7 @@ export const MainScreen = () => {
             <View style={styles.landscapeLeftColumn}>
               <View
                 ref={contentRef}
-                style={[
-                  styles.landscapeCaptureWrapper,
-                  forceContainForCapture && { flex: 0, alignSelf: 'flex-start' }
-                ]}
+                style={styles.landscapeCaptureWrapper}
                 collapsable={false}
                 onLayout={(event) => {
                   const { width, height } = event.nativeEvent.layout;
@@ -722,20 +697,11 @@ export const MainScreen = () => {
                 )}
 
                 {/* Image area with colorbar */}
-                <View style={[
-                  styles.landscapeImageArea,
-                  forceContainForCapture && { alignItems: 'center' }
-                ]}>
-                  <View style={[
-                    styles.landscapeContentColumn,
-                    forceContainForCapture && {
-                      height: Dimensions.get('window').height - 150, // account for top bar and info bars
-                    }
-                  ]}>
+                <View style={styles.landscapeImageArea}>
+                  <View style={styles.landscapeContentColumn}>
                     <View style={styles.content}>
                       <SatelliteImageViewer
                         ref={satelliteImageViewerRef}
-                        forceContainMode={forceContainForCapture}
                       />
                       <DrawingOverlay
                         externalColorPicker={showColorPickerFromButton}
@@ -746,8 +712,6 @@ export const MainScreen = () => {
 
                   <ColorScaleBar
                     orientation="vertical"
-                    matchImageHeight={forceContainForCapture}
-                    height={forceContainForCapture ? Dimensions.get('window').height - 150 : null}
                   />
                 </View>
 
@@ -765,15 +729,16 @@ export const MainScreen = () => {
                   </Text>
                 </View>
 
-                {/* Branding overlay for screenshots - shown below info bar */}
-                {showBrandingOverlay && (
+                {/* Bottom section: Menu buttons + Slider OR Branding for screenshots */}
+                {showBrandingOverlay ? (
                   <View style={styles.brandingOverlay}>
                     <Text style={styles.brandingText}>Satellite Weather</Text>
                   </View>
-                )}
+                ) : null}
               </View>
 
-              {/* Bottom row: Menu buttons + Slider - NOT captured */}
+              {/* Bottom row: Menu buttons + Slider - shown when NOT capturing */}
+              {!showBrandingOverlay && (
               <View style={styles.landscapeBottomRow}>
                 <TouchableOpacity
                   style={[styles.landscapeMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
@@ -804,6 +769,7 @@ export const MainScreen = () => {
                   <TimelineSlider orientation="horizontal" />
                 </View>
               </View>
+              )}
             </View>
 
             {/* Vertical Buttons on right - extends full height */}
@@ -844,7 +810,6 @@ export const MainScreen = () => {
               <View style={styles.content}>
                 <SatelliteImageViewer
                   ref={satelliteImageViewerRef}
-                  forceContainMode={forceContainForCapture}
                 />
                 <DrawingOverlay
                   externalColorPicker={showColorPickerFromButton}
@@ -854,15 +819,16 @@ export const MainScreen = () => {
 
               <ColorScaleBar orientation="horizontal" />
 
-              {/* Branding overlay for screenshots - positioned directly below colorbar */}
-              {showBrandingOverlay && (
+              {/* Menu buttons OR Branding for screenshots */}
+              {showBrandingOverlay ? (
                 <View style={styles.brandingOverlay}>
                   <Text style={styles.brandingText}>Satellite Weather</Text>
                 </View>
-              )}
+              ) : null}
             </View>
 
-            {/* Menu buttons right beneath color bar */}
+            {/* Menu buttons right beneath color bar - shown when NOT capturing */}
+            {!showBrandingOverlay && (
             <View style={styles.portraitMenuRow}>
               <TouchableOpacity
                 style={[styles.portraitMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
@@ -889,6 +855,7 @@ export const MainScreen = () => {
                 <Text style={styles.menuButtonText}>OVERLAYS</Text>
               </TouchableOpacity>
             </View>
+            )}
 
             <TimelineSlider orientation="horizontal" />
 
