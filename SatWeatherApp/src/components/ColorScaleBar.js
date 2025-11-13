@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { formatTimestamp } from '../utils/imageService';
 
-const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight = false }) => {
+const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight = false, height = null }) => {
   const { selectedChannel, selectedRGBProduct, viewMode, imageTimestamp, settings } =
     useApp();
 
@@ -28,7 +28,7 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight =
   return (
     <View style={[
       isVertical ? styles.containerVertical : styles.container,
-      matchImageHeight && isVertical && { flex: 1 }
+      height !== null && isVertical && { height }
     ]}>
       {/* Info section - only show in horizontal (portrait) mode */}
       {!isVertical && (

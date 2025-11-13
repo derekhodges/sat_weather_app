@@ -722,8 +722,16 @@ export const MainScreen = () => {
                 )}
 
                 {/* Image area with colorbar */}
-                <View style={styles.landscapeImageArea}>
-                  <View style={styles.landscapeContentColumn}>
+                <View style={[
+                  styles.landscapeImageArea,
+                  forceContainForCapture && { alignItems: 'center' }
+                ]}>
+                  <View style={[
+                    styles.landscapeContentColumn,
+                    forceContainForCapture && {
+                      height: Dimensions.get('window').height - 150, // account for top bar and info bars
+                    }
+                  ]}>
                     <View style={styles.content}>
                       <SatelliteImageViewer
                         ref={satelliteImageViewerRef}
@@ -736,7 +744,11 @@ export const MainScreen = () => {
                     </View>
                   </View>
 
-                  <ColorScaleBar orientation="vertical" matchImageHeight={forceContainForCapture} />
+                  <ColorScaleBar
+                    orientation="vertical"
+                    matchImageHeight={forceContainForCapture}
+                    height={forceContainForCapture ? Dimensions.get('window').height - 150 : null}
+                  />
                 </View>
 
                 {/* Info bar with channel/product and timestamp */}
