@@ -79,6 +79,7 @@ export const MainScreen = () => {
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
   const [isRotating, setIsRotating] = useState(false); // Track rotation state
+  const [forceContainForCapture, setForceContainForCapture] = useState(false); // Force contain mode during screenshot
 
   const isLandscape = layoutOrientation === 'landscape';
 
@@ -391,6 +392,9 @@ export const MainScreen = () => {
 
   const handleSaveScreenshot = async () => {
     try {
+      // Force image to contain mode so it fits in viewport
+      setForceContainForCapture(true);
+
       // Reset zoom/pan to default view INSTANTLY (no animation)
       if (satelliteImageViewerRef.current?.resetViewInstant) {
         satelliteImageViewerRef.current.resetViewInstant();
@@ -399,11 +403,14 @@ export const MainScreen = () => {
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Short delay to let overlay render (no animation to wait for)
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Short delay to let overlay and layout changes render
+      await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Capture the content area with explicit dimensions to match viewport
-      const uri = await captureScreenshot(contentRef, contentDimensions.width > 0 ? contentDimensions : {});
+      // Capture the content area - should now include image + UI elements
+      const uri = await captureScreenshot(contentRef);
+
+      // Reset contain mode
+      setForceContainForCapture(false);
 
       // NOW show loading while saving
       setIsLoading(true);
@@ -418,6 +425,7 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error saving screenshot:', error);
       setShowBrandingOverlay(false);
+      setForceContainForCapture(false);
       setIsLoading(false);
       setError(error.message || 'Unable to save screenshot');
     }
@@ -425,14 +433,25 @@ export const MainScreen = () => {
 
   const handleShareImage = async () => {
     try {
+      // Force image to contain mode so it fits in viewport
+      setForceContainForCapture(true);
+
+      // Reset zoom/pan
+      if (satelliteImageViewerRef.current?.resetViewInstant) {
+        satelliteImageViewerRef.current.resetViewInstant();
+      }
+
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the overlay render
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Delay to let the overlay and layout changes render
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       // Capture the content area
       const uri = await captureScreenshot(contentRef);
+
+      // Reset contain mode
+      setForceContainForCapture(false);
 
       // NOW show loading while sharing
       setIsLoading(true);
@@ -445,6 +464,7 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error sharing image:', error);
       setShowBrandingOverlay(false);
+      setForceContainForCapture(false);
       setIsLoading(false);
       setError(error.message || 'Unable to share image');
     }
@@ -463,6 +483,9 @@ export const MainScreen = () => {
             text: 'Create GIF',
             onPress: async () => {
               try {
+                // Force image to contain mode
+                setForceContainForCapture(true);
+
                 // Reset zoom/pan to default view INSTANTLY
                 if (satelliteImageViewerRef.current?.resetViewInstant) {
                   satelliteImageViewerRef.current.resetViewInstant();
@@ -473,7 +496,7 @@ export const MainScreen = () => {
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -500,6 +523,7 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
+                setForceContainForCapture(false);
 
                 // NOW show loading while saving to library
                 setIsLoading(true);
@@ -516,6 +540,7 @@ export const MainScreen = () => {
               } catch (error) {
                 console.error('Error creating GIF:', error);
                 setShowBrandingOverlay(false);
+                setForceContainForCapture(false);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create GIF');
               }
@@ -542,6 +567,9 @@ export const MainScreen = () => {
             text: 'Create GIF',
             onPress: async () => {
               try {
+                // Force image to contain mode
+                setForceContainForCapture(true);
+
                 // Reset zoom/pan to default view INSTANTLY
                 if (satelliteImageViewerRef.current?.resetViewInstant) {
                   satelliteImageViewerRef.current.resetViewInstant();
@@ -552,7 +580,7 @@ export const MainScreen = () => {
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -579,6 +607,7 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
+                setForceContainForCapture(false);
 
                 // NOW show loading while sharing
                 setIsLoading(true);
@@ -590,6 +619,7 @@ export const MainScreen = () => {
               } catch (error) {
                 console.error('Error creating/sharing GIF:', error);
                 setShowBrandingOverlay(false);
+                setForceContainForCapture(false);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create or share GIF');
               }
@@ -692,7 +722,10 @@ export const MainScreen = () => {
                 <View style={styles.landscapeImageArea}>
                   <View style={styles.landscapeContentColumn}>
                     <View style={styles.content}>
-                      <SatelliteImageViewer ref={satelliteImageViewerRef} />
+                      <SatelliteImageViewer
+                        ref={satelliteImageViewerRef}
+                        forceContainMode={forceContainForCapture}
+                      />
                       <DrawingOverlay
                         externalColorPicker={showColorPickerFromButton}
                         setExternalColorPicker={setShowColorPickerFromButton}
@@ -794,7 +827,10 @@ export const MainScreen = () => {
               )}
 
               <View style={styles.content}>
-                <SatelliteImageViewer ref={satelliteImageViewerRef} />
+                <SatelliteImageViewer
+                  ref={satelliteImageViewerRef}
+                  forceContainMode={forceContainForCapture}
+                />
                 <DrawingOverlay
                   externalColorPicker={showColorPickerFromButton}
                   setExternalColorPicker={setShowColorPickerFromButton}

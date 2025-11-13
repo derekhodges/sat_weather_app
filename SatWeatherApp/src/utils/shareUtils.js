@@ -24,47 +24,12 @@ export const captureScreenshot = async (contentRef, options = {}) => {
       }
     });
 
-    // Capture at full quality without constraints
+    // Capture at full quality
+    // The layout should naturally constrain to viewport size if view is reset
     const uri = await captureRef(contentRef, {
       format: 'png',
       quality: 1.0,
     });
-
-    // If dimensions are provided, CROP (not resize) to exact visible viewport
-    // This ensures we only get what's actually visible on screen
-    if (options.width && options.height) {
-      const targetWidth = Math.round(options.width);
-      const targetHeight = Math.round(options.height);
-
-      // Get the actual captured image size first
-      const imageInfo = await ImageManipulator.manipulateAsync(
-        uri,
-        [],
-        { compress: 1, format: ImageManipulator.SaveFormat.PNG }
-      );
-
-      // Calculate crop area to get only the visible portion
-      // If the captured image is larger than the viewport, crop from center
-      const cropX = Math.max(0, Math.floor((imageInfo.width - targetWidth) / 2));
-      const cropY = Math.max(0, Math.floor((imageInfo.height - targetHeight) / 2));
-
-      const manipResult = await ImageManipulator.manipulateAsync(
-        uri,
-        [
-          {
-            crop: {
-              originX: cropX,
-              originY: cropY,
-              width: Math.min(targetWidth, imageInfo.width),
-              height: Math.min(targetHeight, imageInfo.height),
-            }
-          }
-        ],
-        { compress: 1, format: ImageManipulator.SaveFormat.PNG }
-      );
-
-      return manipResult.uri;
-    }
 
     return uri;
   } catch (error) {
