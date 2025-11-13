@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, LayoutAnimation, UIManager } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -78,18 +78,6 @@ export const MainScreen = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
 
-  // Enable LayoutAnimation on Android
-  useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
-
-  // Smooth layout transitions on orientation change
-  useEffect(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }, [layoutOrientation]);
-
   // Listen for orientation changes to sync layout
   useEffect(() => {
     const subscription = ScreenOrientation.addOrientationChangeListener((event) => {
@@ -100,10 +88,8 @@ export const MainScreen = () => {
 
       // Sync layout orientation with device orientation
       if (isDeviceLandscape && layoutOrientation !== 'landscape') {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         toggleOrientation();
       } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         toggleOrientation();
       }
     });
@@ -388,11 +374,16 @@ export const MainScreen = () => {
 
   const handleSaveScreenshot = async () => {
     try {
+      // Reset zoom/pan to default view
+      if (satelliteImageViewerRef.current?.resetView) {
+        satelliteImageViewerRef.current.resetView();
+      }
+
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the overlay render
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Delay to let the view reset (300ms animation) and overlay render
+      await new Promise(resolve => setTimeout(resolve, 350));
 
       // Capture the content area (excluding buttons)
       const uri = await captureScreenshot(contentRef);
@@ -663,23 +654,24 @@ export const MainScreen = () => {
                   <ColorScaleBar orientation="vertical" />
                 </View>
 
-                {/* Info bar or branding - channel/product and timestamp */}
-                {showBrandingOverlay ? (
+                {/* Info bar with channel/product and timestamp */}
+                <View style={styles.landscapeInfoBar}>
+                  <Text style={styles.landscapeInfoText}>
+                    {viewMode === 'rgb'
+                      ? selectedRGBProduct?.name || 'RGB Product'
+                      : selectedChannel
+                      ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
+                      : 'Select a channel or RGB product'}
+                  </Text>
+                  <Text style={styles.landscapeTimestamp}>
+                    {formatTimestamp(imageTimestamp, settings.useLocalTime)}
+                  </Text>
+                </View>
+
+                {/* Branding overlay for screenshots - shown below info bar */}
+                {showBrandingOverlay && (
                   <View style={styles.brandingOverlay}>
                     <Text style={styles.brandingText}>Satellite Weather</Text>
-                  </View>
-                ) : (
-                  <View style={styles.landscapeInfoBar}>
-                    <Text style={styles.landscapeInfoText}>
-                      {viewMode === 'rgb'
-                        ? selectedRGBProduct?.name || 'RGB Product'
-                        : selectedChannel
-                        ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
-                        : 'Select a channel or RGB product'}
-                    </Text>
-                    <Text style={styles.landscapeTimestamp}>
-                      {formatTimestamp(imageTimestamp, settings.useLocalTime)}
-                    </Text>
                   </View>
                 )}
               </View>
