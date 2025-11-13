@@ -13,6 +13,16 @@ import UPNG from 'upng-js';
  */
 export const captureScreenshot = async (contentRef) => {
   try {
+    // Wait for layout to complete using requestAnimationFrame
+    await new Promise(resolve => {
+      if (typeof requestAnimationFrame !== 'undefined') {
+        requestAnimationFrame(() => resolve());
+      } else {
+        // Fallback for environments without requestAnimationFrame
+        setTimeout(() => resolve(), 16);
+      }
+    });
+
     const uri = await captureRef(contentRef, {
       format: 'png',
       quality: 1.0,

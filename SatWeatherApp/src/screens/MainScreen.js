@@ -620,100 +620,104 @@ export const MainScreen = () => {
         />
 
         {isLandscape ? (
-          // Landscape layout: Image | Buttons (vertical) + bottom menu/slider row
-          <>
-            <View style={styles.landscapeMainRow}>
-              {/* Image - takes full space with ref for capture */}
-              <View ref={contentRef} style={styles.landscapeImageArea} collapsable={false}>
-                <View style={styles.landscapeContentColumn}>
-                  {/* Top info bar for screenshots */}
-                  {showBrandingOverlay && (
-                    <View style={styles.topInfoBar}>
-                      <Text style={styles.topInfoText}>
-                        {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
-                      </Text>
-                    </View>
-                  )}
+          // Landscape layout: Image | Buttons (vertical) on right, with controls only as wide as image
+          <View style={styles.landscapeMainContainer}>
+            {/* Left column: image area with controls below */}
+            <View style={styles.landscapeLeftColumn}>
+              {/* Image wrapper - takes most vertical space */}
+              <View style={styles.landscapeImageWrapper}>
+                {/* Image - ref for capture */}
+                <View ref={contentRef} style={styles.landscapeImageArea} collapsable={false}>
+                  <View style={styles.landscapeContentColumn}>
+                    {/* Top info bar for screenshots */}
+                    {showBrandingOverlay && (
+                      <View style={styles.topInfoBar}>
+                        <Text style={styles.topInfoText}>
+                          {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
+                        </Text>
+                      </View>
+                    )}
 
-                  <View style={styles.content}>
-                    <SatelliteImageViewer ref={satelliteImageViewerRef} />
-                    <DrawingOverlay
-                      externalColorPicker={showColorPickerFromButton}
-                      setExternalColorPicker={setShowColorPickerFromButton}
-                    />
+                    <View style={styles.content}>
+                      <SatelliteImageViewer ref={satelliteImageViewerRef} />
+                      <DrawingOverlay
+                        externalColorPicker={showColorPickerFromButton}
+                        setExternalColorPicker={setShowColorPickerFromButton}
+                      />
+                    </View>
+
+                    {/* Branding overlay for screenshots */}
+                    {showBrandingOverlay && (
+                      <View style={styles.brandingOverlay}>
+                        <Text style={styles.brandingText}>Satellite Weather</Text>
+                      </View>
+                    )}
                   </View>
 
-                  {/* Branding overlay for screenshots */}
-                  {showBrandingOverlay && (
-                    <View style={styles.brandingOverlay}>
-                      <Text style={styles.brandingText}>Satellite Weather</Text>
-                    </View>
-                  )}
+                  <ColorScaleBar orientation="vertical" />
                 </View>
-
-                <ColorScaleBar orientation="vertical" />
               </View>
 
-              {/* Vertical Buttons on right */}
-              <BottomControls
-                onLocationPress={handleLocationPress}
-                onPlayPress={toggleAnimation}
-                onEditPress={handleEditPress}
-                onEditLongPress={handleEditLongPress}
-                onSharePress={handleSharePress}
-                onResetView={handleResetView}
-                onFlipOrientation={handleFlipOrientation}
-                orientation={layoutOrientation}
-                isDrawingMode={isDrawingMode}
-              />
-            </View>
+              {/* Info bar - channel/product and timestamp */}
+              <View style={styles.landscapeInfoBar}>
+                <Text style={styles.landscapeInfoText}>
+                  {viewMode === 'rgb'
+                    ? selectedRGBProduct?.name || 'RGB Product'
+                    : selectedChannel
+                    ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
+                    : 'Select a channel or RGB product'}
+                </Text>
+                <Text style={styles.landscapeTimestamp}>
+                  {formatTimestamp(imageTimestamp, settings.useLocalTime)}
+                </Text>
+              </View>
 
-            {/* Info bar - channel/product and timestamp */}
-            <View style={styles.landscapeInfoBar}>
-              <Text style={styles.landscapeInfoText}>
-                {viewMode === 'rgb'
-                  ? selectedRGBProduct?.name || 'RGB Product'
-                  : selectedChannel
-                  ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
-                  : 'Select a channel or RGB product'}
-              </Text>
-              <Text style={styles.landscapeTimestamp}>
-                {formatTimestamp(imageTimestamp, settings.useLocalTime)}
-              </Text>
-            </View>
-
-            {/* Bottom row: Menu buttons + Slider */}
-            <View style={styles.landscapeBottomRow}>
-              <TouchableOpacity
-                style={[styles.landscapeMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'channel' ? null : 'channel')}
-              >
-                <Text style={styles.menuButtonText}>SELECT CHANNEL</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.landscapeMenuButton, activeMenu === 'rgb' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'rgb' ? null : 'rgb')}
-              >
-                <Text style={styles.menuButtonText}>RGB</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.landscapeMenuButton, activeMenu === 'domain' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'domain' ? null : 'domain')}
-              >
-                <Text style={styles.menuButtonText}>DOMAIN</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.landscapeMenuButton, activeMenu === 'overlays' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'overlays' ? null : 'overlays')}
-              >
-                <Text style={styles.menuButtonText}>OVERLAYS</Text>
-              </TouchableOpacity>
-              <Text style={styles.separator}>|</Text>
-              <View style={styles.landscapeSliderContainer}>
-                <TimelineSlider orientation="horizontal" />
+              {/* Bottom row: Menu buttons + Slider */}
+              <View style={styles.landscapeBottomRow}>
+                <TouchableOpacity
+                  style={[styles.landscapeMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
+                  onPress={() => setActiveMenu(activeMenu === 'channel' ? null : 'channel')}
+                >
+                  <Text style={styles.menuButtonText}>SELECT CHANNEL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.landscapeMenuButton, activeMenu === 'rgb' && styles.menuButtonActive]}
+                  onPress={() => setActiveMenu(activeMenu === 'rgb' ? null : 'rgb')}
+                >
+                  <Text style={styles.menuButtonText}>RGB</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.landscapeMenuButton, activeMenu === 'domain' && styles.menuButtonActive]}
+                  onPress={() => setActiveMenu(activeMenu === 'domain' ? null : 'domain')}
+                >
+                  <Text style={styles.menuButtonText}>DOMAIN</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.landscapeMenuButton, activeMenu === 'overlays' && styles.menuButtonActive]}
+                  onPress={() => setActiveMenu(activeMenu === 'overlays' ? null : 'overlays')}
+                >
+                  <Text style={styles.menuButtonText}>OVERLAYS</Text>
+                </TouchableOpacity>
+                <Text style={styles.separator}>|</Text>
+                <View style={styles.landscapeSliderContainer}>
+                  <TimelineSlider orientation="horizontal" />
+                </View>
               </View>
             </View>
-          </>
+
+            {/* Vertical Buttons on right - extends full height */}
+            <BottomControls
+              onLocationPress={handleLocationPress}
+              onPlayPress={toggleAnimation}
+              onEditPress={handleEditPress}
+              onEditLongPress={handleEditLongPress}
+              onSharePress={handleSharePress}
+              onResetView={handleResetView}
+              onFlipOrientation={handleFlipOrientation}
+              orientation={layoutOrientation}
+              isDrawingMode={isDrawingMode}
+            />
+          </View>
         ) : (
           // Portrait layout: Image → ColorBar → Menu Buttons → Slider → Icon Buttons
           <>
@@ -844,10 +848,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  landscapeMainRow: {
+  landscapeMainContainer: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'stretch',
+  },
+  landscapeLeftColumn: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  landscapeImageWrapper: {
+    flex: 1,
+    flexDirection: 'row',
   },
   landscapeImageArea: {
     flex: 1,
