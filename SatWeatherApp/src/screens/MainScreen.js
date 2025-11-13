@@ -80,8 +80,6 @@ export const MainScreen = () => {
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
   const [isRotating, setIsRotating] = useState(false); // Track rotation state
-  const [forceContainForCapture, setForceContainForCapture] = useState(false); // Force contain mode during screenshot
-  const [actualImageHeight, setActualImageHeight] = useState(null); // Track actual rendered image height for colorbar
 
   const isLandscape = layoutOrientation === 'landscape';
 
@@ -399,55 +397,14 @@ export const MainScreen = () => {
         satelliteImageViewerRef.current.resetViewInstant();
       }
 
-      // Reset actual image height
-      setActualImageHeight(null);
-
-      // Force image to contain mode so it fits in viewport
-      setForceContainForCapture(true);
-
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Get actual image dimensions and calculate rendered height
-      if (isLandscape && currentImageUrl) {
-        const Image = require('react-native').Image;
-        Image.getSize(
-          currentImageUrl,
-          (width, height) => {
-            // Calculate rendered height based on aspect ratio
-            const containerHeight = Dimensions.get('window').height - 150;
-            const containerWidth = Dimensions.get('window').width - 100; // approximate, accounting for UI
-            const imageAspectRatio = width / height;
-            const containerAspectRatio = containerWidth / containerHeight;
-
-            let renderedHeight;
-            if (imageAspectRatio > containerAspectRatio) {
-              // Image is wider - height will be constrained by container height
-              renderedHeight = (containerWidth / imageAspectRatio);
-            } else {
-              // Image is taller - width will be constrained
-              renderedHeight = containerHeight;
-            }
-
-            setActualImageHeight(Math.floor(renderedHeight));
-          },
-          (error) => {
-            console.error('Error getting image size:', error);
-            // Fallback to container height if we can't get image size
-            setActualImageHeight(Dimensions.get('window').height - 150);
-          }
-        );
-      }
-
-      // Short delay to let overlay and layout changes render and measure image height
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Short delay to let overlay render
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       // Capture the content area - should now include image + UI elements
       const uri = await captureScreenshot(contentRef);
-
-      // Reset contain mode and image height
-      setForceContainForCapture(false);
-      setActualImageHeight(null);
 
       // NOW show loading while saving
       setIsLoading(true);
@@ -462,8 +419,6 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error saving screenshot:', error);
       setShowBrandingOverlay(false);
-      setForceContainForCapture(false);
-      setActualImageHeight(null);
       setIsLoading(false);
       setError(error.message || 'Unable to save screenshot');
     }
@@ -476,52 +431,14 @@ export const MainScreen = () => {
         satelliteImageViewerRef.current.resetViewInstant();
       }
 
-      // Reset actual image height
-      setActualImageHeight(null);
-
-      // Force image to contain mode so it fits in viewport
-      setForceContainForCapture(true);
-
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Get actual image dimensions and calculate rendered height
-      if (isLandscape && currentImageUrl) {
-        const Image = require('react-native').Image;
-        Image.getSize(
-          currentImageUrl,
-          (width, height) => {
-            // Calculate rendered height based on aspect ratio
-            const containerHeight = Dimensions.get('window').height - 150;
-            const containerWidth = Dimensions.get('window').width - 100;
-            const imageAspectRatio = width / height;
-            const containerAspectRatio = containerWidth / containerHeight;
-
-            let renderedHeight;
-            if (imageAspectRatio > containerAspectRatio) {
-              renderedHeight = (containerWidth / imageAspectRatio);
-            } else {
-              renderedHeight = containerHeight;
-            }
-
-            setActualImageHeight(Math.floor(renderedHeight));
-          },
-          (error) => {
-            console.error('Error getting image size:', error);
-            setActualImageHeight(Dimensions.get('window').height - 150);
-          }
-        );
-      }
-
-      // Delay to let the overlay and layout changes render and measure image height
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Delay to let the overlay render
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       // Capture the content area
       const uri = await captureScreenshot(contentRef);
-
-      // Reset contain mode and image height
-      setForceContainForCapture(false);
-      setActualImageHeight(null);
 
       // NOW show loading while sharing
       setIsLoading(true);
@@ -534,8 +451,6 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error sharing image:', error);
       setShowBrandingOverlay(false);
-      setForceContainForCapture(false);
-      setActualImageHeight(null);
       setIsLoading(false);
       setError(error.message || 'Unable to share image');
     }
@@ -559,45 +474,12 @@ export const MainScreen = () => {
                   satelliteImageViewerRef.current.resetViewInstant();
                 }
 
-                // Reset actual image height
-                setActualImageHeight(null);
-
-                // Force image to contain mode
-                setForceContainForCapture(true);
-
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
-                // Get actual image dimensions and calculate rendered height
-                if (isLandscape && currentImageUrl) {
-                  const Image = require('react-native').Image;
-                  Image.getSize(
-                    currentImageUrl,
-                    (width, height) => {
-                      const containerHeight = Dimensions.get('window').height - 150;
-                      const containerWidth = Dimensions.get('window').width - 100;
-                      const imageAspectRatio = width / height;
-                      const containerAspectRatio = containerWidth / containerHeight;
-
-                      let renderedHeight;
-                      if (imageAspectRatio > containerAspectRatio) {
-                        renderedHeight = (containerWidth / imageAspectRatio);
-                      } else {
-                        renderedHeight = containerHeight;
-                      }
-
-                      setActualImageHeight(Math.floor(renderedHeight));
-                    },
-                    (error) => {
-                      console.error('Error getting image size:', error);
-                      setActualImageHeight(Dimensions.get('window').height - 150);
-                    }
-                  );
-                }
-
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 200));
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -624,8 +506,6 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
-                setForceContainForCapture(false);
-                setActualImageHeight(null);
 
                 // NOW show loading while saving to library
                 setIsLoading(true);
@@ -642,8 +522,6 @@ export const MainScreen = () => {
               } catch (error) {
                 console.error('Error creating GIF:', error);
                 setShowBrandingOverlay(false);
-                setForceContainForCapture(false);
-                setActualImageHeight(null);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create GIF');
               }
@@ -675,45 +553,12 @@ export const MainScreen = () => {
                   satelliteImageViewerRef.current.resetViewInstant();
                 }
 
-                // Reset actual image height
-                setActualImageHeight(null);
-
-                // Force image to contain mode
-                setForceContainForCapture(true);
-
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
-                // Get actual image dimensions and calculate rendered height
-                if (isLandscape && currentImageUrl) {
-                  const Image = require('react-native').Image;
-                  Image.getSize(
-                    currentImageUrl,
-                    (width, height) => {
-                      const containerHeight = Dimensions.get('window').height - 150;
-                      const containerWidth = Dimensions.get('window').width - 100;
-                      const imageAspectRatio = width / height;
-                      const containerAspectRatio = containerWidth / containerHeight;
-
-                      let renderedHeight;
-                      if (imageAspectRatio > containerAspectRatio) {
-                        renderedHeight = (containerWidth / imageAspectRatio);
-                      } else {
-                        renderedHeight = containerHeight;
-                      }
-
-                      setActualImageHeight(Math.floor(renderedHeight));
-                    },
-                    (error) => {
-                      console.error('Error getting image size:', error);
-                      setActualImageHeight(Dimensions.get('window').height - 150);
-                    }
-                  );
-                }
-
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 200));
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -753,8 +598,6 @@ export const MainScreen = () => {
               } catch (error) {
                 console.error('Error creating/sharing GIF:', error);
                 setShowBrandingOverlay(false);
-                setForceContainForCapture(false);
-                setActualImageHeight(null);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create or share GIF');
               }
@@ -837,16 +680,21 @@ export const MainScreen = () => {
             <View style={styles.landscapeLeftColumn}>
               <View
                 ref={contentRef}
-                style={[
-                  styles.landscapeCaptureWrapper,
-                  forceContainForCapture && { flex: 0, alignSelf: 'flex-start' }
-                ]}
+                style={styles.landscapeCaptureWrapper}
                 collapsable={false}
                 onLayout={(event) => {
                   const { width, height } = event.nativeEvent.layout;
                   setContentDimensions({ width, height });
                 }}
               >
+                {/* Cover hamburger and star/refresh icons during capture */}
+                {showBrandingOverlay && (
+                  <>
+                    <View style={styles.topLeftCover} />
+                    <View style={styles.topRightCover} />
+                  </>
+                )}
+
                 {/* Top info bar for screenshots */}
                 {showBrandingOverlay && (
                   <View style={styles.topInfoBar}>
@@ -857,20 +705,11 @@ export const MainScreen = () => {
                 )}
 
                 {/* Image area with colorbar */}
-                <View style={[
-                  styles.landscapeImageArea,
-                  forceContainForCapture && { alignItems: 'center' }
-                ]}>
-                  <View style={[
-                    styles.landscapeContentColumn,
-                    forceContainForCapture && {
-                      height: Dimensions.get('window').height - 150, // account for top bar and info bars
-                    }
-                  ]}>
+                <View style={styles.landscapeImageArea}>
+                  <View style={styles.landscapeContentColumn}>
                     <View style={styles.content}>
                       <SatelliteImageViewer
                         ref={satelliteImageViewerRef}
-                        forceContainMode={forceContainForCapture}
                       />
                       <DrawingOverlay
                         externalColorPicker={showColorPickerFromButton}
@@ -881,8 +720,6 @@ export const MainScreen = () => {
 
                   <ColorScaleBar
                     orientation="vertical"
-                    matchImageHeight={forceContainForCapture}
-                    height={forceContainForCapture && actualImageHeight ? actualImageHeight : null}
                   />
                 </View>
 
@@ -900,15 +737,16 @@ export const MainScreen = () => {
                   </Text>
                 </View>
 
-                {/* Branding overlay for screenshots - shown below info bar */}
-                {showBrandingOverlay && (
+                {/* Bottom section: Menu buttons + Slider OR Branding for screenshots */}
+                {showBrandingOverlay ? (
                   <View style={styles.brandingOverlay}>
                     <Text style={styles.brandingText}>Satellite Weather</Text>
                   </View>
-                )}
+                ) : null}
               </View>
 
-              {/* Bottom row: Menu buttons + Slider - NOT captured */}
+              {/* Bottom row: Menu buttons + Slider - shown when NOT capturing */}
+              {!showBrandingOverlay && (
               <View style={styles.landscapeBottomRow}>
                 <TouchableOpacity
                   style={[styles.landscapeMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
@@ -939,6 +777,7 @@ export const MainScreen = () => {
                   <TimelineSlider orientation="horizontal" />
                 </View>
               </View>
+              )}
             </View>
 
             {/* Vertical Buttons on right - extends full height */}
@@ -967,6 +806,14 @@ export const MainScreen = () => {
                 setContentDimensions({ width, height });
               }}
             >
+              {/* Cover hamburger and star/refresh icons during capture */}
+              {showBrandingOverlay && (
+                <>
+                  <View style={styles.topLeftCover} />
+                  <View style={styles.topRightCover} />
+                </>
+              )}
+
               {/* Top info bar for screenshots */}
               {showBrandingOverlay && (
                 <View style={styles.topInfoBar}>
@@ -979,7 +826,6 @@ export const MainScreen = () => {
               <View style={styles.content}>
                 <SatelliteImageViewer
                   ref={satelliteImageViewerRef}
-                  forceContainMode={forceContainForCapture}
                 />
                 <DrawingOverlay
                   externalColorPicker={showColorPickerFromButton}
@@ -989,15 +835,16 @@ export const MainScreen = () => {
 
               <ColorScaleBar orientation="horizontal" />
 
-              {/* Branding overlay for screenshots - positioned directly below colorbar */}
-              {showBrandingOverlay && (
+              {/* Menu buttons OR Branding for screenshots */}
+              {showBrandingOverlay ? (
                 <View style={styles.brandingOverlay}>
                   <Text style={styles.brandingText}>Satellite Weather</Text>
                 </View>
-              )}
+              ) : null}
             </View>
 
-            {/* Menu buttons right beneath color bar */}
+            {/* Menu buttons right beneath color bar - shown when NOT capturing */}
+            {!showBrandingOverlay && (
             <View style={styles.portraitMenuRow}>
               <TouchableOpacity
                 style={[styles.portraitMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
@@ -1024,6 +871,7 @@ export const MainScreen = () => {
                 <Text style={styles.menuButtonText}>OVERLAYS</Text>
               </TouchableOpacity>
             </View>
+            )}
 
             <TimelineSlider orientation="horizontal" />
 
@@ -1226,5 +1074,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 16,
     fontSize: 16,
+  },
+  topLeftCover: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 60,
+    height: 60,
+    backgroundColor: '#000',
+    zIndex: 10000,
+  },
+  topRightCover: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 120,
+    height: 60,
+    backgroundColor: '#000',
+    zIndex: 10000,
   },
 });
