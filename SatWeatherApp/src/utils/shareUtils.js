@@ -116,14 +116,16 @@ export const createAnimatedGif = async (
   contentRef,
   frameCount = 10,
   delay = 500,
-  progressCallback = null
+  progressCallback = null,
+  isLandscape = false
 ) => {
   try {
     console.log(`Starting GIF creation: ${frameCount} frames at ${delay}ms interval`);
 
-    // Reduce size for faster processing
-    const gifWidth = 400;
-    const gifHeight = 400;
+    // Reduce size for faster processing, but preserve aspect ratio
+    // Landscape: wider, Portrait: taller
+    const gifWidth = isLandscape ? 600 : 400;
+    const gifHeight = isLandscape ? 400 : 400;
 
     // Step 1: Capture all frames
     if (progressCallback) progressCallback(0, frameCount, 'Capturing frames...');
@@ -167,10 +169,14 @@ export const createAnimatedGif = async (
       // Apply palette to get indexed colors
       const indexedData = applyPalette(rgbaData, palette);
 
+      // Make the last frame dwell 3x longer before looping
+      const isLastFrame = i === frameUris.length - 1;
+      const frameDelay = isLastFrame ? Math.round(delay * 3) : Math.round(delay);
+
       // Add frame to GIF
       gif.writeFrame(indexedData, width, height, {
         palette,
-        delay: Math.round(delay / 10), // Convert ms to centiseconds
+        delay: frameDelay, // gifenc expects milliseconds
       });
 
       console.log(`Processed frame ${i + 1}/${frameUris.length} for GIF`);

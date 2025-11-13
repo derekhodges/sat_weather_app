@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, LayoutAnimation, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -71,6 +71,7 @@ export const MainScreen = () => {
   const contentRef = useRef(); // Reference to content area (for screenshots without buttons)
   const satelliteImageViewerRef = useRef(); // Reference to SatelliteImageViewer for reset function
   const animationIntervalRef = useRef(null);
+  const autoRefreshIntervalRef = useRef(null);
   const [showColorPickerFromButton, setShowColorPickerFromButton] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
@@ -210,6 +211,33 @@ export const MainScreen = () => {
       }
     };
   }, [isAnimating, availableTimestamps.length, settings.animationSpeed]);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    // Always clear any existing interval first
+    if (autoRefreshIntervalRef.current) {
+      clearInterval(autoRefreshIntervalRef.current);
+      autoRefreshIntervalRef.current = null;
+    }
+
+    if (settings.autoRefresh) {
+      // Convert minutes to milliseconds
+      const intervalMs = settings.autoRefreshInterval * 60 * 1000;
+      console.log(`Auto-refresh enabled: refreshing every ${settings.autoRefreshInterval} minute(s)`);
+
+      autoRefreshIntervalRef.current = setInterval(() => {
+        console.log('Auto-refresh: Loading latest image...');
+        loadImage();
+      }, intervalMs);
+    }
+
+    return () => {
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current);
+        autoRefreshIntervalRef.current = null;
+      }
+    };
+  }, [settings.autoRefresh, settings.autoRefreshInterval]);
 
   const loadImage = async () => {
     // Don't try to load if we don't have a product selected in RGB mode
@@ -414,12 +442,16 @@ export const MainScreen = () => {
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
+                // Reset to first frame for consistent GIF capture
+                setCurrentFrameIndex(0);
+                await new Promise(resolve => setTimeout(resolve, 300));
+
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
                 if (!wasAnimating) {
                   toggleAnimation();
                   // Wait for animation to start and first frame to load
-                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
                 // Create GIF with progress tracking (captures frames while animating)
@@ -429,7 +461,8 @@ export const MainScreen = () => {
                   settings.animationSpeed,
                   (current, total, status) => {
                     console.log(status);
-                  }
+                  },
+                  isLandscape
                 );
 
                 // Stop animation if we started it
@@ -483,12 +516,16 @@ export const MainScreen = () => {
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
+                // Reset to first frame for consistent GIF capture
+                setCurrentFrameIndex(0);
+                await new Promise(resolve => setTimeout(resolve, 300));
+
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
                 if (!wasAnimating) {
                   toggleAnimation();
                   // Wait for animation to start and first frame to load
-                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
                 // Create GIF (captures frames while animating)
@@ -498,7 +535,8 @@ export const MainScreen = () => {
                   settings.animationSpeed,
                   (current, total, status) => {
                     console.log(status);
-                  }
+                  },
+                  isLandscape
                 );
 
                 // Stop animation if we started it
@@ -585,31 +623,33 @@ export const MainScreen = () => {
             <View style={styles.landscapeMainRow}>
               {/* Image - takes full space with ref for capture */}
               <View ref={contentRef} style={styles.landscapeImageArea} collapsable={false}>
-                {/* Top info bar for screenshots */}
-                {showBrandingOverlay && (
-                  <View style={styles.topInfoBar}>
-                    <Text style={styles.topInfoText}>
-                      {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
-                    </Text>
-                  </View>
-                )}
+                <View style={styles.landscapeContentColumn}>
+                  {/* Top info bar for screenshots */}
+                  {showBrandingOverlay && (
+                    <View style={styles.topInfoBar}>
+                      <Text style={styles.topInfoText}>
+                        {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
+                      </Text>
+                    </View>
+                  )}
 
-                <View style={styles.content}>
-                  <SatelliteImageViewer ref={satelliteImageViewerRef} />
-                  <DrawingOverlay
-                    externalColorPicker={showColorPickerFromButton}
-                    setExternalColorPicker={setShowColorPickerFromButton}
-                  />
+                  <View style={styles.content}>
+                    <SatelliteImageViewer ref={satelliteImageViewerRef} />
+                    <DrawingOverlay
+                      externalColorPicker={showColorPickerFromButton}
+                      setExternalColorPicker={setShowColorPickerFromButton}
+                    />
+                  </View>
+
+                  {/* Branding overlay for screenshots */}
+                  {showBrandingOverlay && (
+                    <View style={styles.brandingOverlay}>
+                      <Text style={styles.brandingText}>Satellite Weather</Text>
+                    </View>
+                  )}
                 </View>
 
-                <ColorScaleBar orientation="horizontal" />
-
-                {/* Branding overlay for screenshots - positioned directly below colorbar */}
-                {showBrandingOverlay && (
-                  <View style={styles.brandingOverlay}>
-                    <Text style={styles.brandingText}>Satellite Weather</Text>
-                  </View>
-                )}
+                <ColorScaleBar orientation="vertical" />
               </View>
 
               {/* Vertical Buttons on right */}
@@ -795,7 +835,12 @@ const styles = StyleSheet.create({
   },
   landscapeImageArea: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: '#000',
+  },
+  landscapeContentColumn: {
+    flex: 1,
+    flexDirection: 'column',
   },
   landscapeBottomRow: {
     flexDirection: 'row',

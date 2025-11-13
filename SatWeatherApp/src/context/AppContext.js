@@ -1,10 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import { DEFAULT_SATELLITE } from '../constants/satellites';
 import { DEFAULT_DOMAIN } from '../constants/domains';
 import { DEFAULT_RGB_PRODUCT } from '../constants/products';
 import { DEFAULT_CHANNEL } from '../constants/satellites';
 import { OVERLAYS } from '../constants/overlays';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const AppContext = createContext();
 
@@ -187,6 +193,8 @@ export const AppProvider = ({ children }) => {
   };
 
   const toggleOrientation = () => {
+    // Animate the layout change for smooth transition
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setLayoutOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait');
   };
 

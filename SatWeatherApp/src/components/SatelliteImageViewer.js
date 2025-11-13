@@ -28,6 +28,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const [activeSlot, setActiveSlot] = useState('A'); // 'A' or 'B'
   const [imageALoaded, setImageALoaded] = useState(false);
   const [imageBLoaded, setImageBLoaded] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if we've ever loaded an image
 
   // Opacity for crossfade
   const opacityA = useSharedValue(1);
@@ -141,6 +142,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   // Handle image load callbacks
   const handleImageALoad = () => {
     if (imageSlotA === currentImageUrl) {
+      setHasLoadedOnce(true); // Mark that we've loaded an image
       if (activeSlot === 'A') {
         // First load case - make visible instantly
         opacityA.value = 1;
@@ -172,6 +174,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
 
   const handleImageBLoad = () => {
     if (imageSlotB === currentImageUrl) {
+      setHasLoadedOnce(true); // Mark that we've loaded an image
       if (activeSlot === 'B') {
         // First load case (rare) - just make visible instantly
         opacityB.value = 1;
@@ -240,7 +243,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     resetView,
   }));
 
-  if (isLoading) {
+  if (isLoading && !hasLoadedOnce) {
+    // Only show global loading screen if we've never loaded any images
+    // This prevents the loading screen from showing during orientation changes
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#fff" />
@@ -267,7 +272,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
 
   // Show loading indicator until at least one image has actually LOADED
   // (not just assigned to a slot)
-  const isFirstLoad = !imageALoaded && !imageBLoaded;
+  const isFirstLoad = !hasLoadedOnce;
   const showLoadingOverlay = isFirstLoad;
 
   // For cover mode, we want the image to be larger so it can extend beyond the viewport
@@ -291,6 +296,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 source={{ uri: imageSlotA }}
                 style={imageStyle}
                 resizeMode="contain"
+                fadeDuration={0}
                 onLoad={handleImageALoad}
                 onError={(error) => {
                   console.error('Image A load error:', error);
@@ -306,6 +312,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 source={{ uri: imageSlotB }}
                 style={imageStyle}
                 resizeMode="contain"
+                fadeDuration={0}
                 onLoad={handleImageBLoad}
                 onError={(error) => {
                   console.error('Image B load error:', error);
