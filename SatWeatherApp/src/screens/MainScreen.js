@@ -41,6 +41,7 @@ export const MainScreen = () => {
     selectedRGBProduct,
     selectedChannel,
     viewMode,
+    currentImageUrl,
     setCurrentImageUrl,
     imageTimestamp,
     setImageTimestamp,
