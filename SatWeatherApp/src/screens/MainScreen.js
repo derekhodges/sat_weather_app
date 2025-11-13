@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, Animated, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -69,7 +69,6 @@ export const MainScreen = () => {
     setShowSettingsModal,
   } = useApp();
 
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const viewRef = useRef();
   const contentRef = useRef(); // Reference to content area (for screenshots without buttons)
   const satelliteImageViewerRef = useRef(); // Reference to SatelliteImageViewer for reset function
@@ -83,11 +82,7 @@ export const MainScreen = () => {
   // Opacity animation for smooth orientation transitions
   const contentOpacity = useRef(new Animated.Value(1)).current;
 
-  // Calculate proper width for landscape capture area (image should be square-ish, constrained by height)
   const isLandscape = layoutOrientation === 'landscape';
-  // In landscape, subtract TopBar (~50px), info bar (~40px), bottom row (~55px), and button width (~56px)
-  // This gives us the available height for the image area
-  const landscapeCaptureWidth = isLandscape ? Math.min(windowHeight - 145, windowWidth - 56) : windowWidth;
 
   // Animate content fade on orientation change
   useEffect(() => {
@@ -663,7 +658,7 @@ export const MainScreen = () => {
             <View style={styles.landscapeLeftColumn}>
               <View
                 ref={contentRef}
-                style={[styles.landscapeCaptureWrapper, { width: landscapeCaptureWidth }]}
+                style={styles.landscapeCaptureWrapper}
                 collapsable={false}
                 onLayout={(event) => {
                   const { width, height } = event.nativeEvent.layout;
@@ -911,15 +906,15 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   landscapeCaptureWrapper: {
+    flex: 1,
     backgroundColor: '#000',
     overflow: 'hidden',
-    alignSelf: 'flex-start',
   },
   landscapeImageArea: {
+    flex: 1,
     flexDirection: 'row',
     backgroundColor: '#000',
     overflow: 'hidden',
-    flexGrow: 1,
   },
   landscapeContentColumn: {
     flex: 1,
