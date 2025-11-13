@@ -736,10 +736,7 @@ export const MainScreen = () => {
 
                 {/* Image area with colorbar */}
                 <View
-                  style={[
-                    styles.landscapeImageArea,
-                    forceContainForCapture && { flex: 0, alignSelf: 'flex-start' }
-                  ]}
+                  style={styles.landscapeImageArea}
                   onLayout={(event) => {
                     if (forceContainForCapture) {
                       const { width, height } = event.nativeEvent.layout;
