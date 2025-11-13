@@ -461,7 +461,8 @@ export const MainScreen = () => {
                   settings.animationSpeed,
                   (current, total, status) => {
                     console.log(status);
-                  }
+                  },
+                  isLandscape
                 );
 
                 // Stop animation if we started it
@@ -534,7 +535,8 @@ export const MainScreen = () => {
                   settings.animationSpeed,
                   (current, total, status) => {
                     console.log(status);
-                  }
+                  },
+                  isLandscape
                 );
 
                 // Stop animation if we started it

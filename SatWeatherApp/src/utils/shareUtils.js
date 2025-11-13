@@ -116,14 +116,16 @@ export const createAnimatedGif = async (
   contentRef,
   frameCount = 10,
   delay = 500,
-  progressCallback = null
+  progressCallback = null,
+  isLandscape = false
 ) => {
   try {
     console.log(`Starting GIF creation: ${frameCount} frames at ${delay}ms interval`);
 
-    // Reduce size for faster processing
-    const gifWidth = 400;
-    const gifHeight = 400;
+    // Reduce size for faster processing, but preserve aspect ratio
+    // Landscape: wider, Portrait: taller
+    const gifWidth = isLandscape ? 600 : 400;
+    const gifHeight = isLandscape ? 400 : 400;
 
     // Step 1: Capture all frames
     if (progressCallback) progressCallback(0, frameCount, 'Capturing frames...');
