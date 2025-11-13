@@ -77,9 +77,7 @@ export const MainScreen = () => {
   const [showColorPickerFromButton, setShowColorPickerFromButton] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
-
-  // Ref to track orientation change timeout
-  const orientationTimeoutRef = useRef(null);
+  const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
 
   // Listen for orientation changes to sync layout
   useEffect(() => {
@@ -89,27 +87,17 @@ export const MainScreen = () => {
         orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
         orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
 
-      // Clear any pending orientation change
-      if (orientationTimeoutRef.current) {
-        clearTimeout(orientationTimeoutRef.current);
+      // Sync layout orientation with device orientation IMMEDIATELY
+      // This ensures layout changes during rotation animation, not after
+      if (isDeviceLandscape && layoutOrientation !== 'landscape') {
+        toggleOrientation();
+      } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
+        toggleOrientation();
       }
-
-      // Delay layout change until AFTER native rotation animation completes
-      orientationTimeoutRef.current = setTimeout(() => {
-        // Sync layout orientation with device orientation
-        if (isDeviceLandscape && layoutOrientation !== 'landscape') {
-          toggleOrientation();
-        } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
-          toggleOrientation();
-        }
-      }, 250); // Wait for native rotation animation to complete
     });
 
     return () => {
       ScreenOrientation.removeOrientationChangeListener(subscription);
-      if (orientationTimeoutRef.current) {
-        clearTimeout(orientationTimeoutRef.current);
-      }
     };
   }, [layoutOrientation, toggleOrientation]);
 
@@ -399,8 +387,8 @@ export const MainScreen = () => {
       // Short delay to let overlay render (no animation to wait for)
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Capture the content area (excluding buttons)
-      const uri = await captureScreenshot(contentRef);
+      // Capture the content area with explicit dimensions to match viewport
+      const uri = await captureScreenshot(contentRef, contentDimensions.width > 0 ? contentDimensions : {});
 
       // NOW show loading while saving
       setIsLoading(true);
@@ -653,7 +641,15 @@ export const MainScreen = () => {
           <View style={styles.landscapeMainContainer}>
             {/* Left column: image area with controls below - wrapped in capture ref */}
             <View style={styles.landscapeLeftColumn}>
-              <View ref={contentRef} style={styles.landscapeCaptureWrapper} collapsable={false}>
+              <View
+                ref={contentRef}
+                style={styles.landscapeCaptureWrapper}
+                collapsable={false}
+                onLayout={(event) => {
+                  const { width, height } = event.nativeEvent.layout;
+                  setContentDimensions({ width, height });
+                }}
+              >
                 {/* Top info bar for screenshots */}
                 {showBrandingOverlay && (
                   <View style={styles.topInfoBar}>
@@ -750,7 +746,15 @@ export const MainScreen = () => {
           // Portrait layout: Image → ColorBar → Menu Buttons → Slider → Icon Buttons
           <>
             {/* Content area for screenshot capture */}
-            <View ref={contentRef} style={styles.captureArea} collapsable={false}>
+            <View
+              ref={contentRef}
+              style={styles.captureArea}
+              collapsable={false}
+              onLayout={(event) => {
+                const { width, height } = event.nativeEvent.layout;
+                setContentDimensions({ width, height });
+              }}
+            >
               {/* Top info bar for screenshots */}
               {showBrandingOverlay && (
                 <View style={styles.topInfoBar}>

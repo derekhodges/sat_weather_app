@@ -9,9 +9,10 @@ import UPNG from 'upng-js';
 /**
  * Captures a screenshot of the content view (excluding buttons and status bar)
  * @param {Object} contentRef - Reference to the content view to capture
+ * @param {Object} options - Optional dimensions {width, height}
  * @returns {Promise<string>} URI of the captured image
  */
-export const captureScreenshot = async (contentRef) => {
+export const captureScreenshot = async (contentRef, options = {}) => {
   try {
     // Wait for layout to complete using requestAnimationFrame
     await new Promise(resolve => {
@@ -23,10 +24,18 @@ export const captureScreenshot = async (contentRef) => {
       }
     });
 
-    const uri = await captureRef(contentRef, {
+    const captureOptions = {
       format: 'png',
       quality: 1.0,
-    });
+    };
+
+    // Add explicit dimensions if provided to ensure we capture exact viewport size
+    if (options.width && options.height) {
+      captureOptions.width = options.width;
+      captureOptions.height = options.height;
+    }
+
+    const uri = await captureRef(contentRef, captureOptions);
     return uri;
   } catch (error) {
     console.error('Error capturing screenshot:', error);
