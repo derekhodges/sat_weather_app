@@ -19,7 +19,7 @@ import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
-  const { currentImageUrl, isLoading, error, settings } = useApp();
+  const { currentImageUrl, isLoading, error, settings, hasLoadedOnce, setHasLoadedOnce } = useApp();
 
   // Dual image state to prevent black flicker
   // We keep two images and swap between them
@@ -28,7 +28,6 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const [activeSlot, setActiveSlot] = useState('A'); // 'A' or 'B'
   const [imageALoaded, setImageALoaded] = useState(false);
   const [imageBLoaded, setImageBLoaded] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if we've ever loaded an image
 
   // Opacity for crossfade
   const opacityA = useSharedValue(1);

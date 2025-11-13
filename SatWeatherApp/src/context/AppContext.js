@@ -35,6 +35,7 @@ export const AppProvider = ({ children }) => {
   const [imageTimestamp, setImageTimestamp] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if any image has loaded
 
   // Animation
   const [isAnimating, setIsAnimating] = useState(false);
@@ -302,6 +303,7 @@ export const AppProvider = ({ children }) => {
     imageTimestamp,
     isLoading,
     error,
+    hasLoadedOnce,
     isAnimating,
     availableTimestamps,
     currentFrameIndex,
@@ -329,6 +331,7 @@ export const AppProvider = ({ children }) => {
     setImageTimestamp,
     setIsLoading,
     setError,
+    setHasLoadedOnce,
     toggleAnimation,
     setAvailableTimestamps,
     setCurrentFrameIndex,

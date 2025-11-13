@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   // Vertical (landscape) styles
   containerVertical: {
     backgroundColor: '#1a1a1a',
-    width: 55,
+    width: 36,
     flexDirection: 'column',
     justifyContent: 'space-between',
   },
@@ -113,8 +113,9 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     flex: 1,
     width: 24,
-    alignSelf: 'center',
+    alignSelf: 'flex-start',
     marginVertical: 8,
+    marginLeft: 0,
   },
   gradientSegmentVertical: {
     flex: 1,
