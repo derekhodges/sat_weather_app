@@ -42,6 +42,7 @@ export const MainScreen = () => {
     selectedChannel,
     viewMode,
     setCurrentImageUrl,
+    imageTimestamp,
     setImageTimestamp,
     setIsLoading,
     setError,
