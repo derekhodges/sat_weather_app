@@ -11,22 +11,21 @@ export const ColorScaleBar = ({ orientation = 'horizontal' }) => {
 
   return (
     <View style={isVertical ? styles.containerVertical : styles.container}>
-      {/* Info section */}
-      <View style={isVertical ? styles.infoVertical : styles.infoRow}>
-        <Text
-          style={isVertical ? styles.channelInfoVertical : styles.channelInfo}
-          numberOfLines={isVertical ? 3 : 1}
-        >
-          {viewMode === 'rgb'
-            ? selectedRGBProduct?.name || 'RGB Product'
-            : selectedChannel
-            ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
-            : 'Select a channel or RGB product'}
-        </Text>
-        <Text style={isVertical ? styles.timestampVertical : styles.timestamp}>
-          {formatTimestamp(imageTimestamp, settings.useLocalTime)}
-        </Text>
-      </View>
+      {/* Info section - only show in horizontal (portrait) mode */}
+      {!isVertical && (
+        <View style={styles.infoRow}>
+          <Text style={styles.channelInfo} numberOfLines={1}>
+            {viewMode === 'rgb'
+              ? selectedRGBProduct?.name || 'RGB Product'
+              : selectedChannel
+              ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
+              : 'Select a channel or RGB product'}
+          </Text>
+          <Text style={styles.timestamp}>
+            {formatTimestamp(imageTimestamp, settings.useLocalTime)}
+          </Text>
+        </View>
+      )}
 
       {/* Color gradient bar */}
       <View style={isVertical ? styles.gradientBarVertical : styles.gradientBar}>
@@ -82,12 +81,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Vertical (landscape) styles
+  // Vertical (landscape) styles - just the gradient bar
   containerVertical: {
     backgroundColor: '#1a1a1a',
-    width: 55,
+    width: 28,
     flexDirection: 'column',
-    justifyContent: 'space-between',
   },
   infoVertical: {
     paddingHorizontal: 6,
@@ -112,9 +110,7 @@ const styles = StyleSheet.create({
   gradientBarVertical: {
     flexDirection: 'column',
     flex: 1,
-    width: 24,
-    alignSelf: 'center',
-    marginVertical: 8,
+    width: '100%',
   },
   gradientSegmentVertical: {
     flex: 1,

@@ -122,12 +122,7 @@ export const createAnimatedGif = async (
   try {
     console.log(`Starting GIF creation: ${frameCount} frames at ${delay}ms interval`);
 
-    // Reduce size for faster processing, but preserve aspect ratio
-    // Landscape: wider, Portrait: taller
-    const gifWidth = isLandscape ? 600 : 400;
-    const gifHeight = isLandscape ? 400 : 400;
-
-    // Step 1: Capture all frames
+    // Step 1: Capture all frames at natural screen size
     if (progressCallback) progressCallback(0, frameCount, 'Capturing frames...');
 
     const frameUris = [];
@@ -135,8 +130,7 @@ export const createAnimatedGif = async (
       const uri = await captureRef(contentRef, {
         format: 'png',
         quality: 0.8,
-        width: gifWidth,
-        height: gifHeight,
+        // No width/height - capture at actual content size to avoid gaps
       });
 
       frameUris.push(uri);
