@@ -170,7 +170,7 @@ export const createAnimatedGif = async (
       // Add frame to GIF
       gif.writeFrame(indexedData, width, height, {
         palette,
-        delay: Math.round(delay / 10), // Convert ms to centiseconds
+        delay: Math.round(delay), // gifenc expects milliseconds
       });
 
       console.log(`Processed frame ${i + 1}/${frameUris.length} for GIF`);

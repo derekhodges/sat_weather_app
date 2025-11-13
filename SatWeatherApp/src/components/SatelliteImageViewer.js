@@ -291,6 +291,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 source={{ uri: imageSlotA }}
                 style={imageStyle}
                 resizeMode="contain"
+                fadeDuration={0}
                 onLoad={handleImageALoad}
                 onError={(error) => {
                   console.error('Image A load error:', error);
@@ -306,6 +307,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 source={{ uri: imageSlotB }}
                 style={imageStyle}
                 resizeMode="contain"
+                fadeDuration={0}
                 onLoad={handleImageBLoad}
                 onError={(error) => {
                   console.error('Image B load error:', error);

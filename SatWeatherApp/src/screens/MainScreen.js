@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, LayoutAnimation, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -71,6 +71,7 @@ export const MainScreen = () => {
   const contentRef = useRef(); // Reference to content area (for screenshots without buttons)
   const satelliteImageViewerRef = useRef(); // Reference to SatelliteImageViewer for reset function
   const animationIntervalRef = useRef(null);
+  const autoRefreshIntervalRef = useRef(null);
   const [showColorPickerFromButton, setShowColorPickerFromButton] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
@@ -210,6 +211,33 @@ export const MainScreen = () => {
       }
     };
   }, [isAnimating, availableTimestamps.length, settings.animationSpeed]);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    // Always clear any existing interval first
+    if (autoRefreshIntervalRef.current) {
+      clearInterval(autoRefreshIntervalRef.current);
+      autoRefreshIntervalRef.current = null;
+    }
+
+    if (settings.autoRefresh) {
+      // Convert minutes to milliseconds
+      const intervalMs = settings.autoRefreshInterval * 60 * 1000;
+      console.log(`Auto-refresh enabled: refreshing every ${settings.autoRefreshInterval} minute(s)`);
+
+      autoRefreshIntervalRef.current = setInterval(() => {
+        console.log('Auto-refresh: Loading latest image...');
+        loadImage();
+      }, intervalMs);
+    }
+
+    return () => {
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current);
+        autoRefreshIntervalRef.current = null;
+      }
+    };
+  }, [settings.autoRefresh, settings.autoRefreshInterval]);
 
   const loadImage = async () => {
     // Don't try to load if we don't have a product selected in RGB mode
@@ -602,9 +630,9 @@ export const MainScreen = () => {
                   />
                 </View>
 
-                <ColorScaleBar orientation="horizontal" />
+                <ColorScaleBar orientation="vertical" />
 
-                {/* Branding overlay for screenshots - positioned directly below colorbar */}
+                {/* Branding overlay for screenshots - positioned below colorbar in landscape */}
                 {showBrandingOverlay && (
                   <View style={styles.brandingOverlay}>
                     <Text style={styles.brandingText}>Satellite Weather</Text>
