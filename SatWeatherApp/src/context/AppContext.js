@@ -194,8 +194,22 @@ export const AppProvider = ({ children }) => {
   };
 
   const toggleOrientation = () => {
-    // Animate the layout change for smooth transition
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // Animate the layout change for smooth, less jarring transition
+    LayoutAnimation.configureNext({
+      duration: 350,
+      update: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+    });
     setLayoutOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait');
   };
 

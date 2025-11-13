@@ -123,8 +123,8 @@ export const createAnimatedGif = async (
     console.log(`Starting GIF creation: ${frameCount} frames at ${delay}ms interval`);
 
     // Reduce size for faster processing, but preserve aspect ratio
-    // Landscape: wider, Portrait: taller
-    const gifWidth = isLandscape ? 600 : 400;
+    // Landscape: 436px accounts for square image (400px) + colorbar (36px) to eliminate gap
+    const gifWidth = isLandscape ? 436 : 400;
     const gifHeight = isLandscape ? 400 : 400;
 
     // Step 1: Capture all frames
