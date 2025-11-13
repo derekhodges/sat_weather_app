@@ -80,7 +80,6 @@ export const MainScreen = () => {
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
   const [isRotating, setIsRotating] = useState(false); // Track rotation state
   const [forceContainForCapture, setForceContainForCapture] = useState(false); // Force contain mode during screenshot
-  const [captureImageDimensions, setCaptureImageDimensions] = useState(null); // Track image dimensions during capture
 
   const isLandscape = layoutOrientation === 'landscape';
 
@@ -404,15 +403,14 @@ export const MainScreen = () => {
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Longer delay to let layout measure and adjust to exact dimensions
-      await new Promise(resolve => setTimeout(resolve, 250));
+      // Short delay to let overlay and layout changes render
+      await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Capture the content area - should now include image + UI elements with exact dimensions
+      // Capture the content area - should now include image + UI elements
       const uri = await captureScreenshot(contentRef);
 
-      // Reset contain mode and dimensions
+      // Reset contain mode
       setForceContainForCapture(false);
-      setCaptureImageDimensions(null);
 
       // NOW show loading while saving
       setIsLoading(true);
@@ -428,7 +426,6 @@ export const MainScreen = () => {
       console.error('Error saving screenshot:', error);
       setShowBrandingOverlay(false);
       setForceContainForCapture(false);
-      setCaptureImageDimensions(null);
       setIsLoading(false);
       setError(error.message || 'Unable to save screenshot');
     }
@@ -447,15 +444,14 @@ export const MainScreen = () => {
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the overlay and layout measure and adjust
-      await new Promise(resolve => setTimeout(resolve, 250));
+      // Delay to let the overlay and layout changes render
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       // Capture the content area
       const uri = await captureScreenshot(contentRef);
 
-      // Reset contain mode and dimensions
+      // Reset contain mode
       setForceContainForCapture(false);
-      setCaptureImageDimensions(null);
 
       // NOW show loading while sharing
       setIsLoading(true);
@@ -469,7 +465,6 @@ export const MainScreen = () => {
       console.error('Error sharing image:', error);
       setShowBrandingOverlay(false);
       setForceContainForCapture(false);
-      setCaptureImageDimensions(null);
       setIsLoading(false);
       setError(error.message || 'Unable to share image');
     }
@@ -501,7 +496,7 @@ export const MainScreen = () => {
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 250));
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -529,7 +524,6 @@ export const MainScreen = () => {
 
                 setShowBrandingOverlay(false);
                 setForceContainForCapture(false);
-                setCaptureImageDimensions(null);
 
                 // NOW show loading while saving to library
                 setIsLoading(true);
@@ -547,7 +541,6 @@ export const MainScreen = () => {
                 console.error('Error creating GIF:', error);
                 setShowBrandingOverlay(false);
                 setForceContainForCapture(false);
-                setCaptureImageDimensions(null);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create GIF');
               }
@@ -587,7 +580,7 @@ export const MainScreen = () => {
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 250));
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -615,7 +608,6 @@ export const MainScreen = () => {
 
                 setShowBrandingOverlay(false);
                 setForceContainForCapture(false);
-                setCaptureImageDimensions(null);
 
                 // NOW show loading while sharing
                 setIsLoading(true);
@@ -628,7 +620,6 @@ export const MainScreen = () => {
                 console.error('Error creating/sharing GIF:', error);
                 setShowBrandingOverlay(false);
                 setForceContainForCapture(false);
-                setCaptureImageDimensions(null);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create or share GIF');
               }
@@ -711,14 +702,7 @@ export const MainScreen = () => {
             <View style={styles.landscapeLeftColumn}>
               <View
                 ref={contentRef}
-                style={[
-                  styles.landscapeCaptureWrapper,
-                  forceContainForCapture && captureImageDimensions && {
-                    flex: 0,
-                    alignSelf: 'flex-start',
-                    width: captureImageDimensions.width, // exact width of image + colorbar
-                  }
-                ]}
+                style={styles.landscapeCaptureWrapper}
                 collapsable={false}
                 onLayout={(event) => {
                   const { width, height } = event.nativeEvent.layout;
@@ -735,15 +719,7 @@ export const MainScreen = () => {
                 )}
 
                 {/* Image area with colorbar */}
-                <View
-                  style={styles.landscapeImageArea}
-                  onLayout={(event) => {
-                    if (forceContainForCapture) {
-                      const { width, height } = event.nativeEvent.layout;
-                      setCaptureImageDimensions({ width, height });
-                    }
-                  }}
-                >
+                <View style={styles.landscapeImageArea}>
                   <View style={styles.landscapeContentColumn}>
                     <View style={styles.content}>
                       <SatelliteImageViewer
