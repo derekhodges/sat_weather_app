@@ -4,6 +4,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 
 export const BottomControls = ({
+  onInspectorPress,
   onLocationPress,
   onPlayPress,
   onEditPress,
@@ -13,6 +14,7 @@ export const BottomControls = ({
   onResetView,
   orientation = 'portrait',
   isDrawingMode,
+  isInspectorMode,
 }) => {
   const { isAnimating } = useApp();
   const isLandscape = orientation === 'landscape';
@@ -21,14 +23,12 @@ export const BottomControls = ({
 
   return (
     <View style={isLandscape ? styles.containerVertical : styles.container}>
-      {/* Satellite/Change satellite button */}
+      {/* Inspector button - analyze colors on image */}
       <TouchableOpacity
-        style={buttonStyle}
-        onPress={() => {
-          // Will be handled by top bar satellite selector
-        }}
+        style={[buttonStyle, isInspectorMode && styles.activeButton]}
+        onPress={onInspectorPress}
       >
-        <MaterialCommunityIcons name="radar" size={iconSize} color="#fff" />
+        <MaterialCommunityIcons name="eyedropper" size={iconSize} color="#fff" />
       </TouchableOpacity>
 
       {/* Location button */}

@@ -2,12 +2,21 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { formatTimestamp } from '../utils/imageService';
+import { shouldShowColorbar } from '../utils/colorbarUtils';
 
 const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight = false, height = null }) => {
   const { selectedChannel, selectedRGBProduct, viewMode, imageTimestamp, settings } =
     useApp();
 
   const isVertical = orientation === 'vertical';
+
+  // Check if colorbar should be displayed for current product/channel
+  const showColorbar = shouldShowColorbar(viewMode, selectedChannel, selectedRGBProduct);
+
+  // Don't render colorbar if it shouldn't be shown for this product/channel
+  if (!showColorbar) {
+    return null;
+  }
 
   // Memoize gradient segments to prevent recreation on every render
   const gradientSegments = useMemo(() => {

@@ -17,10 +17,23 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
+import { mapGradientToValue } from '../utils/colorbarUtils';
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { forceContainMode = false } = props;
-  const { currentImageUrl, isLoading, error, settings, hasLoadedOnce, setHasLoadedOnce } = useApp();
+  const {
+    currentImageUrl,
+    isLoading,
+    error,
+    settings,
+    hasLoadedOnce,
+    setHasLoadedOnce,
+    isInspectorMode,
+    setInspectorValue,
+    viewMode,
+    selectedChannel,
+    selectedRGBProduct,
+  } = useApp();
 
   // Dual image state to prevent black flicker
   // We keep two images and swap between them
@@ -115,8 +128,41 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       savedTranslateY.value = translateY.value;
     });
 
-  // Combined gesture
-  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+  // Tap gesture for inspector mode - analyze color at touch point
+  const handleInspectorTap = (x, y) => {
+    // For now, use a simple gradient mapping based on y-coordinate
+    // In the future, this can be enhanced to sample actual pixel data or use data layers
+    const percentage = Math.max(0, Math.min(100, (y / screenHeight) * 100));
+
+    // Get the product for value mapping
+    const product = viewMode === 'channel' ? selectedChannel : selectedRGBProduct;
+
+    // Map the gradient position to a value (temperature, etc.)
+    const valueInfo = mapGradientToValue(percentage, viewMode, product);
+
+    // Set the inspector value with position and value info
+    setInspectorValue({
+      x,
+      y,
+      label: valueInfo.label,
+      color: `hsl(${240 - (percentage / 100 * 240)}, 100%, 50%)`, // Match colorbar gradient
+      percentage,
+      ...valueInfo,
+    });
+  };
+
+  const tapGesture = Gesture.Tap()
+    .enabled(isInspectorMode)
+    .onEnd((event) => {
+      runOnJS(handleInspectorTap)(event.x, event.y);
+    });
+
+  // Combined gesture - include tap for inspector mode
+  const composedGesture = Gesture.Simultaneous(
+    pinchGesture,
+    panGesture,
+    tapGesture
+  );
 
   // Handle URL changes - load into inactive slot and swap when ready
   useEffect(() => {
