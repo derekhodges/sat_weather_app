@@ -687,14 +687,6 @@ export const MainScreen = () => {
                   setContentDimensions({ width, height });
                 }}
               >
-                {/* Cover hamburger and star/refresh icons during capture */}
-                {showBrandingOverlay && (
-                  <>
-                    <View style={styles.topLeftCover} />
-                    <View style={styles.topRightCover} />
-                  </>
-                )}
-
                 {/* Top info bar for screenshots */}
                 {showBrandingOverlay && (
                   <View style={styles.topInfoBar}>
@@ -806,14 +798,6 @@ export const MainScreen = () => {
                 setContentDimensions({ width, height });
               }}
             >
-              {/* Cover hamburger and star/refresh icons during capture */}
-              {showBrandingOverlay && (
-                <>
-                  <View style={styles.topLeftCover} />
-                  <View style={styles.topRightCover} />
-                </>
-              )}
-
               {/* Top info bar for screenshots */}
               {showBrandingOverlay && (
                 <View style={styles.topInfoBar}>
@@ -1074,23 +1058,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 16,
     fontSize: 16,
-  },
-  topLeftCover: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 50,
-    height: 50,
-    backgroundColor: '#000',
-    zIndex: 10000,
-  },
-  topRightCover: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 80,
-    height: 50,
-    backgroundColor: '#000',
-    zIndex: 10000,
   },
 });
