@@ -24,18 +24,29 @@ export const captureScreenshot = async (contentRef, options = {}) => {
       }
     });
 
-    const captureOptions = {
+    // Capture at full quality without dimension constraints first
+    const uri = await captureRef(contentRef, {
       format: 'png',
       quality: 1.0,
-    };
+    });
 
-    // Add explicit dimensions if provided to ensure we capture exact viewport size
+    // If dimensions are provided, crop/resize the captured image to exact viewport size
     if (options.width && options.height) {
-      captureOptions.width = options.width;
-      captureOptions.height = options.height;
+      const manipResult = await ImageManipulator.manipulateAsync(
+        uri,
+        [
+          {
+            resize: {
+              width: Math.round(options.width),
+              height: Math.round(options.height),
+            }
+          }
+        ],
+        { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+      );
+      return manipResult.uri;
     }
 
-    const uri = await captureRef(contentRef, captureOptions);
     return uri;
   } catch (error) {
     console.error('Error capturing screenshot:', error);

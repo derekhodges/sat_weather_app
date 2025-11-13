@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, Animated } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, Animated, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -69,6 +69,7 @@ export const MainScreen = () => {
     setShowSettingsModal,
   } = useApp();
 
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const viewRef = useRef();
   const contentRef = useRef(); // Reference to content area (for screenshots without buttons)
   const satelliteImageViewerRef = useRef(); // Reference to SatelliteImageViewer for reset function
@@ -78,6 +79,26 @@ export const MainScreen = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
+
+  // Opacity animation for smooth orientation transitions
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+
+  // Calculate proper width for landscape capture area (image should be square-ish, constrained by height)
+  const isLandscape = layoutOrientation === 'landscape';
+  // In landscape, subtract TopBar (~50px), info bar (~40px), bottom row (~55px), and button width (~56px)
+  // This gives us the available height for the image area
+  const landscapeCaptureWidth = isLandscape ? Math.min(windowHeight - 145, windowWidth - 56) : windowWidth;
+
+  // Animate content fade on orientation change
+  useEffect(() => {
+    // Quick fade out and back in when orientation changes
+    contentOpacity.setValue(0);
+    Animated.timing(contentOpacity, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+  }, [layoutOrientation]);
 
   // Listen for orientation changes to sync layout
   useEffect(() => {
@@ -636,6 +657,7 @@ export const MainScreen = () => {
           onFavoritesPress={handleFavoritesPress}
         />
 
+        <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
         {isLandscape ? (
           // Landscape layout: Image | Buttons (vertical) on right, with controls only as wide as image
           <View style={styles.landscapeMainContainer}>
@@ -643,7 +665,7 @@ export const MainScreen = () => {
             <View style={styles.landscapeLeftColumn}>
               <View
                 ref={contentRef}
-                style={styles.landscapeCaptureWrapper}
+                style={[styles.landscapeCaptureWrapper, { width: landscapeCaptureWidth }]}
                 collapsable={false}
                 onLayout={(event) => {
                   const { width, height } = event.nativeEvent.layout;
@@ -825,6 +847,7 @@ export const MainScreen = () => {
             />
           </>
         )}
+        </Animated.View>
 
         {/* MenuSelector - shows menu buttons in portrait, panels in both modes */}
         <MenuSelector />
@@ -890,15 +913,15 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   landscapeCaptureWrapper: {
-    flex: 1,
     backgroundColor: '#000',
     overflow: 'hidden',
+    alignSelf: 'flex-start',
   },
   landscapeImageArea: {
-    flex: 1,
     flexDirection: 'row',
     backgroundColor: '#000',
     overflow: 'hidden',
+    flexGrow: 1,
   },
   landscapeContentColumn: {
     flex: 1,
