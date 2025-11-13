@@ -240,7 +240,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     resetView,
   }));
 
-  if (isLoading) {
+  if (isLoading && !imageALoaded && !imageBLoaded) {
+    // Only show global loading screen if we don't have any images loaded yet
+    // This prevents the loading screen from showing during orientation changes
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#fff" />

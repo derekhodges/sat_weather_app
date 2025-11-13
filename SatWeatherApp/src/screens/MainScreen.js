@@ -442,12 +442,16 @@ export const MainScreen = () => {
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
+                // Reset to first frame for consistent GIF capture
+                setCurrentFrameIndex(0);
+                await new Promise(resolve => setTimeout(resolve, 300));
+
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
                 if (!wasAnimating) {
                   toggleAnimation();
                   // Wait for animation to start and first frame to load
-                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
                 // Create GIF with progress tracking (captures frames while animating)
@@ -511,12 +515,16 @@ export const MainScreen = () => {
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
+                // Reset to first frame for consistent GIF capture
+                setCurrentFrameIndex(0);
+                await new Promise(resolve => setTimeout(resolve, 300));
+
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
                 if (!wasAnimating) {
                   toggleAnimation();
                   // Wait for animation to start and first frame to load
-                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
                 // Create GIF (captures frames while animating)
@@ -613,31 +621,33 @@ export const MainScreen = () => {
             <View style={styles.landscapeMainRow}>
               {/* Image - takes full space with ref for capture */}
               <View ref={contentRef} style={styles.landscapeImageArea} collapsable={false}>
-                {/* Top info bar for screenshots */}
-                {showBrandingOverlay && (
-                  <View style={styles.topInfoBar}>
-                    <Text style={styles.topInfoText}>
-                      {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
-                    </Text>
-                  </View>
-                )}
+                <View style={styles.landscapeContentColumn}>
+                  {/* Top info bar for screenshots */}
+                  {showBrandingOverlay && (
+                    <View style={styles.topInfoBar}>
+                      <Text style={styles.topInfoText}>
+                        {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
+                      </Text>
+                    </View>
+                  )}
 
-                <View style={styles.content}>
-                  <SatelliteImageViewer ref={satelliteImageViewerRef} />
-                  <DrawingOverlay
-                    externalColorPicker={showColorPickerFromButton}
-                    setExternalColorPicker={setShowColorPickerFromButton}
-                  />
+                  <View style={styles.content}>
+                    <SatelliteImageViewer ref={satelliteImageViewerRef} />
+                    <DrawingOverlay
+                      externalColorPicker={showColorPickerFromButton}
+                      setExternalColorPicker={setShowColorPickerFromButton}
+                    />
+                  </View>
+
+                  {/* Branding overlay for screenshots */}
+                  {showBrandingOverlay && (
+                    <View style={styles.brandingOverlay}>
+                      <Text style={styles.brandingText}>Satellite Weather</Text>
+                    </View>
+                  )}
                 </View>
 
                 <ColorScaleBar orientation="vertical" />
-
-                {/* Branding overlay for screenshots - positioned below colorbar in landscape */}
-                {showBrandingOverlay && (
-                  <View style={styles.brandingOverlay}>
-                    <Text style={styles.brandingText}>Satellite Weather</Text>
-                  </View>
-                )}
               </View>
 
               {/* Vertical Buttons on right */}
@@ -823,7 +833,12 @@ const styles = StyleSheet.create({
   },
   landscapeImageArea: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: '#000',
+  },
+  landscapeContentColumn: {
+    flex: 1,
+    flexDirection: 'column',
   },
   landscapeBottomRow: {
     flexDirection: 'row',

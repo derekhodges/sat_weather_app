@@ -167,10 +167,14 @@ export const createAnimatedGif = async (
       // Apply palette to get indexed colors
       const indexedData = applyPalette(rgbaData, palette);
 
+      // Make the last frame dwell 3x longer before looping
+      const isLastFrame = i === frameUris.length - 1;
+      const frameDelay = isLastFrame ? Math.round(delay * 3) : Math.round(delay);
+
       // Add frame to GIF
       gif.writeFrame(indexedData, width, height, {
         palette,
-        delay: Math.round(delay), // gifenc expects milliseconds
+        delay: frameDelay, // gifenc expects milliseconds
       });
 
       console.log(`Processed frame ${i + 1}/${frameUris.length} for GIF`);
