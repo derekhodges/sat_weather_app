@@ -237,9 +237,20 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     savedTranslateY.value = 0;
   };
 
-  // Expose reset function via ref for parent component
+  // Reset zoom/pan instantly (for screenshots)
+  const resetViewInstant = () => {
+    scale.value = 1;
+    savedScale.value = 1;
+    translateX.value = 0;
+    translateY.value = 0;
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+  };
+
+  // Expose reset functions via ref for parent component
   useImperativeHandle(ref, () => ({
     resetView,
+    resetViewInstant,
   }));
 
   if (isLoading && !hasLoadedOnce) {
@@ -298,7 +309,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 fadeDuration={0}
                 onLoad={handleImageALoad}
                 onError={(error) => {
-                  console.error('Image A load error:', error);
+                  console.error('Image A load error:', error.nativeEvent?.error || 'Unknown error');
                 }}
               />
             </Animated.View>
@@ -314,7 +325,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 fadeDuration={0}
                 onLoad={handleImageBLoad}
                 onError={(error) => {
-                  console.error('Image B load error:', error);
+                  console.error('Image B load error:', error.nativeEvent?.error || 'Unknown error');
                 }}
               />
             </Animated.View>

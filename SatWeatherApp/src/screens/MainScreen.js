@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, LayoutAnimation, UIManager } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -77,6 +77,23 @@ export const MainScreen = () => {
   const [showColorPickerFromButton, setShowColorPickerFromButton] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
+  const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
+
+  // Opacity animation for smooth orientation transitions
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+
+  const isLandscape = layoutOrientation === 'landscape';
+
+  // Animate content fade on orientation change
+  useEffect(() => {
+    // Quick fade out and back in when orientation changes
+    contentOpacity.setValue(0);
+    Animated.timing(contentOpacity, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+  }, [layoutOrientation]);
 
   // Listen for orientation changes to sync layout
   useEffect(() => {
@@ -86,7 +103,8 @@ export const MainScreen = () => {
         orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
         orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
 
-      // Sync layout orientation with device orientation
+      // Sync layout orientation with device orientation IMMEDIATELY
+      // This ensures layout changes during rotation animation, not after
       if (isDeviceLandscape && layoutOrientation !== 'landscape') {
         toggleOrientation();
       } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
@@ -374,14 +392,19 @@ export const MainScreen = () => {
 
   const handleSaveScreenshot = async () => {
     try {
+      // Reset zoom/pan to default view INSTANTLY (no animation)
+      if (satelliteImageViewerRef.current?.resetViewInstant) {
+        satelliteImageViewerRef.current.resetViewInstant();
+      }
+
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the overlay render
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Short delay to let overlay render (no animation to wait for)
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Capture the content area (excluding buttons)
-      const uri = await captureScreenshot(contentRef);
+      // Capture the content area with explicit dimensions to match viewport
+      const uri = await captureScreenshot(contentRef, contentDimensions.width > 0 ? contentDimensions : {});
 
       // NOW show loading while saving
       setIsLoading(true);
@@ -441,12 +464,17 @@ export const MainScreen = () => {
             text: 'Create GIF',
             onPress: async () => {
               try {
+                // Reset zoom/pan to default view INSTANTLY
+                if (satelliteImageViewerRef.current?.resetViewInstant) {
+                  satelliteImageViewerRef.current.resetViewInstant();
+                }
+
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -515,12 +543,17 @@ export const MainScreen = () => {
             text: 'Create GIF',
             onPress: async () => {
               try {
+                // Reset zoom/pan to default view INSTANTLY
+                if (satelliteImageViewerRef.current?.resetViewInstant) {
+                  satelliteImageViewerRef.current.resetViewInstant();
+                }
+
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -599,8 +632,6 @@ export const MainScreen = () => {
     }
   };
 
-  const isLandscape = layoutOrientation === 'landscape';
-
   return (
     <SafeAreaView
       style={styles.safeArea}
@@ -619,106 +650,126 @@ export const MainScreen = () => {
           onFavoritesPress={handleFavoritesPress}
         />
 
+        <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
         {isLandscape ? (
-          // Landscape layout: Image | Buttons (vertical) + bottom menu/slider row
-          <>
-            <View style={styles.landscapeMainRow}>
-              {/* Image - takes full space with ref for capture */}
-              <View ref={contentRef} style={styles.landscapeImageArea} collapsable={false}>
-                <View style={styles.landscapeContentColumn}>
-                  {/* Top info bar for screenshots */}
-                  {showBrandingOverlay && (
-                    <View style={styles.topInfoBar}>
-                      <Text style={styles.topInfoText}>
-                        {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
-                      </Text>
-                    </View>
-                  )}
+          // Landscape layout: Image | Buttons (vertical) on right, with controls only as wide as image
+          <View style={styles.landscapeMainContainer}>
+            {/* Left column: image area with controls below - wrapped in capture ref */}
+            <View style={styles.landscapeLeftColumn}>
+              <View
+                ref={contentRef}
+                style={styles.landscapeCaptureWrapper}
+                collapsable={false}
+                onLayout={(event) => {
+                  const { width, height } = event.nativeEvent.layout;
+                  setContentDimensions({ width, height });
+                }}
+              >
+                {/* Top info bar for screenshots */}
+                {showBrandingOverlay && (
+                  <View style={styles.topInfoBar}>
+                    <Text style={styles.topInfoText}>
+                      {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
+                    </Text>
+                  </View>
+                )}
 
-                  <View style={styles.content}>
-                    <SatelliteImageViewer ref={satelliteImageViewerRef} />
-                    <DrawingOverlay
-                      externalColorPicker={showColorPickerFromButton}
-                      setExternalColorPicker={setShowColorPickerFromButton}
-                    />
+                {/* Image area with colorbar */}
+                <View style={styles.landscapeImageArea}>
+                  <View style={styles.landscapeContentColumn}>
+                    <View style={styles.content}>
+                      <SatelliteImageViewer ref={satelliteImageViewerRef} />
+                      <DrawingOverlay
+                        externalColorPicker={showColorPickerFromButton}
+                        setExternalColorPicker={setShowColorPickerFromButton}
+                      />
+                    </View>
                   </View>
 
-                  {/* Branding overlay for screenshots */}
-                  {showBrandingOverlay && (
-                    <View style={styles.brandingOverlay}>
-                      <Text style={styles.brandingText}>Satellite Weather</Text>
-                    </View>
-                  )}
+                  <ColorScaleBar orientation="vertical" />
                 </View>
 
-                <ColorScaleBar orientation="vertical" />
+                {/* Info bar with channel/product and timestamp */}
+                <View style={styles.landscapeInfoBar}>
+                  <Text style={styles.landscapeInfoText}>
+                    {viewMode === 'rgb'
+                      ? selectedRGBProduct?.name || 'RGB Product'
+                      : selectedChannel
+                      ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
+                      : 'Select a channel or RGB product'}
+                  </Text>
+                  <Text style={styles.landscapeTimestamp}>
+                    {formatTimestamp(imageTimestamp, settings.useLocalTime)}
+                  </Text>
+                </View>
+
+                {/* Branding overlay for screenshots - shown below info bar */}
+                {showBrandingOverlay && (
+                  <View style={styles.brandingOverlay}>
+                    <Text style={styles.brandingText}>Satellite Weather</Text>
+                  </View>
+                )}
               </View>
 
-              {/* Vertical Buttons on right */}
-              <BottomControls
-                onLocationPress={handleLocationPress}
-                onPlayPress={toggleAnimation}
-                onEditPress={handleEditPress}
-                onEditLongPress={handleEditLongPress}
-                onSharePress={handleSharePress}
-                onResetView={handleResetView}
-                onFlipOrientation={handleFlipOrientation}
-                orientation={layoutOrientation}
-                isDrawingMode={isDrawingMode}
-              />
-            </View>
-
-            {/* Info bar - channel/product and timestamp */}
-            <View style={styles.landscapeInfoBar}>
-              <Text style={styles.landscapeInfoText}>
-                {viewMode === 'rgb'
-                  ? selectedRGBProduct?.name || 'RGB Product'
-                  : selectedChannel
-                  ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
-                  : 'Select a channel or RGB product'}
-              </Text>
-              <Text style={styles.landscapeTimestamp}>
-                {formatTimestamp(imageTimestamp, settings.useLocalTime)}
-              </Text>
-            </View>
-
-            {/* Bottom row: Menu buttons + Slider */}
-            <View style={styles.landscapeBottomRow}>
-              <TouchableOpacity
-                style={[styles.landscapeMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'channel' ? null : 'channel')}
-              >
-                <Text style={styles.menuButtonText}>SELECT CHANNEL</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.landscapeMenuButton, activeMenu === 'rgb' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'rgb' ? null : 'rgb')}
-              >
-                <Text style={styles.menuButtonText}>RGB</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.landscapeMenuButton, activeMenu === 'domain' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'domain' ? null : 'domain')}
-              >
-                <Text style={styles.menuButtonText}>DOMAIN</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.landscapeMenuButton, activeMenu === 'overlays' && styles.menuButtonActive]}
-                onPress={() => setActiveMenu(activeMenu === 'overlays' ? null : 'overlays')}
-              >
-                <Text style={styles.menuButtonText}>OVERLAYS</Text>
-              </TouchableOpacity>
-              <Text style={styles.separator}>|</Text>
-              <View style={styles.landscapeSliderContainer}>
-                <TimelineSlider orientation="horizontal" />
+              {/* Bottom row: Menu buttons + Slider - NOT captured */}
+              <View style={styles.landscapeBottomRow}>
+                <TouchableOpacity
+                  style={[styles.landscapeMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
+                  onPress={() => setActiveMenu(activeMenu === 'channel' ? null : 'channel')}
+                >
+                  <Text style={styles.menuButtonText}>SELECT CHANNEL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.landscapeMenuButton, activeMenu === 'rgb' && styles.menuButtonActive]}
+                  onPress={() => setActiveMenu(activeMenu === 'rgb' ? null : 'rgb')}
+                >
+                  <Text style={styles.menuButtonText}>RGB</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.landscapeMenuButton, activeMenu === 'domain' && styles.menuButtonActive]}
+                  onPress={() => setActiveMenu(activeMenu === 'domain' ? null : 'domain')}
+                >
+                  <Text style={styles.menuButtonText}>DOMAIN</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.landscapeMenuButton, activeMenu === 'overlays' && styles.menuButtonActive]}
+                  onPress={() => setActiveMenu(activeMenu === 'overlays' ? null : 'overlays')}
+                >
+                  <Text style={styles.menuButtonText}>OVERLAYS</Text>
+                </TouchableOpacity>
+                <Text style={styles.separator}>|</Text>
+                <View style={styles.landscapeSliderContainer}>
+                  <TimelineSlider orientation="horizontal" />
+                </View>
               </View>
             </View>
-          </>
+
+            {/* Vertical Buttons on right - extends full height */}
+            <BottomControls
+              onLocationPress={handleLocationPress}
+              onPlayPress={toggleAnimation}
+              onEditPress={handleEditPress}
+              onEditLongPress={handleEditLongPress}
+              onSharePress={handleSharePress}
+              onResetView={handleResetView}
+              onFlipOrientation={handleFlipOrientation}
+              orientation={layoutOrientation}
+              isDrawingMode={isDrawingMode}
+            />
+          </View>
         ) : (
           // Portrait layout: Image → ColorBar → Menu Buttons → Slider → Icon Buttons
           <>
             {/* Content area for screenshot capture */}
-            <View ref={contentRef} style={styles.captureArea} collapsable={false}>
+            <View
+              ref={contentRef}
+              style={styles.captureArea}
+              collapsable={false}
+              onLayout={(event) => {
+                const { width, height } = event.nativeEvent.layout;
+                setContentDimensions({ width, height });
+              }}
+            >
               {/* Top info bar for screenshots */}
               {showBrandingOverlay && (
                 <View style={styles.topInfoBar}>
@@ -789,6 +840,7 @@ export const MainScreen = () => {
             />
           </>
         )}
+        </Animated.View>
 
         {/* MenuSelector - shows menu buttons in portrait, panels in both modes */}
         <MenuSelector />
@@ -831,6 +883,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    overflow: 'hidden',
   },
   portraitMenuRow: {
     flexDirection: 'row',
@@ -844,19 +897,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  landscapeMainRow: {
+  landscapeMainContainer: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'stretch',
+  },
+  landscapeLeftColumn: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  landscapeCaptureWrapper: {
+    flex: 1,
+    backgroundColor: '#000',
+    overflow: 'hidden',
   },
   landscapeImageArea: {
     flex: 1,
     flexDirection: 'row',
     backgroundColor: '#000',
+    overflow: 'hidden',
   },
   landscapeContentColumn: {
     flex: 1,
     flexDirection: 'column',
+    overflow: 'hidden',
   },
   landscapeBottomRow: {
     flexDirection: 'row',

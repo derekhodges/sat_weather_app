@@ -1,13 +1,29 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { formatTimestamp } from '../utils/imageService';
 
-export const ColorScaleBar = ({ orientation = 'horizontal' }) => {
+const ColorScaleBarComponent = ({ orientation = 'horizontal' }) => {
   const { selectedChannel, selectedRGBProduct, viewMode, imageTimestamp, settings } =
     useApp();
 
   const isVertical = orientation === 'vertical';
+
+  // Memoize gradient segments to prevent recreation on every render
+  const gradientSegments = useMemo(() => {
+    return [...Array(50)].map((_, i) => {
+      const hue = (i / 50) * 240; // Blue to red
+      return (
+        <View
+          key={i}
+          style={[
+            isVertical ? styles.gradientSegmentVertical : styles.gradientSegment,
+            { backgroundColor: `hsl(${240 - hue}, 100%, 50%)` },
+          ]}
+        />
+      );
+    });
+  }, [isVertical]);
 
   return (
     <View style={isVertical ? styles.containerVertical : styles.container}>
@@ -29,23 +45,14 @@ export const ColorScaleBar = ({ orientation = 'horizontal' }) => {
 
       {/* Color gradient bar */}
       <View style={isVertical ? styles.gradientBarVertical : styles.gradientBar}>
-        {/* Simple gradient representation */}
-        {[...Array(50)].map((_, i) => {
-          const hue = (i / 50) * 240; // Blue to red
-          return (
-            <View
-              key={i}
-              style={[
-                isVertical ? styles.gradientSegmentVertical : styles.gradientSegment,
-                { backgroundColor: `hsl(${240 - hue}, 100%, 50%)` },
-              ]}
-            />
-          );
-        })}
+        {gradientSegments}
       </View>
     </View>
   );
 };
+
+// Memoize component to prevent unnecessary rerenders
+export const ColorScaleBar = React.memo(ColorScaleBarComponent);
 
 const styles = StyleSheet.create({
   // Horizontal (portrait) styles
