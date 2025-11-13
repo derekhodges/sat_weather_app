@@ -298,7 +298,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 fadeDuration={0}
                 onLoad={handleImageALoad}
                 onError={(error) => {
-                  console.error('Image A load error:', error);
+                  console.error('Image A load error:', error.nativeEvent?.error || 'Unknown error');
                 }}
               />
             </Animated.View>
@@ -314,7 +314,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 fadeDuration={0}
                 onLoad={handleImageBLoad}
                 onError={(error) => {
-                  console.error('Image B load error:', error);
+                  console.error('Image B load error:', error.nativeEvent?.error || 'Unknown error');
                 }}
               />
             </Animated.View>

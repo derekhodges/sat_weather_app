@@ -78,6 +78,18 @@ export const MainScreen = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
 
+  // Enable LayoutAnimation on Android
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
+  // Smooth layout transitions on orientation change
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [layoutOrientation]);
+
   // Listen for orientation changes to sync layout
   useEffect(() => {
     const subscription = ScreenOrientation.addOrientationChangeListener((event) => {
@@ -88,8 +100,10 @@ export const MainScreen = () => {
 
       // Sync layout orientation with device orientation
       if (isDeviceLandscape && layoutOrientation !== 'landscape') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         toggleOrientation();
       } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         toggleOrientation();
       }
     });
@@ -622,22 +636,21 @@ export const MainScreen = () => {
         {isLandscape ? (
           // Landscape layout: Image | Buttons (vertical) on right, with controls only as wide as image
           <View style={styles.landscapeMainContainer}>
-            {/* Left column: image area with controls below */}
+            {/* Left column: image area with controls below - wrapped in capture ref */}
             <View style={styles.landscapeLeftColumn}>
-              {/* Image wrapper - takes most vertical space */}
-              <View style={styles.landscapeImageWrapper}>
-                {/* Image - ref for capture */}
-                <View ref={contentRef} style={styles.landscapeImageArea} collapsable={false}>
-                  <View style={styles.landscapeContentColumn}>
-                    {/* Top info bar for screenshots */}
-                    {showBrandingOverlay && (
-                      <View style={styles.topInfoBar}>
-                        <Text style={styles.topInfoText}>
-                          {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
-                        </Text>
-                      </View>
-                    )}
+              <View ref={contentRef} style={styles.landscapeCaptureWrapper} collapsable={false}>
+                {/* Top info bar for screenshots */}
+                {showBrandingOverlay && (
+                  <View style={styles.topInfoBar}>
+                    <Text style={styles.topInfoText}>
+                      {selectedSatellite?.name || 'GOES-19'} {viewMode === 'rgb' ? selectedRGBProduct?.name : `Channel ${selectedChannel?.number}`} {selectedDomain?.name || 'Full Disk'}
+                    </Text>
+                  </View>
+                )}
 
+                {/* Image area with colorbar */}
+                <View style={styles.landscapeImageArea}>
+                  <View style={styles.landscapeContentColumn}>
                     <View style={styles.content}>
                       <SatelliteImageViewer ref={satelliteImageViewerRef} />
                       <DrawingOverlay
@@ -645,34 +658,33 @@ export const MainScreen = () => {
                         setExternalColorPicker={setShowColorPickerFromButton}
                       />
                     </View>
-
-                    {/* Branding overlay for screenshots */}
-                    {showBrandingOverlay && (
-                      <View style={styles.brandingOverlay}>
-                        <Text style={styles.brandingText}>Satellite Weather</Text>
-                      </View>
-                    )}
                   </View>
 
                   <ColorScaleBar orientation="vertical" />
                 </View>
+
+                {/* Info bar or branding - channel/product and timestamp */}
+                {showBrandingOverlay ? (
+                  <View style={styles.brandingOverlay}>
+                    <Text style={styles.brandingText}>Satellite Weather</Text>
+                  </View>
+                ) : (
+                  <View style={styles.landscapeInfoBar}>
+                    <Text style={styles.landscapeInfoText}>
+                      {viewMode === 'rgb'
+                        ? selectedRGBProduct?.name || 'RGB Product'
+                        : selectedChannel
+                        ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
+                        : 'Select a channel or RGB product'}
+                    </Text>
+                    <Text style={styles.landscapeTimestamp}>
+                      {formatTimestamp(imageTimestamp, settings.useLocalTime)}
+                    </Text>
+                  </View>
+                )}
               </View>
 
-              {/* Info bar - channel/product and timestamp */}
-              <View style={styles.landscapeInfoBar}>
-                <Text style={styles.landscapeInfoText}>
-                  {viewMode === 'rgb'
-                    ? selectedRGBProduct?.name || 'RGB Product'
-                    : selectedChannel
-                    ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
-                    : 'Select a channel or RGB product'}
-                </Text>
-                <Text style={styles.landscapeTimestamp}>
-                  {formatTimestamp(imageTimestamp, settings.useLocalTime)}
-                </Text>
-              </View>
-
-              {/* Bottom row: Menu buttons + Slider */}
+              {/* Bottom row: Menu buttons + Slider - NOT captured */}
               <View style={styles.landscapeBottomRow}>
                 <TouchableOpacity
                   style={[styles.landscapeMenuButton, activeMenu === 'channel' && styles.menuButtonActive]}
@@ -835,6 +847,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    overflow: 'hidden',
   },
   portraitMenuRow: {
     flexDirection: 'row',
@@ -856,18 +869,21 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
   },
-  landscapeImageWrapper: {
+  landscapeCaptureWrapper: {
     flex: 1,
-    flexDirection: 'row',
+    backgroundColor: '#000',
+    overflow: 'hidden',
   },
   landscapeImageArea: {
     flex: 1,
     flexDirection: 'row',
     backgroundColor: '#000',
+    overflow: 'hidden',
   },
   landscapeContentColumn: {
     flex: 1,
     flexDirection: 'column',
+    overflow: 'hidden',
   },
   landscapeBottomRow: {
     flexDirection: 'row',
