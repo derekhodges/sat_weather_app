@@ -78,6 +78,9 @@ export const MainScreen = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
 
+  // Ref to track orientation change timeout
+  const orientationTimeoutRef = useRef(null);
+
   // Listen for orientation changes to sync layout
   useEffect(() => {
     const subscription = ScreenOrientation.addOrientationChangeListener((event) => {
@@ -86,16 +89,27 @@ export const MainScreen = () => {
         orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
         orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
 
-      // Sync layout orientation with device orientation
-      if (isDeviceLandscape && layoutOrientation !== 'landscape') {
-        toggleOrientation();
-      } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
-        toggleOrientation();
+      // Clear any pending orientation change
+      if (orientationTimeoutRef.current) {
+        clearTimeout(orientationTimeoutRef.current);
       }
+
+      // Delay layout change until AFTER native rotation animation completes
+      orientationTimeoutRef.current = setTimeout(() => {
+        // Sync layout orientation with device orientation
+        if (isDeviceLandscape && layoutOrientation !== 'landscape') {
+          toggleOrientation();
+        } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
+          toggleOrientation();
+        }
+      }, 250); // Wait for native rotation animation to complete
     });
 
     return () => {
       ScreenOrientation.removeOrientationChangeListener(subscription);
+      if (orientationTimeoutRef.current) {
+        clearTimeout(orientationTimeoutRef.current);
+      }
     };
   }, [layoutOrientation, toggleOrientation]);
 
@@ -374,16 +388,16 @@ export const MainScreen = () => {
 
   const handleSaveScreenshot = async () => {
     try {
-      // Reset zoom/pan to default view
-      if (satelliteImageViewerRef.current?.resetView) {
-        satelliteImageViewerRef.current.resetView();
+      // Reset zoom/pan to default view INSTANTLY (no animation)
+      if (satelliteImageViewerRef.current?.resetViewInstant) {
+        satelliteImageViewerRef.current.resetViewInstant();
       }
 
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the view reset (300ms animation) and overlay render
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Short delay to let overlay render (no animation to wait for)
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Capture the content area (excluding buttons)
       const uri = await captureScreenshot(contentRef);
@@ -446,12 +460,17 @@ export const MainScreen = () => {
             text: 'Create GIF',
             onPress: async () => {
               try {
+                // Reset zoom/pan to default view INSTANTLY
+                if (satelliteImageViewerRef.current?.resetViewInstant) {
+                  satelliteImageViewerRef.current.resetViewInstant();
+                }
+
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -520,12 +539,17 @@ export const MainScreen = () => {
             text: 'Create GIF',
             onPress: async () => {
               try {
+                // Reset zoom/pan to default view INSTANTLY
+                if (satelliteImageViewerRef.current?.resetViewInstant) {
+                  satelliteImageViewerRef.current.resetViewInstant();
+                }
+
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
