@@ -80,6 +80,7 @@ export const MainScreen = () => {
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
   const [isRotating, setIsRotating] = useState(false); // Track rotation state
   const [forceContainForCapture, setForceContainForCapture] = useState(false); // Force contain mode during screenshot
+  const [actualImageHeight, setActualImageHeight] = useState(null); // Track actual rendered image height for colorbar
 
   const isLandscape = layoutOrientation === 'landscape';
 
@@ -397,20 +398,24 @@ export const MainScreen = () => {
         satelliteImageViewerRef.current.resetViewInstant();
       }
 
+      // Reset actual image height
+      setActualImageHeight(null);
+
       // Force image to contain mode so it fits in viewport
       setForceContainForCapture(true);
 
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Short delay to let overlay and layout changes render
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Short delay to let overlay and layout changes render and measure image height
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Capture the content area - should now include image + UI elements
       const uri = await captureScreenshot(contentRef);
 
-      // Reset contain mode
+      // Reset contain mode and image height
       setForceContainForCapture(false);
+      setActualImageHeight(null);
 
       // NOW show loading while saving
       setIsLoading(true);
@@ -426,6 +431,7 @@ export const MainScreen = () => {
       console.error('Error saving screenshot:', error);
       setShowBrandingOverlay(false);
       setForceContainForCapture(false);
+      setActualImageHeight(null);
       setIsLoading(false);
       setError(error.message || 'Unable to save screenshot');
     }
@@ -438,20 +444,24 @@ export const MainScreen = () => {
         satelliteImageViewerRef.current.resetViewInstant();
       }
 
+      // Reset actual image height
+      setActualImageHeight(null);
+
       // Force image to contain mode so it fits in viewport
       setForceContainForCapture(true);
 
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the overlay and layout changes render
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Delay to let the overlay and layout changes render and measure image height
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Capture the content area
       const uri = await captureScreenshot(contentRef);
 
-      // Reset contain mode
+      // Reset contain mode and image height
       setForceContainForCapture(false);
+      setActualImageHeight(null);
 
       // NOW show loading while sharing
       setIsLoading(true);
@@ -465,6 +475,7 @@ export const MainScreen = () => {
       console.error('Error sharing image:', error);
       setShowBrandingOverlay(false);
       setForceContainForCapture(false);
+      setActualImageHeight(null);
       setIsLoading(false);
       setError(error.message || 'Unable to share image');
     }
@@ -488,6 +499,9 @@ export const MainScreen = () => {
                   satelliteImageViewerRef.current.resetViewInstant();
                 }
 
+                // Reset actual image height
+                setActualImageHeight(null);
+
                 // Force image to contain mode
                 setForceContainForCapture(true);
 
@@ -496,7 +510,7 @@ export const MainScreen = () => {
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 150));
+                await new Promise(resolve => setTimeout(resolve, 200));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -524,6 +538,7 @@ export const MainScreen = () => {
 
                 setShowBrandingOverlay(false);
                 setForceContainForCapture(false);
+                setActualImageHeight(null);
 
                 // NOW show loading while saving to library
                 setIsLoading(true);
@@ -541,6 +556,7 @@ export const MainScreen = () => {
                 console.error('Error creating GIF:', error);
                 setShowBrandingOverlay(false);
                 setForceContainForCapture(false);
+                setActualImageHeight(null);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create GIF');
               }
@@ -572,6 +588,9 @@ export const MainScreen = () => {
                   satelliteImageViewerRef.current.resetViewInstant();
                 }
 
+                // Reset actual image height
+                setActualImageHeight(null);
+
                 // Force image to contain mode
                 setForceContainForCapture(true);
 
@@ -580,7 +599,7 @@ export const MainScreen = () => {
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 150));
+                await new Promise(resolve => setTimeout(resolve, 200));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -608,6 +627,7 @@ export const MainScreen = () => {
 
                 setShowBrandingOverlay(false);
                 setForceContainForCapture(false);
+                setActualImageHeight(null);
 
                 // NOW show loading while sharing
                 setIsLoading(true);
@@ -620,6 +640,7 @@ export const MainScreen = () => {
                 console.error('Error creating/sharing GIF:', error);
                 setShowBrandingOverlay(false);
                 setForceContainForCapture(false);
+                setActualImageHeight(null);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create or share GIF');
               }
@@ -732,7 +753,16 @@ export const MainScreen = () => {
                       height: Dimensions.get('window').height - 150, // account for top bar and info bars
                     }
                   ]}>
-                    <View style={styles.content}>
+                    <View
+                      style={styles.content}
+                      onLayout={(event) => {
+                        if (forceContainForCapture) {
+                          // Measure actual rendered height during capture
+                          const { height } = event.nativeEvent.layout;
+                          setActualImageHeight(height);
+                        }
+                      }}
+                    >
                       <SatelliteImageViewer
                         ref={satelliteImageViewerRef}
                         forceContainMode={forceContainForCapture}
@@ -747,7 +777,7 @@ export const MainScreen = () => {
                   <ColorScaleBar
                     orientation="vertical"
                     matchImageHeight={forceContainForCapture}
-                    height={forceContainForCapture ? Dimensions.get('window').height - 150 : null}
+                    height={forceContainForCapture && actualImageHeight ? actualImageHeight : null}
                   />
                 </View>
 
