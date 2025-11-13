@@ -736,7 +736,7 @@ export const MainScreen = () => {
                     </View>
                   </View>
 
-                  <ColorScaleBar orientation="vertical" />
+                  <ColorScaleBar orientation="vertical" matchImageHeight={forceContainForCapture} />
                 </View>
 
                 {/* Info bar with channel/product and timestamp */}

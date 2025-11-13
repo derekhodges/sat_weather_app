@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { formatTimestamp } from '../utils/imageService';
 
-const ColorScaleBarComponent = ({ orientation = 'horizontal' }) => {
+const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight = false }) => {
   const { selectedChannel, selectedRGBProduct, viewMode, imageTimestamp, settings } =
     useApp();
 
@@ -26,7 +26,10 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal' }) => {
   }, [isVertical]);
 
   return (
-    <View style={isVertical ? styles.containerVertical : styles.container}>
+    <View style={[
+      isVertical ? styles.containerVertical : styles.container,
+      matchImageHeight && isVertical && { flex: 1 }
+    ]}>
       {/* Info section - only show in horizontal (portrait) mode */}
       {!isVertical && (
         <View style={styles.infoRow}>
@@ -91,7 +94,7 @@ const styles = StyleSheet.create({
   // Vertical (landscape) styles - just the gradient bar
   containerVertical: {
     backgroundColor: '#1a1a1a',
-    width: 28,
+    width: 20,
     flexDirection: 'column',
   },
   infoVertical: {
