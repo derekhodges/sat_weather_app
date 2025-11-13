@@ -407,6 +407,37 @@ export const MainScreen = () => {
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
+      // Get actual image dimensions and calculate rendered height
+      if (isLandscape && currentImageUrl) {
+        const Image = require('react-native').Image;
+        Image.getSize(
+          currentImageUrl,
+          (width, height) => {
+            // Calculate rendered height based on aspect ratio
+            const containerHeight = Dimensions.get('window').height - 150;
+            const containerWidth = Dimensions.get('window').width - 100; // approximate, accounting for UI
+            const imageAspectRatio = width / height;
+            const containerAspectRatio = containerWidth / containerHeight;
+
+            let renderedHeight;
+            if (imageAspectRatio > containerAspectRatio) {
+              // Image is wider - height will be constrained by container height
+              renderedHeight = (containerWidth / imageAspectRatio);
+            } else {
+              // Image is taller - width will be constrained
+              renderedHeight = containerHeight;
+            }
+
+            setActualImageHeight(Math.floor(renderedHeight));
+          },
+          (error) => {
+            console.error('Error getting image size:', error);
+            // Fallback to container height if we can't get image size
+            setActualImageHeight(Dimensions.get('window').height - 150);
+          }
+        );
+      }
+
       // Short delay to let overlay and layout changes render and measure image height
       await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -452,6 +483,34 @@ export const MainScreen = () => {
 
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
+
+      // Get actual image dimensions and calculate rendered height
+      if (isLandscape && currentImageUrl) {
+        const Image = require('react-native').Image;
+        Image.getSize(
+          currentImageUrl,
+          (width, height) => {
+            // Calculate rendered height based on aspect ratio
+            const containerHeight = Dimensions.get('window').height - 150;
+            const containerWidth = Dimensions.get('window').width - 100;
+            const imageAspectRatio = width / height;
+            const containerAspectRatio = containerWidth / containerHeight;
+
+            let renderedHeight;
+            if (imageAspectRatio > containerAspectRatio) {
+              renderedHeight = (containerWidth / imageAspectRatio);
+            } else {
+              renderedHeight = containerHeight;
+            }
+
+            setActualImageHeight(Math.floor(renderedHeight));
+          },
+          (error) => {
+            console.error('Error getting image size:', error);
+            setActualImageHeight(Dimensions.get('window').height - 150);
+          }
+        );
+      }
 
       // Delay to let the overlay and layout changes render and measure image height
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -507,6 +566,33 @@ export const MainScreen = () => {
 
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
+
+                // Get actual image dimensions and calculate rendered height
+                if (isLandscape && currentImageUrl) {
+                  const Image = require('react-native').Image;
+                  Image.getSize(
+                    currentImageUrl,
+                    (width, height) => {
+                      const containerHeight = Dimensions.get('window').height - 150;
+                      const containerWidth = Dimensions.get('window').width - 100;
+                      const imageAspectRatio = width / height;
+                      const containerAspectRatio = containerWidth / containerHeight;
+
+                      let renderedHeight;
+                      if (imageAspectRatio > containerAspectRatio) {
+                        renderedHeight = (containerWidth / imageAspectRatio);
+                      } else {
+                        renderedHeight = containerHeight;
+                      }
+
+                      setActualImageHeight(Math.floor(renderedHeight));
+                    },
+                    (error) => {
+                      console.error('Error getting image size:', error);
+                      setActualImageHeight(Dimensions.get('window').height - 150);
+                    }
+                  );
+                }
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
@@ -596,6 +682,33 @@ export const MainScreen = () => {
 
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
+
+                // Get actual image dimensions and calculate rendered height
+                if (isLandscape && currentImageUrl) {
+                  const Image = require('react-native').Image;
+                  Image.getSize(
+                    currentImageUrl,
+                    (width, height) => {
+                      const containerHeight = Dimensions.get('window').height - 150;
+                      const containerWidth = Dimensions.get('window').width - 100;
+                      const imageAspectRatio = width / height;
+                      const containerAspectRatio = containerWidth / containerHeight;
+
+                      let renderedHeight;
+                      if (imageAspectRatio > containerAspectRatio) {
+                        renderedHeight = (containerWidth / imageAspectRatio);
+                      } else {
+                        renderedHeight = containerHeight;
+                      }
+
+                      setActualImageHeight(Math.floor(renderedHeight));
+                    },
+                    (error) => {
+                      console.error('Error getting image size:', error);
+                      setActualImageHeight(Dimensions.get('window').height - 150);
+                    }
+                  );
+                }
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
@@ -753,16 +866,7 @@ export const MainScreen = () => {
                       height: Dimensions.get('window').height - 150, // account for top bar and info bars
                     }
                   ]}>
-                    <View
-                      style={styles.content}
-                      onLayout={(event) => {
-                        if (forceContainForCapture) {
-                          // Measure actual rendered height during capture
-                          const { height } = event.nativeEvent.layout;
-                          setActualImageHeight(height);
-                        }
-                      }}
-                    >
+                    <View style={styles.content}>
                       <SatelliteImageViewer
                         ref={satelliteImageViewerRef}
                         forceContainMode={forceContainForCapture}
