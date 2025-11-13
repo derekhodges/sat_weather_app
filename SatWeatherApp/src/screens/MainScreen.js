@@ -637,8 +637,6 @@ export const MainScreen = () => {
     }
   };
 
-  const isLandscape = layoutOrientation === 'landscape';
-
   return (
     <SafeAreaView
       style={styles.safeArea}
