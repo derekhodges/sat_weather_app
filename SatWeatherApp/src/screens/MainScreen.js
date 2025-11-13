@@ -82,21 +82,7 @@ export const MainScreen = () => {
 
   const isLandscape = layoutOrientation === 'landscape';
 
-  // Handle rotation with loading overlay to prevent jarring transitions
-  useEffect(() => {
-    // Show loading overlay during rotation
-    setIsRotating(true);
-
-    // Wait for layout to fully update before hiding loading overlay
-    // This prevents seeing the old layout stretched during physical rotation
-    const timer = setTimeout(() => {
-      setIsRotating(false);
-    }, 300); // 300ms should be enough for layout to stabilize
-
-    return () => clearTimeout(timer);
-  }, [layoutOrientation]);
-
-  // Listen for orientation changes to sync layout
+  // Listen for orientation changes with loading overlay to prevent jarring transitions
   useEffect(() => {
     const subscription = ScreenOrientation.addOrientationChangeListener((event) => {
       const orientation = event.orientationInfo.orientation;
@@ -104,12 +90,24 @@ export const MainScreen = () => {
         orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
         orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
 
-      // Sync layout orientation with device orientation IMMEDIATELY
-      // This ensures layout changes during rotation animation, not after
-      if (isDeviceLandscape && layoutOrientation !== 'landscape') {
-        toggleOrientation();
-      } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
-        toggleOrientation();
+      // Check if we need to change orientation
+      const needsChange =
+        (isDeviceLandscape && layoutOrientation !== 'landscape') ||
+        (!isDeviceLandscape && layoutOrientation !== 'portrait');
+
+      if (needsChange) {
+        // FIRST: Show loading overlay immediately
+        setIsRotating(true);
+
+        // SECOND: Wait one frame for overlay to render, THEN change layout
+        requestAnimationFrame(() => {
+          toggleOrientation();
+
+          // THIRD: Wait for layout to stabilize, then hide overlay
+          setTimeout(() => {
+            setIsRotating(false);
+          }, 350);
+        });
       }
     });
 
@@ -607,6 +605,12 @@ export const MainScreen = () => {
 
   const handleFlipOrientation = async () => {
     try {
+      // Show loading overlay first
+      setIsRotating(true);
+
+      // Wait for overlay to render
+      await new Promise(resolve => requestAnimationFrame(() => resolve()));
+
       if (layoutOrientation === 'portrait') {
         // Switch to landscape - lock to LANDSCAPE_LEFT which rotates phone counter-clockwise
         await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
@@ -619,6 +623,7 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error changing orientation:', error);
       setError('Unable to change screen orientation');
+      setIsRotating(false);
     }
   };
 

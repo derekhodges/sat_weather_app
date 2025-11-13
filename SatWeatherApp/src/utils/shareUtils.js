@@ -24,20 +24,47 @@ export const captureScreenshot = async (contentRef, options = {}) => {
       }
     });
 
-    // If dimensions are provided, pass them directly to captureRef
-    // This forces it to capture ONLY the visible viewport area
-    const captureOptions = {
+    // Capture at full quality without constraints
+    const uri = await captureRef(contentRef, {
       format: 'png',
       quality: 1.0,
-    };
+    });
 
-    // Pass dimensions directly to captureRef to clip to exact visible area
+    // If dimensions are provided, CROP (not resize) to exact visible viewport
+    // This ensures we only get what's actually visible on screen
     if (options.width && options.height) {
-      captureOptions.width = Math.round(options.width);
-      captureOptions.height = Math.round(options.height);
-    }
+      const targetWidth = Math.round(options.width);
+      const targetHeight = Math.round(options.height);
 
-    const uri = await captureRef(contentRef, captureOptions);
+      // Get the actual captured image size first
+      const imageInfo = await ImageManipulator.manipulateAsync(
+        uri,
+        [],
+        { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+      );
+
+      // Calculate crop area to get only the visible portion
+      // If the captured image is larger than the viewport, crop from center
+      const cropX = Math.max(0, Math.floor((imageInfo.width - targetWidth) / 2));
+      const cropY = Math.max(0, Math.floor((imageInfo.height - targetHeight) / 2));
+
+      const manipResult = await ImageManipulator.manipulateAsync(
+        uri,
+        [
+          {
+            crop: {
+              originX: cropX,
+              originY: cropY,
+              width: Math.min(targetWidth, imageInfo.width),
+              height: Math.min(targetHeight, imageInfo.height),
+            }
+          }
+        ],
+        { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+      );
+
+      return manipResult.uri;
+    }
 
     return uri;
   } catch (error) {
