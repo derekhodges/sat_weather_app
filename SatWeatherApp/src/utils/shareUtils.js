@@ -24,28 +24,12 @@ export const captureScreenshot = async (contentRef, options = {}) => {
       }
     });
 
-    // Capture at full quality without dimension constraints first
+    // Capture at full quality
+    // The layout should naturally constrain to viewport size if view is reset
     const uri = await captureRef(contentRef, {
       format: 'png',
       quality: 1.0,
     });
-
-    // If dimensions are provided, crop/resize the captured image to exact viewport size
-    if (options.width && options.height) {
-      const manipResult = await ImageManipulator.manipulateAsync(
-        uri,
-        [
-          {
-            resize: {
-              width: Math.round(options.width),
-              height: Math.round(options.height),
-            }
-          }
-        ],
-        { compress: 1, format: ImageManipulator.SaveFormat.PNG }
-      );
-      return manipResult.uri;
-    }
 
     return uri;
   } catch (error) {

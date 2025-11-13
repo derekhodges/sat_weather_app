@@ -19,6 +19,7 @@ import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
+  const { forceContainMode = false } = props;
   const { currentImageUrl, isLoading, error, settings, hasLoadedOnce, setHasLoadedOnce } = useApp();
 
   // Dual image state to prevent black flicker
@@ -45,13 +46,18 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
 
+  // For cover mode, we want the image to be larger so it can extend beyond the viewport
+  // This allows panning to see all parts without cropping
+  // forceContainMode overrides this for screenshots
+  const effectiveDisplayMode = forceContainMode ? 'contain' : settings.imageDisplayMode;
+
   // Helper function to constrain translation based on current scale
   const constrainTranslation = (x, y, currentScale) => {
     'worklet';
 
     // For contain mode, image fits in screen, so constrain more tightly
     // For cover mode, image is 200% size, so allow more movement
-    const imageSize = settings.imageDisplayMode === 'cover' ? 2 : 1;
+    const imageSize = effectiveDisplayMode === 'cover' ? 2 : 1;
 
     // Calculate maximum allowed translation based on zoom level
     // When zoomed in, allow more panning. When zoomed out, constrain more.
@@ -285,13 +291,11 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const isFirstLoad = !hasLoadedOnce;
   const showLoadingOverlay = isFirstLoad;
 
-  // For cover mode, we want the image to be larger so it can extend beyond the viewport
-  // This allows panning to see all parts without cropping
-  const imageWrapperStyle = settings.imageDisplayMode === 'cover'
+  const imageWrapperStyle = effectiveDisplayMode === 'cover'
     ? [styles.imageWrapper, styles.imageWrapperCover]
     : styles.imageWrapper;
 
-  const imageStyle = settings.imageDisplayMode === 'cover'
+  const imageStyle = effectiveDisplayMode === 'cover'
     ? [styles.image, styles.imageCover]
     : styles.image;
 
@@ -309,7 +313,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 fadeDuration={0}
                 onLoad={handleImageALoad}
                 onError={(error) => {
-                  console.error('Image A load error:', error.nativeEvent?.error || 'Unknown error');
+                  console.warn('Image A load error:', error.nativeEvent?.error || 'Unknown error');
                 }}
               />
             </Animated.View>
@@ -325,7 +329,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
                 fadeDuration={0}
                 onLoad={handleImageBLoad}
                 onError={(error) => {
-                  console.error('Image B load error:', error.nativeEvent?.error || 'Unknown error');
+                  console.warn('Image B load error:', error.nativeEvent?.error || 'Unknown error');
                 }}
               />
             </Animated.View>

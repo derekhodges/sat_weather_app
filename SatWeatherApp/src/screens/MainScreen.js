@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, Animated } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -78,24 +78,12 @@ export const MainScreen = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
-
-  // Opacity animation for smooth orientation transitions
-  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const [isRotating, setIsRotating] = useState(false); // Track rotation state
+  const [forceContainForCapture, setForceContainForCapture] = useState(false); // Force contain mode during screenshot
 
   const isLandscape = layoutOrientation === 'landscape';
 
-  // Animate content fade on orientation change
-  useEffect(() => {
-    // Quick fade out and back in when orientation changes
-    contentOpacity.setValue(0);
-    Animated.timing(contentOpacity, {
-      toValue: 1,
-      duration: 150,
-      useNativeDriver: true,
-    }).start();
-  }, [layoutOrientation]);
-
-  // Listen for orientation changes to sync layout
+  // Listen for orientation changes with loading overlay to prevent jarring transitions
   useEffect(() => {
     const subscription = ScreenOrientation.addOrientationChangeListener((event) => {
       const orientation = event.orientationInfo.orientation;
@@ -103,12 +91,24 @@ export const MainScreen = () => {
         orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
         orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
 
-      // Sync layout orientation with device orientation IMMEDIATELY
-      // This ensures layout changes during rotation animation, not after
-      if (isDeviceLandscape && layoutOrientation !== 'landscape') {
-        toggleOrientation();
-      } else if (!isDeviceLandscape && layoutOrientation !== 'portrait') {
-        toggleOrientation();
+      // Check if we need to change orientation
+      const needsChange =
+        (isDeviceLandscape && layoutOrientation !== 'landscape') ||
+        (!isDeviceLandscape && layoutOrientation !== 'portrait');
+
+      if (needsChange) {
+        // FIRST: Show loading overlay immediately
+        setIsRotating(true);
+
+        // SECOND: Wait one frame for overlay to render, THEN change layout
+        requestAnimationFrame(() => {
+          toggleOrientation();
+
+          // THIRD: Wait for layout to stabilize, then hide overlay
+          setTimeout(() => {
+            setIsRotating(false);
+          }, 350);
+        });
       }
     });
 
@@ -397,14 +397,20 @@ export const MainScreen = () => {
         satelliteImageViewerRef.current.resetViewInstant();
       }
 
+      // Force image to contain mode so it fits in viewport
+      setForceContainForCapture(true);
+
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Short delay to let overlay render (no animation to wait for)
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Short delay to let overlay and layout changes render
+      await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Capture the content area with explicit dimensions to match viewport
-      const uri = await captureScreenshot(contentRef, contentDimensions.width > 0 ? contentDimensions : {});
+      // Capture the content area - should now include image + UI elements
+      const uri = await captureScreenshot(contentRef);
+
+      // Reset contain mode
+      setForceContainForCapture(false);
 
       // NOW show loading while saving
       setIsLoading(true);
@@ -419,6 +425,7 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error saving screenshot:', error);
       setShowBrandingOverlay(false);
+      setForceContainForCapture(false);
       setIsLoading(false);
       setError(error.message || 'Unable to save screenshot');
     }
@@ -426,14 +433,25 @@ export const MainScreen = () => {
 
   const handleShareImage = async () => {
     try {
+      // Reset zoom/pan
+      if (satelliteImageViewerRef.current?.resetViewInstant) {
+        satelliteImageViewerRef.current.resetViewInstant();
+      }
+
+      // Force image to contain mode so it fits in viewport
+      setForceContainForCapture(true);
+
       // Show branding overlay WITHOUT triggering loading state
       setShowBrandingOverlay(true);
 
-      // Delay to let the overlay render
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Delay to let the overlay and layout changes render
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       // Capture the content area
       const uri = await captureScreenshot(contentRef);
+
+      // Reset contain mode
+      setForceContainForCapture(false);
 
       // NOW show loading while sharing
       setIsLoading(true);
@@ -446,6 +464,7 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error sharing image:', error);
       setShowBrandingOverlay(false);
+      setForceContainForCapture(false);
       setIsLoading(false);
       setError(error.message || 'Unable to share image');
     }
@@ -469,12 +488,15 @@ export const MainScreen = () => {
                   satelliteImageViewerRef.current.resetViewInstant();
                 }
 
+                // Force image to contain mode
+                setForceContainForCapture(true);
+
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -501,6 +523,7 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
+                setForceContainForCapture(false);
 
                 // NOW show loading while saving to library
                 setIsLoading(true);
@@ -517,6 +540,7 @@ export const MainScreen = () => {
               } catch (error) {
                 console.error('Error creating GIF:', error);
                 setShowBrandingOverlay(false);
+                setForceContainForCapture(false);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create GIF');
               }
@@ -548,12 +572,15 @@ export const MainScreen = () => {
                   satelliteImageViewerRef.current.resetViewInstant();
                 }
 
+                // Force image to contain mode
+                setForceContainForCapture(true);
+
                 // Show branding overlay WITHOUT loading state during capture
                 setShowBrandingOverlay(true);
 
                 // Reset to first frame for consistent GIF capture
                 setCurrentFrameIndex(0);
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 150));
 
                 // Start animation if not already animating
                 const wasAnimating = isAnimating;
@@ -580,6 +607,7 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
+                setForceContainForCapture(false);
 
                 // NOW show loading while sharing
                 setIsLoading(true);
@@ -591,6 +619,7 @@ export const MainScreen = () => {
               } catch (error) {
                 console.error('Error creating/sharing GIF:', error);
                 setShowBrandingOverlay(false);
+                setForceContainForCapture(false);
                 setIsLoading(false);
                 setError(error.message || 'Unable to create or share GIF');
               }
@@ -606,6 +635,12 @@ export const MainScreen = () => {
 
   const handleFlipOrientation = async () => {
     try {
+      // Show loading overlay first
+      setIsRotating(true);
+
+      // Wait for overlay to render
+      await new Promise(resolve => requestAnimationFrame(() => resolve()));
+
       if (layoutOrientation === 'portrait') {
         // Switch to landscape - lock to LANDSCAPE_LEFT which rotates phone counter-clockwise
         await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
@@ -618,6 +653,7 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error changing orientation:', error);
       setError('Unable to change screen orientation');
+      setIsRotating(false);
     }
   };
 
@@ -650,7 +686,15 @@ export const MainScreen = () => {
           onFavoritesPress={handleFavoritesPress}
         />
 
-        <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
+        {/* Loading overlay during rotation to prevent jarring transitions */}
+        {isRotating && (
+          <View style={styles.rotationOverlay}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.rotationText}>Rotating...</Text>
+          </View>
+        )}
+
+        <View style={{ flex: 1, opacity: isRotating ? 0 : 1 }}>
         {isLandscape ? (
           // Landscape layout: Image | Buttons (vertical) on right, with controls only as wide as image
           <View style={styles.landscapeMainContainer}>
@@ -658,7 +702,10 @@ export const MainScreen = () => {
             <View style={styles.landscapeLeftColumn}>
               <View
                 ref={contentRef}
-                style={styles.landscapeCaptureWrapper}
+                style={[
+                  styles.landscapeCaptureWrapper,
+                  forceContainForCapture && { flex: 0, alignSelf: 'flex-start' }
+                ]}
                 collapsable={false}
                 onLayout={(event) => {
                   const { width, height } = event.nativeEvent.layout;
@@ -675,10 +722,21 @@ export const MainScreen = () => {
                 )}
 
                 {/* Image area with colorbar */}
-                <View style={styles.landscapeImageArea}>
-                  <View style={styles.landscapeContentColumn}>
+                <View style={[
+                  styles.landscapeImageArea,
+                  forceContainForCapture && { alignItems: 'center' }
+                ]}>
+                  <View style={[
+                    styles.landscapeContentColumn,
+                    forceContainForCapture && {
+                      height: Dimensions.get('window').height - 150, // account for top bar and info bars
+                    }
+                  ]}>
                     <View style={styles.content}>
-                      <SatelliteImageViewer ref={satelliteImageViewerRef} />
+                      <SatelliteImageViewer
+                        ref={satelliteImageViewerRef}
+                        forceContainMode={forceContainForCapture}
+                      />
                       <DrawingOverlay
                         externalColorPicker={showColorPickerFromButton}
                         setExternalColorPicker={setShowColorPickerFromButton}
@@ -686,7 +744,11 @@ export const MainScreen = () => {
                     </View>
                   </View>
 
-                  <ColorScaleBar orientation="vertical" />
+                  <ColorScaleBar
+                    orientation="vertical"
+                    matchImageHeight={forceContainForCapture}
+                    height={forceContainForCapture ? Dimensions.get('window').height - 150 : null}
+                  />
                 </View>
 
                 {/* Info bar with channel/product and timestamp */}
@@ -780,7 +842,10 @@ export const MainScreen = () => {
               )}
 
               <View style={styles.content}>
-                <SatelliteImageViewer ref={satelliteImageViewerRef} />
+                <SatelliteImageViewer
+                  ref={satelliteImageViewerRef}
+                  forceContainMode={forceContainForCapture}
+                />
                 <DrawingOverlay
                   externalColorPicker={showColorPickerFromButton}
                   setExternalColorPicker={setShowColorPickerFromButton}
@@ -840,7 +905,7 @@ export const MainScreen = () => {
             />
           </>
         )}
-        </Animated.View>
+        </View>
 
         {/* MenuSelector - shows menu buttons in portrait, panels in both modes */}
         <MenuSelector />
@@ -1010,5 +1075,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     minWidth: 90,
     textAlign: 'right',
+  },
+  rotationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  rotationText: {
+    color: '#fff',
+    marginTop: 16,
+    fontSize: 16,
   },
 });
