@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, Animated } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -78,21 +78,22 @@ export const MainScreen = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
-
-  // Opacity animation for smooth orientation transitions
-  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const [isRotating, setIsRotating] = useState(false); // Track rotation state
 
   const isLandscape = layoutOrientation === 'landscape';
 
-  // Animate content fade on orientation change
+  // Handle rotation with loading overlay to prevent jarring transitions
   useEffect(() => {
-    // Quick fade out and back in when orientation changes
-    contentOpacity.setValue(0);
-    Animated.timing(contentOpacity, {
-      toValue: 1,
-      duration: 150,
-      useNativeDriver: true,
-    }).start();
+    // Show loading overlay during rotation
+    setIsRotating(true);
+
+    // Wait for layout to fully update before hiding loading overlay
+    // This prevents seeing the old layout stretched during physical rotation
+    const timer = setTimeout(() => {
+      setIsRotating(false);
+    }, 300); // 300ms should be enough for layout to stabilize
+
+    return () => clearTimeout(timer);
   }, [layoutOrientation]);
 
   // Listen for orientation changes to sync layout
@@ -650,7 +651,15 @@ export const MainScreen = () => {
           onFavoritesPress={handleFavoritesPress}
         />
 
-        <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
+        {/* Loading overlay during rotation to prevent jarring transitions */}
+        {isRotating && (
+          <View style={styles.rotationOverlay}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.rotationText}>Rotating...</Text>
+          </View>
+        )}
+
+        <View style={{ flex: 1, opacity: isRotating ? 0 : 1 }}>
         {isLandscape ? (
           // Landscape layout: Image | Buttons (vertical) on right, with controls only as wide as image
           <View style={styles.landscapeMainContainer}>
@@ -840,7 +849,7 @@ export const MainScreen = () => {
             />
           </>
         )}
-        </Animated.View>
+        </View>
 
         {/* MenuSelector - shows menu buttons in portrait, panels in both modes */}
         <MenuSelector />
@@ -1010,5 +1019,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     minWidth: 90,
     textAlign: 'right',
+  },
+  rotationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  rotationText: {
+    color: '#fff',
+    marginTop: 16,
+    fontSize: 16,
   },
 });

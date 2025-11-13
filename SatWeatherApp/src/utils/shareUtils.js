@@ -24,28 +24,20 @@ export const captureScreenshot = async (contentRef, options = {}) => {
       }
     });
 
-    // Capture at full quality without dimension constraints first
-    const uri = await captureRef(contentRef, {
+    // If dimensions are provided, pass them directly to captureRef
+    // This forces it to capture ONLY the visible viewport area
+    const captureOptions = {
       format: 'png',
       quality: 1.0,
-    });
+    };
 
-    // If dimensions are provided, crop/resize the captured image to exact viewport size
+    // Pass dimensions directly to captureRef to clip to exact visible area
     if (options.width && options.height) {
-      const manipResult = await ImageManipulator.manipulateAsync(
-        uri,
-        [
-          {
-            resize: {
-              width: Math.round(options.width),
-              height: Math.round(options.height),
-            }
-          }
-        ],
-        { compress: 1, format: ImageManipulator.SaveFormat.PNG }
-      );
-      return manipResult.uri;
+      captureOptions.width = Math.round(options.width);
+      captureOptions.height = Math.round(options.height);
     }
+
+    const uri = await captureRef(contentRef, captureOptions);
 
     return uri;
   } catch (error) {
