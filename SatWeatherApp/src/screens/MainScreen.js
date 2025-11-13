@@ -30,6 +30,7 @@ import {
   generateTimestampArray,
   generateCODImageUrl,
   generateValidatedTimestampArray,
+  formatTimestamp,
 } from '../utils/imageService';
 import { frameCache } from '../utils/frameCache';
 
@@ -666,6 +667,20 @@ export const MainScreen = () => {
               />
             </View>
 
+            {/* Info bar - channel/product and timestamp */}
+            <View style={styles.landscapeInfoBar}>
+              <Text style={styles.landscapeInfoText}>
+                {viewMode === 'rgb'
+                  ? selectedRGBProduct?.name || 'RGB Product'
+                  : selectedChannel
+                  ? `Channel ${selectedChannel.number} - ${selectedChannel.description} (${selectedChannel.wavelength})`
+                  : 'Select a channel or RGB product'}
+              </Text>
+              <Text style={styles.landscapeTimestamp}>
+                {formatTimestamp(imageTimestamp, settings.useLocalTime)}
+              </Text>
+            </View>
+
             {/* Bottom row: Menu buttons + Slider */}
             <View style={styles.landscapeBottomRow}>
               <TouchableOpacity
@@ -909,5 +924,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     letterSpacing: 1,
+  },
+  landscapeInfoBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  landscapeInfoText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 8,
+  },
+  landscapeTimestamp: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+    minWidth: 90,
+    textAlign: 'right',
   },
 });
