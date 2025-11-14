@@ -2,12 +2,15 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { analyzePixelColor } from '../utils/colorbarUtils';
-import { estimateColorFromCoordinates } from '../utils/pixelSampler';
+import { estimateColorFromCoordinates, samplePixelColor } from '../utils/pixelSampler';
 
 /**
  * CenterCrosshairInspector - RadarScope-style center crosshair
  * Shows a fixed crosshair in the center with continuous value readout
  * Updates as the user pans the image
+ *
+ * Now supports ACTUAL pixel sampling from the satellite image!
+ * Falls back to estimation if sampling fails.
  */
 export const CenterCrosshairInspector = () => {
   const {
@@ -18,10 +21,11 @@ export const CenterCrosshairInspector = () => {
     currentImageUrl,
     crosshairPosition,
     setCrosshairPosition,
+    selectedDomain,
+    imageContainerRef,
   } = useApp();
 
   const [centerValue, setCenterValue] = useState(null);
-  const samplingInterval = useRef(null);
 
   // Get screen dimensions
   const screenWidth = Dimensions.get('window').width;
@@ -37,62 +41,95 @@ export const CenterCrosshairInspector = () => {
     }
   }, [isInspectorMode, crosshairPosition, screenWidth, screenHeight]);
 
+  // Clear inspector value when domain or channel changes
+  useEffect(() => {
+    setCenterValue(null);
+    // Re-sample after a brief delay to let new image load
+    const timer = setTimeout(() => {
+      if (isInspectorMode && crosshairPosition) {
+        // Trigger a re-sample by clearing and re-setting
+        setCenterValue(null);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [selectedDomain, selectedChannel, selectedRGBProduct, viewMode]);
+
   // Use crosshair position from context, or default to center
   const crosshairX = crosshairPosition?.x ?? screenWidth / 2;
   const crosshairY = crosshairPosition?.y ?? screenHeight / 2;
 
-  // Sample the center pixel continuously
+  // Sample when crosshair moves or image changes
   useEffect(() => {
     if (!isInspectorMode || !currentImageUrl) {
       setCenterValue(null);
-      if (samplingInterval.current) {
-        clearInterval(samplingInterval.current);
-      }
       return;
     }
 
     // Function to sample at crosshair position
-    const sampleCrosshair = () => {
+    const sampleCrosshair = async () => {
       const product = viewMode === 'channel' ? selectedChannel : selectedRGBProduct;
 
-      // Estimate color at crosshair position based on coordinate
-      // For vertical gradient (IR channels), position determines temperature
-      const estimatedColor = estimateColorFromCoordinates(
-        crosshairX,
-        crosshairY,
-        screenHeight,
-        viewMode,
-        product
-      );
+      console.log(`[INSPECTOR] Sampling at crosshair (${crosshairX.toFixed(1)}, ${crosshairY.toFixed(1)})`);
+
+      let sampledColor = null;
+
+      // Try to sample actual pixel color if we have a reference to the image container
+      if (imageContainerRef && imageContainerRef.current) {
+        try {
+          sampledColor = await samplePixelColor(
+            imageContainerRef.current,
+            crosshairX,
+            crosshairY,
+            screenWidth,
+            screenHeight
+          );
+          if (sampledColor) {
+            console.log('[INSPECTOR] Successfully sampled pixel');
+          }
+        } catch (error) {
+          console.log('[INSPECTOR] Pixel sampling failed, falling back to estimation:', error);
+        }
+      } else {
+        console.log('[INSPECTOR] No image container ref available, using estimation');
+      }
+
+      // Fall back to estimation if sampling failed or not available
+      if (!sampledColor) {
+        console.log('[INSPECTOR] Using coordinate-based estimation');
+        sampledColor = estimateColorFromCoordinates(
+          crosshairX,
+          crosshairY,
+          screenHeight,
+          viewMode,
+          product
+        );
+      }
+
+      console.log(`[INSPECTOR] Color: RGB(${sampledColor.r}, ${sampledColor.g}, ${sampledColor.b}), sampled=${sampledColor.sampled || false}`);
 
       // Analyze the color
       const analysis = analyzePixelColor(
-        estimatedColor.r,
-        estimatedColor.g,
-        estimatedColor.b,
+        sampledColor.r,
+        sampledColor.g,
+        sampledColor.b,
         viewMode,
         product
       );
+
+      console.log(`[INSPECTOR] Analysis: ${analysis.label} - ${analysis.description}`);
 
       setCenterValue({
         label: analysis.label,
         description: analysis.description,
         color: analysis.color,
+        sampled: sampledColor.sampled || false, // Track if we actually sampled or estimated
       });
     };
 
-    // Sample immediately
+    // Sample when crosshair moves or image changes
     sampleCrosshair();
 
-    // Sample periodically (every 500ms) to catch updates
-    samplingInterval.current = setInterval(sampleCrosshair, 500);
-
-    return () => {
-      if (samplingInterval.current) {
-        clearInterval(samplingInterval.current);
-      }
-    };
-  }, [isInspectorMode, viewMode, selectedChannel, selectedRGBProduct, currentImageUrl, crosshairX, crosshairY, screenHeight]);
+  }, [isInspectorMode, viewMode, selectedChannel, selectedRGBProduct, currentImageUrl, crosshairX, crosshairY, screenHeight, imageContainerRef]);
 
   // Don't render if inspector mode is off
   if (!isInspectorMode) {
@@ -139,7 +176,7 @@ export const CenterCrosshairInspector = () => {
       {/* Instruction text */}
       <View style={styles.instructionContainer}>
         <Text style={styles.instructionText}>
-          Inspector Mode - Tap to inspect location
+          Inspector Mode - Tap to reposition crosshair
         </Text>
       </View>
     </View>
@@ -242,16 +279,16 @@ const styles = StyleSheet.create({
   },
   valueBoxBottomRight: {
     position: 'absolute',
-    bottom: 80, // Above bottom controls
+    bottom: 10, // Just above the bottom edge, near where timestamp shows
     right: 10,
     backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1.5,
     borderColor: '#00ff00',
-    minWidth: 200,
-    maxWidth: 280,
+    minWidth: 160,
+    maxWidth: 240,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
@@ -262,28 +299,28 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   colorIndicator: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    marginRight: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    marginRight: 8,
     borderWidth: 1,
     borderColor: '#fff',
-    marginTop: 2,
+    marginTop: 1,
   },
   valueTextContainer: {
     flex: 1,
   },
   valueLabel: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   valueDescription: {
     color: '#ccc',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '400',
-    lineHeight: 16,
+    lineHeight: 13,
   },
   instructionContainer: {
     position: 'absolute',

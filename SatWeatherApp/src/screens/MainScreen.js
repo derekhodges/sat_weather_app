@@ -249,9 +249,62 @@ export const MainScreen = () => {
       const intervalMs = settings.autoRefreshInterval * 60 * 1000;
       console.log(`Auto-refresh enabled: refreshing every ${settings.autoRefreshInterval} minute(s)`);
 
-      autoRefreshIntervalRef.current = setInterval(() => {
-        console.log('Auto-refresh: Loading latest image...');
-        loadImage();
+      autoRefreshIntervalRef.current = setInterval(async () => {
+        console.log('Auto-refresh: Reloading frames for current selection...');
+        const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
+
+        if (!product) {
+          console.warn('Auto-refresh skipped: No product selected');
+          return;
+        }
+
+        // Clear cache and reload frames for current domain/product
+        frameCache.clearForProduct(selectedDomain, product);
+
+        try {
+          setIsLoading(true);
+
+          // Generate validated timestamps (only frames that exist)
+          const validFrames = await generateValidatedTimestampArray(
+            selectedDomain,
+            product,
+            settings.frameCount,
+            5
+          );
+
+          if (validFrames.length === 0) {
+            console.error('Auto-refresh: No valid frames available');
+            setIsLoading(false);
+            return;
+          }
+
+          // Prefetch all frames into cache
+          await frameCache.prefetchFrames(
+            validFrames.map(f => ({
+              url: f.url,
+              domain: selectedDomain,
+              product: product,
+              timestamp: f.timestamp,
+            }))
+          );
+
+          // Update available timestamps (only the validated ones)
+          const timestamps = validFrames.map(f => f.timestamp);
+          setAvailableTimestamps(timestamps);
+          setCurrentFrameIndex(timestamps.length - 1); // Move to latest
+
+          console.log(`Auto-refresh: Loaded ${timestamps.length} valid frames`);
+
+          // Load the latest frame
+          if (timestamps.length > 0) {
+            loadImageForTimestamp(timestamps[timestamps.length - 1]);
+          }
+        } catch (error) {
+          console.error('Error during auto-refresh:', error);
+          setError('Auto-refresh failed. Will retry next interval.');
+        } finally {
+          setIsLoading(false);
+        }
       }, intervalMs);
     }
 
@@ -261,7 +314,7 @@ export const MainScreen = () => {
         autoRefreshIntervalRef.current = null;
       }
     };
-  }, [settings.autoRefresh, settings.autoRefreshInterval]);
+  }, [settings.autoRefresh, settings.autoRefreshInterval, selectedDomain, selectedRGBProduct, selectedChannel, viewMode]);
 
   const loadImage = async () => {
     // Don't try to load if we don't have a product selected in RGB mode

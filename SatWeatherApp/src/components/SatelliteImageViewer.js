@@ -29,7 +29,19 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     setHasLoadedOnce,
     isInspectorMode,
     setCrosshairPosition,
+    setImageContainerRef,
   } = useApp();
+
+  // Ref for the entire container (for pixel sampling)
+  // We capture the container, not the transformed image, so screen coords match
+  const containerRef = useRef(null);
+
+  // Expose the container ref via context for pixel sampling
+  useEffect(() => {
+    if (setImageContainerRef) {
+      setImageContainerRef(containerRef);
+    }
+  }, [setImageContainerRef]);
 
   // Dual image state to prevent black flicker
   // We keep two images and swap between them
@@ -128,22 +140,30 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
 
   // Tap gesture for inspector mode - set crosshair position
   // ONLY active when inspector mode is on
+  // CRITICAL: This needs to be on the outer container to get SCREEN coordinates
   const tapGesture = Gesture.Tap()
     .enabled(isInspectorMode)
     .onEnd((event) => {
       if (isInspectorMode) {
+        'worklet';
+        // These are screen coordinates since tap is on outer container
+        const screenX = event.x;
+        const screenY = event.y;
+
+        console.log(`[TAP] Screen tap at (${screenX}, ${screenY})`);
+
+        // Store screen coordinates for crosshair display and sampling
         runOnJS(setCrosshairPosition)({
-          x: event.x,
-          y: event.y,
+          x: screenX,
+          y: screenY,
         });
       }
     });
 
-  // Combined gesture for pinch, pan, and tap
-  const composedGesture = Gesture.Simultaneous(
+  // Combined gesture for pinch and pan (not tap - tap is separate)
+  const zoomPanGesture = Gesture.Simultaneous(
     pinchGesture,
-    panGesture,
-    tapGesture
+    panGesture
   );
 
   // Handle URL changes - load into inactive slot and swap when ready
@@ -328,11 +348,12 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     : styles.image;
 
   return (
-    <View style={styles.container}>
-      <GestureDetector gesture={composedGesture}>
-        <Animated.View style={[styles.imageContainer, animatedStyle]}>
-          {/* Image Slot A */}
-          {imageSlotA && (
+    <GestureDetector gesture={tapGesture}>
+      <View ref={containerRef} style={styles.container} collapsable={false}>
+        <GestureDetector gesture={zoomPanGesture}>
+          <Animated.View style={[styles.imageContainer, animatedStyle]}>
+            {/* Image Slot A */}
+            {imageSlotA && (
             <Animated.View style={[imageWrapperStyle, animatedStyleA]}>
               <Image
                 source={{ uri: imageSlotA }}
@@ -376,6 +397,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       {/* Location marker overlay */}
       <LocationMarker />
     </View>
+    </GestureDetector>
   );
 });
 

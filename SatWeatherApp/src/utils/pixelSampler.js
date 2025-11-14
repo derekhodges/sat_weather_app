@@ -1,91 +1,150 @@
 /**
  * Pixel sampling utilities for inspector mode
- * Uses react-native-view-shot to sample pixel colors from the satellite image
+ * Uses react-native-view-shot and expo-image-manipulator to sample actual pixel colors
  */
 
 import { captureRef } from 'react-native-view-shot';
+import * as ImageManipulator from 'expo-image-manipulator';
+import UPNG from 'upng-js';
 
 /**
- * Sample pixel color at a specific point in the image
+ * Sample pixel color at a specific point in the image view
  *
- * This captures a small region around the tap point and extracts the center pixel color
+ * This captures the image view and extracts the actual RGB color at the tap point
  *
- * @param {object} imageRef - Reference to the Image component
- * @param {number} x - X coordinate (relative to image)
- * @param {number} y - Y coordinate (relative to image)
- * @param {number} imageWidth - Width of the displayed image
- * @param {number} imageHeight - Height of the displayed image
- * @returns {Promise<{r, g, b}>} - RGB color values
+ * @param {object} viewRef - Reference to the image container view
+ * @param {number} x - X coordinate (screen coordinates)
+ * @param {number} y - Y coordinate (screen coordinates)
+ * @param {number} screenWidth - Screen width in pixels
+ * @param {number} screenHeight - Screen height in pixels
+ * @returns {Promise<{r, g, b, sampled: true}>} - RGB color values
  */
-export const samplePixelColor = async (imageRef, x, y, imageWidth, imageHeight) => {
+export const samplePixelColor = async (viewRef, x, y, screenWidth, screenHeight) => {
   try {
-    // Capture a small region around the tap point (5x5 pixels)
-    // This is faster than capturing the whole image
-    const sampleSize = 5;
-    const halfSize = Math.floor(sampleSize / 2);
+    console.log(`[PIXEL SAMPLE] Starting sample at screen coords (${x.toFixed(1)}, ${y.toFixed(1)})`);
+    console.log(`[PIXEL SAMPLE] Screen dimensions: ${screenWidth}x${screenHeight}`);
 
-    // Ensure coordinates are within bounds
-    const sampleX = Math.max(halfSize, Math.min(x, imageWidth - halfSize));
-    const sampleY = Math.max(halfSize, Math.min(y, imageHeight - halfSize));
-
-    // Capture the entire image (we'll process it to get the pixel)
-    // Note: captureRef doesn't support region capture, so we capture full image
-    const uri = await captureRef(imageRef, {
+    // Step 1: Capture the entire view as a PNG
+    // CRITICAL: Force capture to be screen-sized so tap coordinates map directly
+    // Without this, zoomed views capture at higher resolution causing coordinate mismatch
+    const uri = await captureRef(viewRef, {
       format: 'png',
       quality: 1.0,
-      result: 'data-uri',
+      result: 'tmpfile',
+      width: Math.round(screenWidth),   // Force screen width
+      height: Math.round(screenHeight), // Force screen height
     });
 
-    // Parse the data URI to get pixel data
-    // For now, we'll return a placeholder since we need to decode the image
-    // In a real implementation, you'd use expo-image-manipulator or similar
+    console.log(`[PIXEL SAMPLE] Captured view to: ${uri}`);
 
-    // Placeholder: Extract color from data URI
-    const color = await extractColorFromDataURI(uri, sampleX, sampleY, imageWidth, imageHeight);
+    // Step 2: Crop to a small region around the tap point (5x5 pixels)
+    // We use a small region for better accuracy
+    const cropSize = 5;
+    const halfSize = Math.floor(cropSize / 2);
 
-    return color;
+    const cropX = Math.max(0, Math.floor(x - halfSize));
+    const cropY = Math.max(0, Math.floor(y - halfSize));
+
+    console.log(`[PIXEL SAMPLE] Cropping at (${cropX}, ${cropY}) with size ${cropSize}x${cropSize}`);
+
+    // Step 3: Crop and resize to 1x1 pixel
+    // This effectively gives us the average color of the region, which is very close to the center pixel
+    const manipulated = await ImageManipulator.manipulateAsync(
+      uri,
+      [
+        {
+          crop: {
+            originX: cropX,
+            originY: cropY,
+            width: cropSize,
+            height: cropSize,
+          },
+        },
+        {
+          resize: {
+            width: 1,
+            height: 1,
+          },
+        },
+      ],
+      { format: ImageManipulator.SaveFormat.PNG, base64: true }
+    );
+
+    // Step 4: Extract RGB from the 1x1 pixel PNG
+    const rgb = await extractRGBFromSinglePixelPNG(manipulated.base64);
+
+    console.log(`[PIXEL SAMPLE] Extracted RGB: (${rgb.r}, ${rgb.g}, ${rgb.b})`);
+
+    return {
+      r: rgb.r,
+      g: rgb.g,
+      b: rgb.b,
+      sampled: true,
+    };
   } catch (error) {
-    console.error('Error sampling pixel:', error);
+    console.error('[PIXEL SAMPLE] Error sampling pixel:', error);
+    // Return null to trigger fallback to estimation
+    return null;
+  }
+};
+
+/**
+ * Extract RGB color from a base64-encoded 1x1 pixel PNG image
+ * Uses UPNG library for proper PNG decoding
+ *
+ * @param {string} base64 - Base64 encoded PNG data (without data URI prefix)
+ * @returns {Promise<{r, g, b}>} - RGB values
+ */
+const extractRGBFromSinglePixelPNG = async (base64) => {
+  try {
+    // Decode base64 to ArrayBuffer
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    console.log(`[PNG DECODE] Decoding PNG, size: ${bytes.length} bytes`);
+
+    // Use UPNG to decode the PNG
+    const png = UPNG.decode(bytes.buffer);
+
+    console.log(`[PNG DECODE] PNG decoded: ${png.width}x${png.height}, ${png.depth} bit, frames: ${png.frames?.length || 'N/A'}`);
+
+    // Convert to RGBA - this returns an array of Uint8Arrays (one per frame)
+    const rgbaFrames = UPNG.toRGBA8(png);
+
+    console.log(`[PNG DECODE] RGBA frames: ${rgbaFrames.length}, first frame type: ${rgbaFrames[0]?.constructor.name}, length: ${rgbaFrames[0]?.length}`);
+
+    const rgba = new Uint8Array(rgbaFrames[0]); // Get first frame as Uint8Array
+
+    console.log(`[PNG DECODE] RGBA array length: ${rgba.length}, values: [${rgba[0]}, ${rgba[1]}, ${rgba[2]}, ${rgba[3]}]`);
+
+    // RGBA is a Uint8Array with 4 bytes per pixel (R, G, B, A)
+    // For a 1x1 image, we just need the first pixel
+    const r = rgba[0];
+    const g = rgba[1];
+    const b = rgba[2];
+    const a = rgba[3];
+
+    console.log(`[PNG DECODE] Pixel color: RGB(${r}, ${g}, ${b}), Alpha: ${a}`);
+
+    // Validate we got real values
+    if (r === undefined || g === undefined || b === undefined) {
+      throw new Error(`Invalid RGB values: r=${r}, g=${g}, b=${b}`);
+    }
+
+    return { r, g, b };
+
+  } catch (error) {
+    console.error('[PNG DECODE] Error extracting RGB from PNG:', error);
     throw error;
   }
 };
 
 /**
- * Extract RGB color from a data URI at specific coordinates
- * This is a simplified version - in production you'd use expo-image-manipulator
- *
- * @param {string} dataURI - Base64 encoded image data URI
- * @param {number} x - X coordinate
- * @param {number} y - Y coordinate
- * @param {number} width - Image width
- * @param {number} height - Image height
- * @returns {Promise<{r, g, b}>} - RGB values
- */
-const extractColorFromDataURI = async (dataURI, x, y, width, height) => {
-  // This is a simplified implementation
-  // In a real app, you would:
-  // 1. Use expo-image-manipulator to decode the image
-  // 2. Extract pixel data at the specified coordinates
-  // 3. Return the RGB values
-
-  // For now, return a placeholder that indicates we need the actual implementation
-  // The calling code will fall back to coordinate-based estimation
-  return null;
-};
-
-/**
- * Alternative: Sample using canvas (requires expo-gl or react-native-canvas)
- * This is more complex but allows true pixel reading
- */
-export const samplePixelWithCanvas = async (imageUri, x, y) => {
-  // TODO: Implement canvas-based sampling if needed
-  // This would require adding expo-gl or react-native-canvas as a dependency
-  throw new Error('Canvas-based sampling not yet implemented');
-};
-
-/**
  * Fallback: Estimate color based on coordinate and product type
- * Uses the colorbar gradient as an approximation
+ * Uses the actual color tables from color_plus.py for accurate estimation
  *
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
@@ -95,15 +154,44 @@ export const samplePixelWithCanvas = async (imageUri, x, y) => {
  * @returns {{r, g, b, estimated: true}}
  */
 export const estimateColorFromCoordinates = (x, y, height, viewMode, product) => {
-  // Simple vertical gradient estimation
-  // Blue (cold/top) to Red (warm/bottom) for IR channels
+  // Import color tables
+  const IR_COLOR_TABLES = require('../constants/colorTables').IR_COLOR_TABLES;
+
+  // Calculate vertical position percentage (0 at top, 100 at bottom)
   const percentage = (y / height) * 100;
 
   if (viewMode === 'channel' && product?.type === 'infrared') {
-    // Use IR colorbar gradient (blue to red)
-    const hue = 240 - (percentage / 100 * 240); // 240 (blue) to 0 (red)
+    // Get the color table for this specific channel
+    const channel = `C${product.number.toString().padStart(2, '0')}`;
+    const colorTable = IR_COLOR_TABLES[channel];
 
-    // Convert HSL to RGB
+    if (colorTable && colorTable.colors) {
+      // Map percentage to position in color table
+      // Bottom of image (100%) = index 0 (coldest/first color)
+      // Top of image (0%) = last index (warmest/last color)
+      const position = (percentage / 100) * (colorTable.colors.length - 1);
+      const lowerIndex = Math.floor(position);
+      const upperIndex = Math.min(lowerIndex + 1, colorTable.colors.length - 1);
+      const fraction = position - lowerIndex;
+
+      // Interpolate between colors
+      const lowerColor = colorTable.colors[lowerIndex];
+      const upperColor = colorTable.colors[upperIndex];
+
+      const r = Math.round(lowerColor[0] + (upperColor[0] - lowerColor[0]) * fraction);
+      const g = Math.round(lowerColor[1] + (upperColor[1] - lowerColor[1]) * fraction);
+      const b = Math.round(lowerColor[2] + (upperColor[2] - lowerColor[2]) * fraction);
+
+      return {
+        r,
+        g,
+        b,
+        estimated: true
+      };
+    }
+
+    // Fallback if color table not found: generic blue to red
+    const hue = 240 - (percentage / 100 * 240);
     const rgb = hslToRgb(hue / 360, 1, 0.5);
 
     return {
