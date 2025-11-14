@@ -57,13 +57,22 @@ export const BoundaryOverlay = ({ scale, translateX, translateY }) => {
 
     const { filename, baseUrl, ext } = config;
 
-    // For continental domains (CONUS, REGIONAL)
-    if (domainType === DOMAIN_TYPES.CONUS || domainType === DOMAIN_TYPES.REGIONAL) {
+    // For CONUS
+    if (domainType === DOMAIN_TYPES.CONUS) {
       // Cities use climate.cod.edu and satellite_r path
       if (baseUrl === 'climate.cod.edu') {
         return `https://${baseUrl}/data/satellite_r/continental/${codName}/maps/${codName}_${filename}.${ext}`;
       }
       return `https://${baseUrl}/data/satellite/continental/${codName}/maps/${codName}_${filename}.${ext}`;
+    }
+
+    // For regional domains
+    if (domainType === DOMAIN_TYPES.REGIONAL) {
+      // Cities use climate.cod.edu and satellite_r path
+      if (baseUrl === 'climate.cod.edu') {
+        return `https://${baseUrl}/data/satellite_r/regional/${codName}/maps/${codName}_${filename}.${ext}`;
+      }
+      return `https://${baseUrl}/data/satellite/regional/${codName}/maps/${codName}_${filename}.${ext}`;
     }
 
     // For local domains
