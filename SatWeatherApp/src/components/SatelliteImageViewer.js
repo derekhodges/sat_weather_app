@@ -81,15 +81,17 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const constrainTranslation = (x, y, currentScale) => {
     'worklet';
 
-    // For contain mode, image fits in screen, so constrain more tightly
+    // For contain mode, image fits in screen, so allow moderate panning to see all parts
     // For cover mode, image is 200% size, so allow more movement
     const imageSize = effectiveDisplayMode === 'cover' ? 2 : 1;
 
     // Calculate maximum allowed translation based on zoom level
-    // When zoomed in, allow more panning. When zoomed out, constrain more.
-    // The idea: don't let more than 20% of the image go off screen
-    const maxOffsetX = (screenWidth * (currentScale - 1) * imageSize) / 2 + (screenWidth * 0.2);
-    const maxOffsetY = (screenHeight * (currentScale - 1) * imageSize) / 2 + (screenHeight * 0.2);
+    // When zoomed in, allow more panning. When zoomed out, still allow some panning.
+    // For contain mode: allow panning up to 50% of screen width/height to see edges
+    // For cover mode: allow more panning since image is larger
+    const basePanAllowance = effectiveDisplayMode === 'cover' ? 0.2 : 0.5;
+    const maxOffsetX = (screenWidth * (currentScale - 1) * imageSize) / 2 + (screenWidth * basePanAllowance);
+    const maxOffsetY = (screenHeight * (currentScale - 1) * imageSize) / 2 + (screenHeight * basePanAllowance);
 
     // Constrain to bounds
     const constrainedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, x));
@@ -412,6 +414,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
           scale={scale}
           translateX={translateX}
           translateY={translateY}
+          displayMode={effectiveDisplayMode}
         />
 
         {/* Location marker overlay */}

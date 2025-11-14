@@ -13,7 +13,7 @@ import { DOMAIN_TYPES } from '../constants/domains';
  *
  * TODO: Switch to AWS-hosted boundaries when available
  */
-export const BoundaryOverlay = ({ scale, translateX, translateY }) => {
+export const BoundaryOverlay = ({ scale, translateX, translateY, displayMode }) => {
   const { selectedDomain, overlayStates } = useApp();
 
   if (!selectedDomain) {
@@ -33,14 +33,19 @@ export const BoundaryOverlay = ({ scale, translateX, translateY }) => {
     cities: { filename: 'id', baseUrl: 'climate.cod.edu', ext: 'gif' },
   };
 
-  // Get list of enabled overlays
+  // Get list of enabled overlays with proper null checking
   const enabledOverlays = Object.keys(overlayConfig).filter(
-    overlayId => overlayStates?.[overlayId]?.enabled
+    overlayId => overlayStates?.[overlayId]?.enabled === true
   );
 
-  if (enabledOverlays.length === 0) {
+  if (enabledOverlays.length === 0 || !overlayStates) {
     return null;
   }
+
+  // Determine the wrapper style based on display mode (match satellite image)
+  const imageWrapperStyle = displayMode === 'cover'
+    ? [styles.overlayContainer, styles.overlayContainerCover]
+    : styles.overlayContainer;
 
   // Generate the boundary image URL based on domain type and overlay type
   const getBoundaryUrl = (overlayId) => {
@@ -99,8 +104,11 @@ export const BoundaryOverlay = ({ scale, translateX, translateY }) => {
   });
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
-      <View style={styles.overlayContainer}>
+    <Animated.View
+      style={[StyleSheet.absoluteFill, animatedStyle]}
+      pointerEvents="none"
+    >
+      <View style={imageWrapperStyle}>
         {enabledOverlays.map((overlayId) => {
           const url = getBoundaryUrl(overlayId);
           if (!url) return null;
@@ -130,6 +138,10 @@ const styles = StyleSheet.create({
   overlayContainer: {
     width: '100%',
     height: '100%',
+  },
+  overlayContainerCover: {
+    width: '200%',
+    height: '200%',
   },
   boundaryImage: {
     position: 'absolute',
