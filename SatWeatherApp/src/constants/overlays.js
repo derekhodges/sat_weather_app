@@ -84,23 +84,74 @@ export const OVERLAYS = {
     enabled: false,
   },
 
-  // Boundaries
-  COUNTY_LINES: {
-    id: 'county_lines',
-    name: 'County Boundaries',
-    category: OVERLAY_CATEGORIES.BOUNDARIES,
-    description: 'County boundary lines (from COD)',
-    enabled: false,
-  },
-
+  // Boundaries - Political
   STATE_LINES: {
     id: 'state_lines',
     name: 'State Boundaries',
     category: OVERLAY_CATEGORIES.BOUNDARIES,
-    description: 'State and political boundary lines (from COD)',
+    description: 'State and political boundary lines',
     enabled: true, // Default on
   },
 
+  COUNTY_LINES: {
+    id: 'county_lines',
+    name: 'County Boundaries',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'County boundary lines',
+    enabled: false,
+  },
+
+  NWS_CWA: {
+    id: 'nws_cwa',
+    name: 'NWS County Warning Areas',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'National Weather Service county warning areas',
+    enabled: false,
+  },
+
+  // Boundaries - Geographic
+  LAT_LON: {
+    id: 'latlon',
+    name: 'Lat/Lon Grid',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'Latitude/longitude grid lines',
+    enabled: false,
+  },
+
+  RIVERS: {
+    id: 'rivers',
+    name: 'Rivers',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'Major rivers and waterways',
+    enabled: false,
+  },
+
+  // Boundaries - Infrastructure
+  US_INTERSTATES: {
+    id: 'usint',
+    name: 'US Interstates',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'Interstate highway system',
+    enabled: false,
+  },
+
+  US_HIGHWAYS: {
+    id: 'ushw',
+    name: 'US Highways',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'US highway system',
+    enabled: false,
+  },
+
+  US_ROADS: {
+    id: 'usstrd',
+    name: 'US Roads',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'State roads and highways',
+    enabled: false,
+  },
+
+  // Boundaries - Labels
   CITIES: {
     id: 'cities',
     name: 'Cities',

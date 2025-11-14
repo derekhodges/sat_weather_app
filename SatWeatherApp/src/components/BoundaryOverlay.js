@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 import { DOMAIN_TYPES } from '../constants/domains';
@@ -7,7 +7,8 @@ import { DOMAIN_TYPES } from '../constants/domains';
 /**
  * BoundaryOverlay component
  *
- * Renders boundary overlays (state lines, county lines, cities) on top of satellite imagery.
+ * Renders boundary overlays on top of satellite imagery.
+ * Supports multiple overlay types: state lines, counties, rivers, roads, etc.
  * Uses COD's boundary images which are transparent PNGs that align with their satellite products.
  *
  * TODO: Switch to AWS-hosted boundaries when available
@@ -15,46 +16,67 @@ import { DOMAIN_TYPES } from '../constants/domains';
 export const BoundaryOverlay = ({ scale, translateX, translateY }) => {
   const { selectedDomain, overlayStates } = useApp();
 
-  // Check if any boundary overlays are enabled
-  const showStateBoundaries = overlayStates?.state_lines?.enabled || false;
-  const showCountyBoundaries = overlayStates?.county_lines?.enabled || false;
-
-  // For now, we only support the map overlay which includes state boundaries
-  // County and city overlays will be added later
-  const shouldShowOverlay = showStateBoundaries || showCountyBoundaries;
-
-  if (!shouldShowOverlay || !selectedDomain) {
+  if (!selectedDomain) {
     return null;
   }
 
-  // Generate the boundary image URL based on domain type
-  const getBoundaryUrl = () => {
+  // Map of overlay IDs to their filename patterns and base URLs
+  const overlayConfig = {
+    state_lines: { filename: 'map', baseUrl: 'weather.cod.edu', ext: 'png' },
+    county_lines: { filename: 'counties', baseUrl: 'weather.cod.edu', ext: 'png' },
+    nws_cwa: { filename: 'cwa', baseUrl: 'weather.cod.edu', ext: 'png' },
+    latlon: { filename: 'latlon', baseUrl: 'weather.cod.edu', ext: 'png' },
+    rivers: { filename: 'rivers', baseUrl: 'weather.cod.edu', ext: 'png' },
+    usint: { filename: 'usint', baseUrl: 'weather.cod.edu', ext: 'png' },
+    ushw: { filename: 'ushw', baseUrl: 'weather.cod.edu', ext: 'png' },
+    usstrd: { filename: 'usstrd', baseUrl: 'weather.cod.edu', ext: 'png' },
+    cities: { filename: 'id', baseUrl: 'climate.cod.edu', ext: 'gif' },
+  };
+
+  // Get list of enabled overlays
+  const enabledOverlays = Object.keys(overlayConfig).filter(
+    overlayId => overlayStates?.[overlayId]?.enabled
+  );
+
+  if (enabledOverlays.length === 0) {
+    return null;
+  }
+
+  // Generate the boundary image URL based on domain type and overlay type
+  const getBoundaryUrl = (overlayId) => {
     const domainType = selectedDomain.type;
     const codName = selectedDomain.codName;
+    const config = overlayConfig[overlayId];
+
+    if (!config) return null;
 
     // For full disk, we don't have boundary overlays
     if (domainType === DOMAIN_TYPES.FULL_DISK) {
       return null;
     }
 
+    const { filename, baseUrl, ext } = config;
+
     // For continental domains (CONUS, REGIONAL)
     if (domainType === DOMAIN_TYPES.CONUS || domainType === DOMAIN_TYPES.REGIONAL) {
-      return `https://weather.cod.edu/data/satellite/continental/${codName}/maps/${codName}_map.png`;
+      // Cities use climate.cod.edu and satellite_r path
+      if (baseUrl === 'climate.cod.edu') {
+        return `https://${baseUrl}/data/satellite_r/continental/${codName}/maps/${codName}_${filename}.${ext}`;
+      }
+      return `https://${baseUrl}/data/satellite/continental/${codName}/maps/${codName}_${filename}.${ext}`;
     }
 
     // For local domains
     if (domainType === DOMAIN_TYPES.LOCAL) {
-      return `https://weather.cod.edu/data/satellite/local/${codName}/maps/${codName}_map.png`;
+      // Cities use climate.cod.edu and satellite_r path
+      if (baseUrl === 'climate.cod.edu') {
+        return `https://${baseUrl}/data/satellite_r/local/${codName}/maps/${codName}_${filename}.${ext}`;
+      }
+      return `https://${baseUrl}/data/satellite/local/${codName}/maps/${codName}_${filename}.${ext}`;
     }
 
     return null;
   };
-
-  const boundaryUrl = getBoundaryUrl();
-
-  if (!boundaryUrl) {
-    return null;
-  }
 
   // Apply the same transform as the satellite image so boundaries stay aligned
   const animatedStyle = useAnimatedStyle(() => {
@@ -69,21 +91,39 @@ export const BoundaryOverlay = ({ scale, translateX, translateY }) => {
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
-      <Image
-        source={{ uri: boundaryUrl }}
-        style={styles.boundaryImage}
-        resizeMode="contain"
-        fadeDuration={0}
-        onError={(error) => {
-          console.warn('Boundary overlay load error:', error.nativeEvent?.error || 'Unknown error');
-        }}
-      />
+      <View style={styles.overlayContainer}>
+        {enabledOverlays.map((overlayId) => {
+          const url = getBoundaryUrl(overlayId);
+          if (!url) return null;
+
+          return (
+            <Image
+              key={overlayId}
+              source={{ uri: url }}
+              style={styles.boundaryImage}
+              resizeMode="contain"
+              fadeDuration={0}
+              onError={(error) => {
+                console.warn(
+                  `Boundary overlay '${overlayId}' load error:`,
+                  error.nativeEvent?.error || 'Unknown error'
+                );
+              }}
+            />
+          );
+        })}
+      </View>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
+  overlayContainer: {
+    width: '100%',
+    height: '100%',
+  },
   boundaryImage: {
+    position: 'absolute',
     width: '100%',
     height: '100%',
   },
