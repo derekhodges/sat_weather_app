@@ -151,6 +151,7 @@ const styles = StyleSheet.create({
     height: '200%',
   },
   boundaryImage: {
+    position: 'absolute',
     width: '100%',
     height: '100%',
   },
