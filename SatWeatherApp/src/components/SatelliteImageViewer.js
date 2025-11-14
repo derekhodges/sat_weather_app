@@ -32,14 +32,18 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     setImageContainerRef,
   } = useApp();
 
-  // Ref for the entire container (for pixel sampling)
-  // We capture the container, not the transformed image, so screen coords match
+  // Ref for the entire container (used for tap gestures)
   const containerRef = useRef(null);
 
-  // Expose the container ref via context for pixel sampling
+  // Ref for ONLY the image container (for pixel sampling)
+  // This excludes overlays like LocationMarker and CenterCrosshairInspector
+  // so we sample the actual satellite image, not the green crosshairs
+  const imageOnlyRef = useRef(null);
+
+  // Expose the image-only ref via context for pixel sampling
   useEffect(() => {
     if (setImageContainerRef) {
-      setImageContainerRef(containerRef);
+      setImageContainerRef(imageOnlyRef);
     }
   }, [setImageContainerRef]);
 
@@ -350,53 +354,62 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   return (
     <GestureDetector gesture={tapGesture}>
       <View ref={containerRef} style={styles.container} collapsable={false}>
-        <GestureDetector gesture={zoomPanGesture}>
-          <Animated.View style={[styles.imageContainer, animatedStyle]}>
-            {/* Image Slot A */}
-            {imageSlotA && (
-            <Animated.View style={[imageWrapperStyle, animatedStyleA]}>
-              <Image
-                source={{ uri: imageSlotA }}
-                style={imageStyle}
-                resizeMode="contain"
-                fadeDuration={0}
-                onLoad={handleImageALoad}
-                onError={(error) => {
-                  console.warn('Image A load error:', error.nativeEvent?.error || 'Unknown error');
-                }}
-              />
-            </Animated.View>
-          )}
+        {/* Image-only view for pixel sampling - NO overlays inside this */}
+        <View
+          ref={imageOnlyRef}
+          style={StyleSheet.absoluteFill}
+          collapsable={false}
+          pointerEvents="none"
+        >
+          <GestureDetector gesture={zoomPanGesture}>
+            <Animated.View style={[styles.imageContainer, animatedStyle]}>
+              {/* Image Slot A */}
+              {imageSlotA && (
+              <Animated.View style={[imageWrapperStyle, animatedStyleA]}>
+                <Image
+                  source={{ uri: imageSlotA }}
+                  style={imageStyle}
+                  resizeMode="contain"
+                  fadeDuration={0}
+                  onLoad={handleImageALoad}
+                  onError={(error) => {
+                    console.warn('Image A load error:', error.nativeEvent?.error || 'Unknown error');
+                  }}
+                />
+              </Animated.View>
+            )}
 
-          {/* Image Slot B */}
-          {imageSlotB && (
-            <Animated.View style={[imageWrapperStyle, animatedStyleB]}>
-              <Image
-                source={{ uri: imageSlotB }}
-                style={imageStyle}
-                resizeMode="contain"
-                fadeDuration={0}
-                onLoad={handleImageBLoad}
-                onError={(error) => {
-                  console.warn('Image B load error:', error.nativeEvent?.error || 'Unknown error');
-                }}
-              />
-            </Animated.View>
-          )}
+            {/* Image Slot B */}
+            {imageSlotB && (
+              <Animated.View style={[imageWrapperStyle, animatedStyleB]}>
+                <Image
+                  source={{ uri: imageSlotB }}
+                  style={imageStyle}
+                  resizeMode="contain"
+                  fadeDuration={0}
+                  onLoad={handleImageBLoad}
+                  onError={(error) => {
+                    console.warn('Image B load error:', error.nativeEvent?.error || 'Unknown error');
+                  }}
+                />
+              </Animated.View>
+            )}
 
-          {/* Loading overlay for first load */}
-          {showLoadingOverlay && (
-            <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color="#fff" />
-              <Text style={styles.loadingText}>Loading satellite data...</Text>
-            </View>
-          )}
-        </Animated.View>
-      </GestureDetector>
+            {/* Loading overlay for first load */}
+            {showLoadingOverlay && (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color="#fff" />
+                <Text style={styles.loadingText}>Loading satellite data...</Text>
+              </View>
+            )}
+          </Animated.View>
+        </GestureDetector>
+        </View>
 
-      {/* Location marker overlay */}
-      <LocationMarker />
-    </View>
+        {/* Overlays rendered OUTSIDE the pixel sampling ref */}
+        {/* Location marker overlay */}
+        <LocationMarker />
+      </View>
     </GestureDetector>
   );
 });
