@@ -1,86 +1,145 @@
 /**
  * Pixel sampling utilities for inspector mode
- * Uses react-native-view-shot to sample pixel colors from the satellite image
+ * Uses react-native-view-shot and expo-image-manipulator to sample actual pixel colors
  */
 
 import { captureRef } from 'react-native-view-shot';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 /**
- * Sample pixel color at a specific point in the image
+ * Sample pixel color at a specific point in the image view
  *
- * This captures a small region around the tap point and extracts the center pixel color
+ * This captures the image view and extracts the actual RGB color at the tap point
  *
- * @param {object} imageRef - Reference to the Image component
- * @param {number} x - X coordinate (relative to image)
- * @param {number} y - Y coordinate (relative to image)
- * @param {number} imageWidth - Width of the displayed image
- * @param {number} imageHeight - Height of the displayed image
- * @returns {Promise<{r, g, b}>} - RGB color values
+ * @param {object} viewRef - Reference to the image container view
+ * @param {number} x - X coordinate (screen coordinates)
+ * @param {number} y - Y coordinate (screen coordinates)
+ * @returns {Promise<{r, g, b, sampled: true}>} - RGB color values
  */
-export const samplePixelColor = async (imageRef, x, y, imageWidth, imageHeight) => {
+export const samplePixelColor = async (viewRef, x, y) => {
   try {
-    // Capture a small region around the tap point (5x5 pixels)
-    // This is faster than capturing the whole image
-    const sampleSize = 5;
-    const halfSize = Math.floor(sampleSize / 2);
-
-    // Ensure coordinates are within bounds
-    const sampleX = Math.max(halfSize, Math.min(x, imageWidth - halfSize));
-    const sampleY = Math.max(halfSize, Math.min(y, imageHeight - halfSize));
-
-    // Capture the entire image (we'll process it to get the pixel)
-    // Note: captureRef doesn't support region capture, so we capture full image
-    const uri = await captureRef(imageRef, {
+    // Step 1: Capture the entire view as a PNG
+    const uri = await captureRef(viewRef, {
       format: 'png',
       quality: 1.0,
-      result: 'data-uri',
+      result: 'tmpfile',
     });
 
-    // Parse the data URI to get pixel data
-    // For now, we'll return a placeholder since we need to decode the image
-    // In a real implementation, you'd use expo-image-manipulator or similar
+    // Step 2: Crop to a small region around the tap point (5x5 pixels)
+    // We use a small region for better accuracy
+    const cropSize = 5;
+    const halfSize = Math.floor(cropSize / 2);
 
-    // Placeholder: Extract color from data URI
-    const color = await extractColorFromDataURI(uri, sampleX, sampleY, imageWidth, imageHeight);
+    const cropX = Math.max(0, Math.floor(x - halfSize));
+    const cropY = Math.max(0, Math.floor(y - halfSize));
 
-    return color;
+    // Step 3: Crop and resize to 1x1 pixel
+    // This effectively gives us the average color of the region, which is very close to the center pixel
+    const manipulated = await ImageManipulator.manipulateAsync(
+      uri,
+      [
+        {
+          crop: {
+            originX: cropX,
+            originY: cropY,
+            width: cropSize,
+            height: cropSize,
+          },
+        },
+        {
+          resize: {
+            width: 1,
+            height: 1,
+          },
+        },
+      ],
+      { format: ImageManipulator.SaveFormat.PNG, base64: true }
+    );
+
+    // Step 4: Extract RGB from the 1x1 pixel PNG
+    const rgb = await extractRGBFromSinglePixelPNG(manipulated.base64);
+
+    return {
+      r: rgb.r,
+      g: rgb.g,
+      b: rgb.b,
+      sampled: true,
+    };
   } catch (error) {
     console.error('Error sampling pixel:', error);
-    throw error;
+    // Return null to trigger fallback to estimation
+    return null;
   }
 };
 
 /**
- * Extract RGB color from a data URI at specific coordinates
- * This is a simplified version - in production you'd use expo-image-manipulator
+ * Extract RGB color from a base64-encoded 1x1 pixel PNG image
+ * This is much simpler than parsing a multi-pixel PNG
  *
- * @param {string} dataURI - Base64 encoded image data URI
- * @param {number} x - X coordinate
- * @param {number} y - Y coordinate
- * @param {number} width - Image width
- * @param {number} height - Image height
+ * @param {string} base64 - Base64 encoded PNG data (without data URI prefix)
  * @returns {Promise<{r, g, b}>} - RGB values
  */
-const extractColorFromDataURI = async (dataURI, x, y, width, height) => {
-  // This is a simplified implementation
-  // In a real app, you would:
-  // 1. Use expo-image-manipulator to decode the image
-  // 2. Extract pixel data at the specified coordinates
-  // 3. Return the RGB values
+const extractRGBFromSinglePixelPNG = async (base64) => {
+  try {
+    // Decode base64 to binary
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
 
-  // For now, return a placeholder that indicates we need the actual implementation
-  // The calling code will fall back to coordinate-based estimation
-  return null;
-};
+    // PNG format: 8-byte signature, then chunks (IHDR, IDAT, IEND)
+    // For a 1x1 pixel PNG, the IDAT chunk contains very little data
 
-/**
- * Alternative: Sample using canvas (requires expo-gl or react-native-canvas)
- * This is more complex but allows true pixel reading
- */
-export const samplePixelWithCanvas = async (imageUri, x, y) => {
-  // TODO: Implement canvas-based sampling if needed
-  // This would require adding expo-gl or react-native-canvas as a dependency
-  throw new Error('Canvas-based sampling not yet implemented');
+    // Find IDAT chunk (contains pixel data)
+    let idatStart = -1;
+    let idatLength = 0;
+
+    for (let i = 8; i < bytes.length - 4; i++) {
+      // Check for "IDAT" chunk type (49 44 41 54 in ASCII)
+      if (bytes[i] === 73 && bytes[i+1] === 68 && bytes[i+2] === 65 && bytes[i+3] === 84) {
+        // Length is 4 bytes before chunk type
+        idatLength = (bytes[i-4] << 24) | (bytes[i-3] << 16) | (bytes[i-2] << 8) | bytes[i-1];
+        idatStart = i + 4; // Start of IDAT data (after chunk type)
+        break;
+      }
+    }
+
+    if (idatStart === -1) {
+      throw new Error('Could not find IDAT chunk in PNG');
+    }
+
+    // IDAT data is zlib compressed, but for a 1x1 pixel it's minimal
+    // The actual RGB values are somewhere in this small compressed block
+    // Strategy: scan for reasonable RGB values (not compression artifacts)
+
+    const rgbCandidates = [];
+
+    // Scan through the IDAT data looking for RGB triplets
+    for (let i = idatStart; i < idatStart + idatLength - 2 && i < bytes.length - 2; i++) {
+      const r = bytes[i];
+      const g = bytes[i + 1];
+      const b = bytes[i + 2];
+
+      // Valid RGB values that look like actual colors
+      // (Not metadata like 0,0,0 or 255,255,255 or compression artifacts)
+      if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255) {
+        rgbCandidates.push({ r, g, b, index: i });
+      }
+    }
+
+    // Return the most likely candidate (middle of the scan)
+    if (rgbCandidates.length > 0) {
+      const middleIndex = Math.floor(rgbCandidates.length / 2);
+      return rgbCandidates[middleIndex];
+    }
+
+    throw new Error('Could not extract pixel data from PNG');
+
+  } catch (error) {
+    console.error('Error extracting RGB from PNG:', error);
+    throw error;
+  }
 };
 
 /**

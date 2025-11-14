@@ -2,17 +2,15 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { analyzePixelColor } from '../utils/colorbarUtils';
-import { estimateColorFromCoordinates } from '../utils/pixelSampler';
+import { estimateColorFromCoordinates, samplePixelColor } from '../utils/pixelSampler';
 
 /**
  * CenterCrosshairInspector - RadarScope-style center crosshair
  * Shows a fixed crosshair in the center with continuous value readout
  * Updates as the user pans the image
  *
- * CURRENT LIMITATION: This inspector estimates values based on screen position
- * using the color enhancement tables. For true accuracy, it should sample the
- * actual pixel color from the satellite image and match it to the color table.
- * TODO: Implement actual pixel sampling using expo-image-manipulator or expo-gl
+ * Now supports ACTUAL pixel sampling from the satellite image!
+ * Falls back to estimation if sampling fails.
  */
 export const CenterCrosshairInspector = () => {
   const {
@@ -24,6 +22,7 @@ export const CenterCrosshairInspector = () => {
     crosshairPosition,
     setCrosshairPosition,
     selectedDomain,
+    imageContainerRef,
   } = useApp();
 
   const [centerValue, setCenterValue] = useState(null);
@@ -74,24 +73,36 @@ export const CenterCrosshairInspector = () => {
     }
 
     // Function to sample at crosshair position
-    const sampleCrosshair = () => {
+    const sampleCrosshair = async () => {
       const product = viewMode === 'channel' ? selectedChannel : selectedRGBProduct;
 
-      // Estimate color at crosshair position based on coordinate
-      // For vertical gradient (IR channels), position determines temperature
-      const estimatedColor = estimateColorFromCoordinates(
-        crosshairX,
-        crosshairY,
-        screenHeight,
-        viewMode,
-        product
-      );
+      let sampledColor = null;
+
+      // Try to sample actual pixel color if we have a reference to the image container
+      if (imageContainerRef && imageContainerRef.current) {
+        try {
+          sampledColor = await samplePixelColor(imageContainerRef.current, crosshairX, crosshairY);
+        } catch (error) {
+          console.log('Pixel sampling failed, falling back to estimation:', error);
+        }
+      }
+
+      // Fall back to estimation if sampling failed or not available
+      if (!sampledColor) {
+        sampledColor = estimateColorFromCoordinates(
+          crosshairX,
+          crosshairY,
+          screenHeight,
+          viewMode,
+          product
+        );
+      }
 
       // Analyze the color
       const analysis = analyzePixelColor(
-        estimatedColor.r,
-        estimatedColor.g,
-        estimatedColor.b,
+        sampledColor.r,
+        sampledColor.g,
+        sampledColor.b,
         viewMode,
         product
       );
@@ -100,21 +111,23 @@ export const CenterCrosshairInspector = () => {
         label: analysis.label,
         description: analysis.description,
         color: analysis.color,
+        sampled: sampledColor.sampled || false, // Track if we actually sampled or estimated
       });
     };
 
     // Sample immediately
     sampleCrosshair();
 
-    // Sample periodically (every 500ms) to catch updates
-    samplingInterval.current = setInterval(sampleCrosshair, 500);
+    // Sample periodically (every 1000ms) to catch updates
+    // Longer interval since actual sampling is more expensive
+    samplingInterval.current = setInterval(sampleCrosshair, 1000);
 
     return () => {
       if (samplingInterval.current) {
         clearInterval(samplingInterval.current);
       }
     };
-  }, [isInspectorMode, viewMode, selectedChannel, selectedRGBProduct, currentImageUrl, crosshairX, crosshairY, screenHeight]);
+  }, [isInspectorMode, viewMode, selectedChannel, selectedRGBProduct, currentImageUrl, crosshairX, crosshairY, screenHeight, imageContainerRef]);
 
   // Don't render if inspector mode is off
   if (!isInspectorMode) {

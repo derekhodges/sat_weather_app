@@ -29,7 +29,18 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     setHasLoadedOnce,
     isInspectorMode,
     setCrosshairPosition,
+    setImageContainerRef,
   } = useApp();
+
+  // Ref for the image container (for pixel sampling)
+  const imageContainerRef = useRef(null);
+
+  // Expose the image container ref via context
+  useEffect(() => {
+    if (setImageContainerRef) {
+      setImageContainerRef(imageContainerRef);
+    }
+  }, [setImageContainerRef]);
 
   // Dual image state to prevent black flicker
   // We keep two images and swap between them
@@ -342,7 +353,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   return (
     <View style={styles.container}>
       <GestureDetector gesture={composedGesture}>
-        <Animated.View style={[styles.imageContainer, animatedStyle]}>
+        <Animated.View ref={imageContainerRef} style={[styles.imageContainer, animatedStyle]} collapsable={false}>
           {/* Image Slot A */}
           {imageSlotA && (
             <Animated.View style={[imageWrapperStyle, animatedStyleA]}>

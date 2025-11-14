@@ -54,6 +54,7 @@ export const AppProvider = ({ children }) => {
   const [isInspectorMode, setIsInspectorMode] = useState(false);
   const [inspectorValue, setInspectorValue] = useState(null);
   const [crosshairPosition, setCrosshairPosition] = useState(null); // {x, y} coordinates for crosshair
+  const [imageContainerRef, setImageContainerRef] = useState(null); // Ref to image container for pixel sampling
 
   // Location
   const [userLocation, setUserLocation] = useState(null);
@@ -318,6 +319,7 @@ export const AppProvider = ({ children }) => {
     isInspectorMode,
     inspectorValue,
     crosshairPosition,
+    imageContainerRef,
     userLocation,
     savedHomeLocation,
     showLocationMarker,
@@ -350,6 +352,7 @@ export const AppProvider = ({ children }) => {
     setIsInspectorMode,
     setInspectorValue,
     setCrosshairPosition,
+    setImageContainerRef,
     setUserLocation,
     saveHomeLocation,
     toggleLocationMarker,
