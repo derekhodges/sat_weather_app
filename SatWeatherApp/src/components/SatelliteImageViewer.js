@@ -32,13 +32,14 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     setImageContainerRef,
   } = useApp();
 
-  // Ref for the image container (for pixel sampling)
-  const imageContainerRef = useRef(null);
+  // Ref for the entire container (for pixel sampling)
+  // We capture the container, not the transformed image, so screen coords match
+  const containerRef = useRef(null);
 
-  // Expose the image container ref via context
+  // Expose the container ref via context for pixel sampling
   useEffect(() => {
     if (setImageContainerRef) {
-      setImageContainerRef(imageContainerRef);
+      setImageContainerRef(containerRef);
     }
   }, [setImageContainerRef]);
 
@@ -351,9 +352,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     : styles.image;
 
   return (
-    <View style={styles.container}>
+    <View ref={containerRef} style={styles.container} collapsable={false}>
       <GestureDetector gesture={composedGesture}>
-        <Animated.View ref={imageContainerRef} style={[styles.imageContainer, animatedStyle]} collapsable={false}>
+        <Animated.View style={[styles.imageContainer, animatedStyle]}>
           {/* Image Slot A */}
           {imageSlotA && (
             <Animated.View style={[imageWrapperStyle, animatedStyleA]}>
