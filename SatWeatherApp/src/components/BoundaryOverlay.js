@@ -104,47 +104,53 @@ export const BoundaryOverlay = ({ scale, translateX, translateY, displayMode }) 
   });
 
   return (
-    <Animated.View
-      style={[StyleSheet.absoluteFill, animatedStyle]}
-      pointerEvents="none"
-    >
-      <View style={imageWrapperStyle}>
-        {enabledOverlays.map((overlayId) => {
-          const url = getBoundaryUrl(overlayId);
-          if (!url) return null;
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Animated.View style={[styles.imageContainer, animatedStyle]}>
+        <View style={imageWrapperStyle}>
+          {enabledOverlays.map((overlayId) => {
+            const url = getBoundaryUrl(overlayId);
+            if (!url) return null;
 
-          return (
-            <Image
-              key={overlayId}
-              source={{ uri: url }}
-              style={styles.boundaryImage}
-              resizeMode="contain"
-              fadeDuration={0}
-              onError={(error) => {
-                console.warn(
-                  `Boundary overlay '${overlayId}' load error:`,
-                  error.nativeEvent?.error || 'Unknown error'
-                );
-              }}
-            />
-          );
-        })}
-      </View>
-    </Animated.View>
+            return (
+              <Image
+                key={overlayId}
+                source={{ uri: url }}
+                style={styles.boundaryImage}
+                resizeMode="contain"
+                fadeDuration={0}
+                onError={(error) => {
+                  console.warn(
+                    `Boundary overlay '${overlayId}' load error:`,
+                    error.nativeEvent?.error || 'Unknown error'
+                  );
+                }}
+              />
+            );
+          })}
+        </View>
+      </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  imageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   overlayContainer: {
+    position: 'absolute',
     width: '100%',
     height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   overlayContainerCover: {
     width: '200%',
     height: '200%',
   },
   boundaryImage: {
-    position: 'absolute',
     width: '100%',
     height: '100%',
   },
