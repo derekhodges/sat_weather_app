@@ -14,15 +14,8 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight =
   const [touchValue, setTouchValue] = useState(null);
   const gradientBarRef = useRef(null);
 
-  // Check if colorbar should be displayed for current product/channel
-  const showColorbar = shouldShowColorbar(viewMode, selectedChannel, selectedRGBProduct);
-
-  // Don't render colorbar if it shouldn't be shown for this product/channel
-  if (!showColorbar) {
-    return null;
-  }
-
   // Memoize gradient segments to prevent recreation on every render
+  // MUST be before any conditional returns (Rules of Hooks)
   const gradientSegments = useMemo(() => {
     return [...Array(50)].map((_, i) => {
       const hue = (i / 50) * 240; // Blue to red
@@ -37,6 +30,9 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight =
       );
     });
   }, [isVertical]);
+
+  // Check if colorbar should be displayed for current product/channel
+  const showColorbar = shouldShowColorbar(viewMode, selectedChannel, selectedRGBProduct);
 
   // Handle touch on colorbar - only active in inspector mode
   const handleColorbarTouch = (event) => {
@@ -97,6 +93,11 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight =
     }
     return [r * 255, g * 255, b * 255];
   };
+
+  // Don't render colorbar if it shouldn't be shown for this product/channel
+  if (!showColorbar) {
+    return null;
+  }
 
   return (
     <View style={[
