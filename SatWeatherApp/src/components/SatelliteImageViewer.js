@@ -17,8 +17,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
-import { analyzePixelColor } from '../utils/colorbarUtils';
-import { estimateColorFromCoordinates } from '../utils/pixelSampler';
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { forceContainMode = false } = props;
@@ -29,11 +27,6 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     settings,
     hasLoadedOnce,
     setHasLoadedOnce,
-    isInspectorMode,
-    setInspectorValue,
-    viewMode,
-    selectedChannel,
-    selectedRGBProduct,
   } = useApp();
 
   // Dual image state to prevent black flicker
@@ -129,47 +122,10 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       savedTranslateY.value = translateY.value;
     });
 
-  // Tap gesture for inspector mode - analyze color at touch point
-  const handleInspectorTap = (x, y) => {
-    // Get the product for value mapping
-    const product = viewMode === 'channel' ? selectedChannel : selectedRGBProduct;
-
-    // Estimate the pixel color based on coordinates and colorbar gradient
-    // This uses the actual color tables from color_plus.py
-    const estimatedColor = estimateColorFromCoordinates(x, y, screenHeight, viewMode, product);
-
-    // Analyze the color using the actual color tables
-    const analysis = analyzePixelColor(
-      estimatedColor.r,
-      estimatedColor.g,
-      estimatedColor.b,
-      viewMode,
-      product
-    );
-
-    // Set the inspector value with position and analyzed color info
-    setInspectorValue({
-      x,
-      y,
-      label: analysis.label,
-      description: analysis.description,
-      color: analysis.color,
-      estimated: estimatedColor.estimated,
-      ...analysis,
-    });
-  };
-
-  const tapGesture = Gesture.Tap()
-    .enabled(isInspectorMode)
-    .onEnd((event) => {
-      runOnJS(handleInspectorTap)(event.x, event.y);
-    });
-
-  // Combined gesture - include tap for inspector mode
+  // Combined gesture for pinch and pan
   const composedGesture = Gesture.Simultaneous(
     pinchGesture,
-    panGesture,
-    tapGesture
+    panGesture
   );
 
   // Handle URL changes - load into inactive slot and swap when ready

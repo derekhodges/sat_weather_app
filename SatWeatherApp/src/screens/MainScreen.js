@@ -14,7 +14,7 @@ import { TimelineSlider } from '../components/TimelineSlider';
 import { ColorScaleBar } from '../components/ColorScaleBar';
 import { DomainMapSelector } from '../components/DomainMapSelector';
 import { DrawingOverlay } from '../components/DrawingOverlay';
-import { InspectorOverlay } from '../components/InspectorOverlay';
+import { CenterCrosshairInspector } from '../components/CenterCrosshairInspector';
 import { FavoritesMenu } from '../components/FavoritesMenu';
 import ShareMenu from '../components/ShareMenu';
 import { SettingsModal } from '../components/SettingsModal';
@@ -722,7 +722,7 @@ export const MainScreen = () => {
                         externalColorPicker={showColorPickerFromButton}
                         setExternalColorPicker={setShowColorPickerFromButton}
                       />
-                      <InspectorOverlay />
+                      <CenterCrosshairInspector />
                     </View>
                   </View>
 
@@ -833,7 +833,7 @@ export const MainScreen = () => {
                   externalColorPicker={showColorPickerFromButton}
                   setExternalColorPicker={setShowColorPickerFromButton}
                 />
-                <InspectorOverlay />
+                <CenterCrosshairInspector />
               </View>
 
               <ColorScaleBar orientation="horizontal" />
