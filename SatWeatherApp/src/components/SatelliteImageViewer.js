@@ -20,7 +20,16 @@ import { LocationMarker } from './LocationMarker';
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { forceContainMode = false } = props;
-  const { currentImageUrl, isLoading, error, settings, hasLoadedOnce, setHasLoadedOnce } = useApp();
+  const {
+    currentImageUrl,
+    isLoading,
+    error,
+    settings,
+    hasLoadedOnce,
+    setHasLoadedOnce,
+    isInspectorMode,
+    setCrosshairPosition,
+  } = useApp();
 
   // Dual image state to prevent black flicker
   // We keep two images and swap between them
@@ -99,7 +108,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     });
 
   // Pan gesture for panning - more responsive with immediate feedback
+  // DISABLED when inspector mode is active to allow inspecting corners
   const panGesture = Gesture.Pan()
+    .enabled(!isInspectorMode)
     .onUpdate((event) => {
       const newX = savedTranslateX.value + event.translationX;
       const newY = savedTranslateY.value + event.translationY;
@@ -115,8 +126,25 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       savedTranslateY.value = translateY.value;
     });
 
-  // Combined gesture
-  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+  // Tap gesture for inspector mode - set crosshair position
+  // ONLY active when inspector mode is on
+  const tapGesture = Gesture.Tap()
+    .enabled(isInspectorMode)
+    .onEnd((event) => {
+      if (isInspectorMode) {
+        runOnJS(setCrosshairPosition)({
+          x: event.x,
+          y: event.y,
+        });
+      }
+    });
+
+  // Combined gesture for pinch, pan, and tap
+  const composedGesture = Gesture.Simultaneous(
+    pinchGesture,
+    panGesture,
+    tapGesture
+  );
 
   // Handle URL changes - load into inactive slot and swap when ready
   useEffect(() => {

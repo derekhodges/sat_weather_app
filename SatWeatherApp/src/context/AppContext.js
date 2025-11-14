@@ -50,6 +50,11 @@ export const AppProvider = ({ children }) => {
   const [drawingColor, setDrawingColor] = useState('#FF0000');
   const [drawings, setDrawings] = useState([]);
 
+  // Inspector mode
+  const [isInspectorMode, setIsInspectorMode] = useState(false);
+  const [inspectorValue, setInspectorValue] = useState(null);
+  const [crosshairPosition, setCrosshairPosition] = useState(null); // {x, y} coordinates for crosshair
+
   // Location
   const [userLocation, setUserLocation] = useState(null);
   const [savedHomeLocation, setSavedHomeLocation] = useState(null);
@@ -310,6 +315,9 @@ export const AppProvider = ({ children }) => {
     isDrawingMode,
     drawingColor,
     drawings,
+    isInspectorMode,
+    inspectorValue,
+    crosshairPosition,
     userLocation,
     savedHomeLocation,
     showLocationMarker,
@@ -339,6 +347,9 @@ export const AppProvider = ({ children }) => {
     setDrawingColor,
     addDrawing,
     clearDrawings,
+    setIsInspectorMode,
+    setInspectorValue,
+    setCrosshairPosition,
     setUserLocation,
     saveHomeLocation,
     toggleLocationMarker,

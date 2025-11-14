@@ -14,6 +14,7 @@ import { TimelineSlider } from '../components/TimelineSlider';
 import { ColorScaleBar } from '../components/ColorScaleBar';
 import { DomainMapSelector } from '../components/DomainMapSelector';
 import { DrawingOverlay } from '../components/DrawingOverlay';
+import { CenterCrosshairInspector } from '../components/CenterCrosshairInspector';
 import { FavoritesMenu } from '../components/FavoritesMenu';
 import ShareMenu from '../components/ShareMenu';
 import { SettingsModal } from '../components/SettingsModal';
@@ -56,6 +57,9 @@ export const MainScreen = () => {
     isDrawingMode,
     setIsDrawingMode,
     clearDrawings,
+    isInspectorMode,
+    setIsInspectorMode,
+    setInspectorValue,
     setUserLocation,
     savedHomeLocation,
     setShowFavoritesMenu,
@@ -336,6 +340,17 @@ export const MainScreen = () => {
 
     // Trigger frame cache reload by re-running the effect
     // This will happen automatically since selectedDomain/product dependencies will trigger it
+  };
+
+  const handleInspectorPress = () => {
+    if (isInspectorMode) {
+      // Turn off inspector mode
+      setIsInspectorMode(false);
+      setInspectorValue(null);
+    } else {
+      // Turn on inspector mode
+      setIsInspectorMode(true);
+    }
   };
 
   const handleLocationPress = async () => {
@@ -707,6 +722,7 @@ export const MainScreen = () => {
                         externalColorPicker={showColorPickerFromButton}
                         setExternalColorPicker={setShowColorPickerFromButton}
                       />
+                      <CenterCrosshairInspector />
                     </View>
                   </View>
 
@@ -774,6 +790,7 @@ export const MainScreen = () => {
 
             {/* Vertical Buttons on right - extends full height */}
             <BottomControls
+              onInspectorPress={handleInspectorPress}
               onLocationPress={handleLocationPress}
               onPlayPress={toggleAnimation}
               onEditPress={handleEditPress}
@@ -783,6 +800,7 @@ export const MainScreen = () => {
               onFlipOrientation={handleFlipOrientation}
               orientation={layoutOrientation}
               isDrawingMode={isDrawingMode}
+              isInspectorMode={isInspectorMode}
             />
           </View>
         ) : (
@@ -815,6 +833,7 @@ export const MainScreen = () => {
                   externalColorPicker={showColorPickerFromButton}
                   setExternalColorPicker={setShowColorPickerFromButton}
                 />
+                <CenterCrosshairInspector />
               </View>
 
               <ColorScaleBar orientation="horizontal" />
@@ -860,6 +879,7 @@ export const MainScreen = () => {
             <TimelineSlider orientation="horizontal" />
 
             <BottomControls
+              onInspectorPress={handleInspectorPress}
               onLocationPress={handleLocationPress}
               onPlayPress={toggleAnimation}
               onEditPress={handleEditPress}
@@ -869,6 +889,7 @@ export const MainScreen = () => {
               onFlipOrientation={handleFlipOrientation}
               orientation={layoutOrientation}
               isDrawingMode={isDrawingMode}
+              isInspectorMode={isInspectorMode}
             />
           </>
         )}
