@@ -26,7 +26,6 @@ export const CenterCrosshairInspector = () => {
   } = useApp();
 
   const [centerValue, setCenterValue] = useState(null);
-  const samplingInterval = useRef(null);
 
   // Get screen dimensions
   const screenWidth = Dimensions.get('window').width;
@@ -62,13 +61,10 @@ export const CenterCrosshairInspector = () => {
   const crosshairX = crosshairPosition?.x ?? screenWidth / 2;
   const crosshairY = crosshairPosition?.y ?? screenHeight / 2;
 
-  // Sample the center pixel continuously
+  // Sample when crosshair moves or image changes
   useEffect(() => {
     if (!isInspectorMode || !currentImageUrl) {
       setCenterValue(null);
-      if (samplingInterval.current) {
-        clearInterval(samplingInterval.current);
-      }
       return;
     }
 
@@ -127,18 +123,9 @@ export const CenterCrosshairInspector = () => {
       });
     };
 
-    // Sample immediately
+    // Sample when crosshair moves or image changes
     sampleCrosshair();
 
-    // Sample periodically (every 1000ms) to catch updates
-    // Longer interval since actual sampling is more expensive
-    samplingInterval.current = setInterval(sampleCrosshair, 1000);
-
-    return () => {
-      if (samplingInterval.current) {
-        clearInterval(samplingInterval.current);
-      }
-    };
   }, [isInspectorMode, viewMode, selectedChannel, selectedRGBProduct, currentImageUrl, crosshairX, crosshairY, screenHeight, imageContainerRef]);
 
   // Don't render if inspector mode is off
@@ -289,16 +276,16 @@ const styles = StyleSheet.create({
   },
   valueBoxBottomRight: {
     position: 'absolute',
-    bottom: 80, // Above bottom controls
+    bottom: 10, // Just above the bottom edge, near where timestamp shows
     right: 10,
     backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1.5,
     borderColor: '#00ff00',
-    minWidth: 200,
-    maxWidth: 280,
+    minWidth: 160,
+    maxWidth: 240,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
@@ -309,28 +296,28 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   colorIndicator: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    marginRight: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    marginRight: 8,
     borderWidth: 1,
     borderColor: '#fff',
-    marginTop: 2,
+    marginTop: 1,
   },
   valueTextContainer: {
     flex: 1,
   },
   valueLabel: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   valueDescription: {
     color: '#ccc',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '400',
-    lineHeight: 16,
+    lineHeight: 13,
   },
   instructionContainer: {
     position: 'absolute',

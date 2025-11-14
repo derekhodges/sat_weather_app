@@ -102,10 +102,16 @@ const extractRGBFromSinglePixelPNG = async (base64) => {
     // Use UPNG to decode the PNG
     const png = UPNG.decode(bytes.buffer);
 
-    console.log(`[PNG DECODE] PNG decoded: ${png.width}x${png.height}, ${png.depth} bit`);
+    console.log(`[PNG DECODE] PNG decoded: ${png.width}x${png.height}, ${png.depth} bit, frames: ${png.frames?.length || 'N/A'}`);
 
-    // Convert to RGBA
-    const rgba = UPNG.toRGBA8(png)[0]; // Get first frame (we only have one)
+    // Convert to RGBA - this returns an array of Uint8Arrays (one per frame)
+    const rgbaFrames = UPNG.toRGBA8(png);
+
+    console.log(`[PNG DECODE] RGBA frames: ${rgbaFrames.length}, first frame type: ${rgbaFrames[0]?.constructor.name}, length: ${rgbaFrames[0]?.length}`);
+
+    const rgba = new Uint8Array(rgbaFrames[0]); // Get first frame as Uint8Array
+
+    console.log(`[PNG DECODE] RGBA array length: ${rgba.length}, values: [${rgba[0]}, ${rgba[1]}, ${rgba[2]}, ${rgba[3]}]`);
 
     // RGBA is a Uint8Array with 4 bytes per pixel (R, G, B, A)
     // For a 1x1 image, we just need the first pixel
@@ -115,6 +121,11 @@ const extractRGBFromSinglePixelPNG = async (base64) => {
     const a = rgba[3];
 
     console.log(`[PNG DECODE] Pixel color: RGB(${r}, ${g}, ${b}), Alpha: ${a}`);
+
+    // Validate we got real values
+    if (r === undefined || g === undefined || b === undefined) {
+      throw new Error(`Invalid RGB values: r=${r}, g=${g}, b=${b}`);
+    }
 
     return { r, g, b };
 
