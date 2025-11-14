@@ -79,7 +79,13 @@ export const CenterCrosshairInspector = () => {
       // Try to sample actual pixel color if we have a reference to the image container
       if (imageContainerRef && imageContainerRef.current) {
         try {
-          sampledColor = await samplePixelColor(imageContainerRef.current, crosshairX, crosshairY);
+          sampledColor = await samplePixelColor(
+            imageContainerRef.current,
+            crosshairX,
+            crosshairY,
+            screenWidth,
+            screenHeight
+          );
           if (sampledColor) {
             console.log('[INSPECTOR] Successfully sampled pixel');
           }

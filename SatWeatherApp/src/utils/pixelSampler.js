@@ -15,17 +15,24 @@ import UPNG from 'upng-js';
  * @param {object} viewRef - Reference to the image container view
  * @param {number} x - X coordinate (screen coordinates)
  * @param {number} y - Y coordinate (screen coordinates)
+ * @param {number} screenWidth - Screen width in pixels
+ * @param {number} screenHeight - Screen height in pixels
  * @returns {Promise<{r, g, b, sampled: true}>} - RGB color values
  */
-export const samplePixelColor = async (viewRef, x, y) => {
+export const samplePixelColor = async (viewRef, x, y, screenWidth, screenHeight) => {
   try {
     console.log(`[PIXEL SAMPLE] Starting sample at screen coords (${x.toFixed(1)}, ${y.toFixed(1)})`);
+    console.log(`[PIXEL SAMPLE] Screen dimensions: ${screenWidth}x${screenHeight}`);
 
     // Step 1: Capture the entire view as a PNG
+    // CRITICAL: Force capture to be screen-sized so tap coordinates map directly
+    // Without this, zoomed views capture at higher resolution causing coordinate mismatch
     const uri = await captureRef(viewRef, {
       format: 'png',
       quality: 1.0,
       result: 'tmpfile',
+      width: Math.round(screenWidth),   // Force screen width
+      height: Math.round(screenHeight), // Force screen height
     });
 
     console.log(`[PIXEL SAMPLE] Captured view to: ${uri}`);
