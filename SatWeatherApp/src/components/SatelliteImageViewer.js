@@ -28,6 +28,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     hasLoadedOnce,
     setHasLoadedOnce,
     isInspectorMode,
+    setCrosshairPosition,
   } = useApp();
 
   // Dual image state to prevent black flicker
@@ -125,10 +126,24 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       savedTranslateY.value = translateY.value;
     });
 
-  // Combined gesture for pinch and pan
+  // Tap gesture for inspector mode - set crosshair position
+  // ONLY active when inspector mode is on
+  const tapGesture = Gesture.Tap()
+    .enabled(isInspectorMode)
+    .onEnd((event) => {
+      if (isInspectorMode) {
+        runOnJS(setCrosshairPosition)({
+          x: event.x,
+          y: event.y,
+        });
+      }
+    });
+
+  // Combined gesture for pinch, pan, and tap
   const composedGesture = Gesture.Simultaneous(
     pinchGesture,
-    panGesture
+    panGesture,
+    tapGesture
   );
 
   // Handle URL changes - load into inactive slot and swap when ready

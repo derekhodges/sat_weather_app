@@ -16,6 +16,8 @@ export const CenterCrosshairInspector = () => {
     selectedChannel,
     selectedRGBProduct,
     currentImageUrl,
+    crosshairPosition,
+    setCrosshairPosition,
   } = useApp();
 
   const [centerValue, setCenterValue] = useState(null);
@@ -25,9 +27,19 @@ export const CenterCrosshairInspector = () => {
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
 
-  // Center coordinates
-  const centerX = screenWidth / 2;
-  const centerY = screenHeight / 2;
+  // Initialize crosshair at center when inspector mode is first activated
+  useEffect(() => {
+    if (isInspectorMode && !crosshairPosition) {
+      setCrosshairPosition({
+        x: screenWidth / 2,
+        y: screenHeight / 2,
+      });
+    }
+  }, [isInspectorMode, crosshairPosition, screenWidth, screenHeight]);
+
+  // Use crosshair position from context, or default to center
+  const crosshairX = crosshairPosition?.x ?? screenWidth / 2;
+  const crosshairY = crosshairPosition?.y ?? screenHeight / 2;
 
   // Sample the center pixel continuously
   useEffect(() => {
@@ -39,15 +51,15 @@ export const CenterCrosshairInspector = () => {
       return;
     }
 
-    // Function to sample center
-    const sampleCenter = () => {
+    // Function to sample at crosshair position
+    const sampleCrosshair = () => {
       const product = viewMode === 'channel' ? selectedChannel : selectedRGBProduct;
 
-      // Estimate color at center based on coordinate
-      // For vertical gradient (IR channels), center is mid-range temperature
+      // Estimate color at crosshair position based on coordinate
+      // For vertical gradient (IR channels), position determines temperature
       const estimatedColor = estimateColorFromCoordinates(
-        centerX,
-        centerY,
+        crosshairX,
+        crosshairY,
         screenHeight,
         viewMode,
         product
@@ -70,17 +82,17 @@ export const CenterCrosshairInspector = () => {
     };
 
     // Sample immediately
-    sampleCenter();
+    sampleCrosshair();
 
-    // Sample periodically (every 500ms) to catch pan updates
-    samplingInterval.current = setInterval(sampleCenter, 500);
+    // Sample periodically (every 500ms) to catch updates
+    samplingInterval.current = setInterval(sampleCrosshair, 500);
 
     return () => {
       if (samplingInterval.current) {
         clearInterval(samplingInterval.current);
       }
     };
-  }, [isInspectorMode, viewMode, selectedChannel, selectedRGBProduct, currentImageUrl, centerX, centerY, screenHeight]);
+  }, [isInspectorMode, viewMode, selectedChannel, selectedRGBProduct, currentImageUrl, crosshairX, crosshairY, screenHeight]);
 
   // Don't render if inspector mode is off
   if (!isInspectorMode) {
@@ -89,8 +101,8 @@ export const CenterCrosshairInspector = () => {
 
   return (
     <View style={styles.container} pointerEvents="none">
-      {/* Center crosshair */}
-      <View style={styles.crosshairContainer}>
+      {/* Crosshair at tap position */}
+      <View style={[styles.crosshairContainer, { left: crosshairX - 30, top: crosshairY - 30 }]}>
         {/* Horizontal line */}
         <View style={styles.crosshairHorizontal}>
           <View style={styles.crosshairLineLeft} />
@@ -127,7 +139,7 @@ export const CenterCrosshairInspector = () => {
       {/* Instruction text */}
       <View style={styles.instructionContainer}>
         <Text style={styles.instructionText}>
-          Inspector Mode - Pan locked
+          Inspector Mode - Tap to inspect location
         </Text>
       </View>
     </View>
