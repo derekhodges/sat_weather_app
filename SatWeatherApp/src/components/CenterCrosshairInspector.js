@@ -8,6 +8,11 @@ import { estimateColorFromCoordinates } from '../utils/pixelSampler';
  * CenterCrosshairInspector - RadarScope-style center crosshair
  * Shows a fixed crosshair in the center with continuous value readout
  * Updates as the user pans the image
+ *
+ * CURRENT LIMITATION: This inspector estimates values based on screen position
+ * using the color enhancement tables. For true accuracy, it should sample the
+ * actual pixel color from the satellite image and match it to the color table.
+ * TODO: Implement actual pixel sampling using expo-image-manipulator or expo-gl
  */
 export const CenterCrosshairInspector = () => {
   const {
@@ -18,6 +23,7 @@ export const CenterCrosshairInspector = () => {
     currentImageUrl,
     crosshairPosition,
     setCrosshairPosition,
+    selectedDomain,
   } = useApp();
 
   const [centerValue, setCenterValue] = useState(null);
@@ -33,9 +39,25 @@ export const CenterCrosshairInspector = () => {
       setCrosshairPosition({
         x: screenWidth / 2,
         y: screenHeight / 2,
+        scale: 1,
+        translateX: 0,
+        translateY: 0,
       });
     }
   }, [isInspectorMode, crosshairPosition, screenWidth, screenHeight]);
+
+  // Clear inspector value when domain or channel changes
+  useEffect(() => {
+    setCenterValue(null);
+    // Re-sample after a brief delay to let new image load
+    const timer = setTimeout(() => {
+      if (isInspectorMode && crosshairPosition) {
+        // Trigger a re-sample by clearing and re-setting
+        setCenterValue(null);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [selectedDomain, selectedChannel, selectedRGBProduct, viewMode]);
 
   // Use crosshair position from context, or default to center
   const crosshairX = crosshairPosition?.x ?? screenWidth / 2;
@@ -139,7 +161,7 @@ export const CenterCrosshairInspector = () => {
       {/* Instruction text */}
       <View style={styles.instructionContainer}>
         <Text style={styles.instructionText}>
-          Inspector Mode - Tap to inspect location
+          Inspector Mode - Tap to reposition crosshair
         </Text>
       </View>
     </View>

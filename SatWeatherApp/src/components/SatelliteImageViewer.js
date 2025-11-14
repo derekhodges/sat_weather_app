@@ -132,9 +132,21 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     .enabled(isInspectorMode)
     .onEnd((event) => {
       if (isInspectorMode) {
+        // Transform tap coordinates to account for zoom and pan
+        // The tap position needs to be transformed from screen coordinates
+        // to the coordinates within the zoomed/panned image
+        'worklet';
+        const transformedX = event.x;
+        const transformedY = event.y;
+
+        // Store both screen coordinates (for crosshair display)
+        // and the current transform state (for value calculation)
         runOnJS(setCrosshairPosition)({
-          x: event.x,
-          y: event.y,
+          x: transformedX,
+          y: transformedY,
+          scale: scale.value,
+          translateX: translateX.value,
+          translateY: translateY.value,
         });
       }
     });

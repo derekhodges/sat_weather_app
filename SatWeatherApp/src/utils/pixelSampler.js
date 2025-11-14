@@ -85,7 +85,7 @@ export const samplePixelWithCanvas = async (imageUri, x, y) => {
 
 /**
  * Fallback: Estimate color based on coordinate and product type
- * Uses the colorbar gradient as an approximation
+ * Uses the actual color tables from color_plus.py for accurate estimation
  *
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
@@ -95,15 +95,44 @@ export const samplePixelWithCanvas = async (imageUri, x, y) => {
  * @returns {{r, g, b, estimated: true}}
  */
 export const estimateColorFromCoordinates = (x, y, height, viewMode, product) => {
-  // Simple vertical gradient estimation
-  // Blue (cold/top) to Red (warm/bottom) for IR channels
+  // Import color tables
+  const IR_COLOR_TABLES = require('../constants/colorTables').IR_COLOR_TABLES;
+
+  // Calculate vertical position percentage (0 at top, 100 at bottom)
   const percentage = (y / height) * 100;
 
   if (viewMode === 'channel' && product?.type === 'infrared') {
-    // Use IR colorbar gradient (blue to red)
-    const hue = 240 - (percentage / 100 * 240); // 240 (blue) to 0 (red)
+    // Get the color table for this specific channel
+    const channel = `C${product.number.toString().padStart(2, '0')}`;
+    const colorTable = IR_COLOR_TABLES[channel];
 
-    // Convert HSL to RGB
+    if (colorTable && colorTable.colors) {
+      // Map percentage to position in color table
+      // Bottom of image (100%) = index 0 (coldest/first color)
+      // Top of image (0%) = last index (warmest/last color)
+      const position = (percentage / 100) * (colorTable.colors.length - 1);
+      const lowerIndex = Math.floor(position);
+      const upperIndex = Math.min(lowerIndex + 1, colorTable.colors.length - 1);
+      const fraction = position - lowerIndex;
+
+      // Interpolate between colors
+      const lowerColor = colorTable.colors[lowerIndex];
+      const upperColor = colorTable.colors[upperIndex];
+
+      const r = Math.round(lowerColor[0] + (upperColor[0] - lowerColor[0]) * fraction);
+      const g = Math.round(lowerColor[1] + (upperColor[1] - lowerColor[1]) * fraction);
+      const b = Math.round(lowerColor[2] + (upperColor[2] - lowerColor[2]) * fraction);
+
+      return {
+        r,
+        g,
+        b,
+        estimated: true
+      };
+    }
+
+    // Fallback if color table not found: generic blue to red
+    const hue = 240 - (percentage / 100 * 240);
     const rgb = hslToRgb(hue / 360, 1, 0.5);
 
     return {

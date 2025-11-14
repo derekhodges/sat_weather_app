@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { formatTimestamp } from '../utils/imageService';
 import { shouldShowColorbar, mapGradientToValue, analyzePixelColor } from '../utils/colorbarUtils';
+import { IR_COLOR_TABLES } from '../constants/colorTables';
 
 const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight = false, height = null }) => {
   const { selectedChannel, selectedRGBProduct, viewMode, imageTimestamp, settings, isInspectorMode } =
@@ -16,7 +17,50 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight =
 
   // Memoize gradient segments to prevent recreation on every render
   // MUST be before any conditional returns (Rules of Hooks)
+  // Generate segments based on actual color enhancement curves
   const gradientSegments = useMemo(() => {
+    // For IR channels, use the actual color table
+    if (viewMode === 'channel' && selectedChannel?.type === 'infrared') {
+      const channel = `C${selectedChannel.number.toString().padStart(2, '0')}`;
+      const colorTable = IR_COLOR_TABLES[channel];
+
+      if (colorTable && colorTable.colors) {
+        // Create segments from the actual color table
+        // Interpolate to create smooth gradient with 100 segments
+        const numSegments = 100;
+        const segments = [];
+
+        for (let i = 0; i < numSegments; i++) {
+          // Map segment index to position in color table
+          const position = (i / (numSegments - 1)) * (colorTable.colors.length - 1);
+          const lowerIndex = Math.floor(position);
+          const upperIndex = Math.min(lowerIndex + 1, colorTable.colors.length - 1);
+          const fraction = position - lowerIndex;
+
+          // Interpolate between colors
+          const lowerColor = colorTable.colors[lowerIndex];
+          const upperColor = colorTable.colors[upperIndex];
+
+          const r = Math.round(lowerColor[0] + (upperColor[0] - lowerColor[0]) * fraction);
+          const g = Math.round(lowerColor[1] + (upperColor[1] - lowerColor[1]) * fraction);
+          const b = Math.round(lowerColor[2] + (upperColor[2] - lowerColor[2]) * fraction);
+
+          segments.push(
+            <View
+              key={i}
+              style={[
+                isVertical ? styles.gradientSegmentVertical : styles.gradientSegment,
+                { backgroundColor: `rgb(${r}, ${g}, ${b})` },
+              ]}
+            />
+          );
+        }
+
+        return segments;
+      }
+    }
+
+    // Fallback: generic blue-to-red gradient for RGB products
     return [...Array(50)].map((_, i) => {
       const hue = (i / 50) * 240; // Blue to red
       return (
@@ -29,7 +73,7 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight =
         />
       );
     });
-  }, [isVertical]);
+  }, [isVertical, viewMode, selectedChannel?.number, selectedChannel?.type]);
 
   // Check if colorbar should be displayed for current product/channel
   const showColorbar = shouldShowColorbar(viewMode, selectedChannel, selectedRGBProduct);
@@ -46,11 +90,35 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight =
         ? (locationY / height) * 100
         : (locationX / width) * 100;
 
-      // Get the color at this position
-      const hue = 240 - (percentage / 100 * 240); // Blue to red
-      const r = Math.round(hslToRgb(hue / 360, 1, 0.5)[0]);
-      const g = Math.round(hslToRgb(hue / 360, 1, 0.5)[1]);
-      const b = Math.round(hslToRgb(hue / 360, 1, 0.5)[2]);
+      // Get the color at this position from the actual color table
+      let r, g, b;
+
+      if (viewMode === 'channel' && selectedChannel?.type === 'infrared') {
+        const channel = `C${selectedChannel.number.toString().padStart(2, '0')}`;
+        const colorTable = IR_COLOR_TABLES[channel];
+
+        if (colorTable && colorTable.colors) {
+          // Map percentage to position in color table
+          const position = (percentage / 100) * (colorTable.colors.length - 1);
+          const lowerIndex = Math.floor(position);
+          const upperIndex = Math.min(lowerIndex + 1, colorTable.colors.length - 1);
+          const fraction = position - lowerIndex;
+
+          // Interpolate between colors
+          const lowerColor = colorTable.colors[lowerIndex];
+          const upperColor = colorTable.colors[upperIndex];
+
+          r = Math.round(lowerColor[0] + (upperColor[0] - lowerColor[0]) * fraction);
+          g = Math.round(lowerColor[1] + (upperColor[1] - lowerColor[1]) * fraction);
+          b = Math.round(lowerColor[2] + (upperColor[2] - lowerColor[2]) * fraction);
+        }
+      } else {
+        // Fallback: generic gradient
+        const hue = 240 - (percentage / 100 * 240); // Blue to red
+        r = Math.round(hslToRgb(hue / 360, 1, 0.5)[0]);
+        g = Math.round(hslToRgb(hue / 360, 1, 0.5)[1]);
+        b = Math.round(hslToRgb(hue / 360, 1, 0.5)[2]);
+      }
 
       // Get product for analysis
       const product = viewMode === 'channel' ? selectedChannel : selectedRGBProduct;
