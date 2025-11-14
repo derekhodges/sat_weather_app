@@ -81,6 +81,8 @@ export const AppProvider = ({ children }) => {
     autoRefreshInterval: 5, // minutes
     showColorScale: true, // show color scale bar
     defaultDomain: DEFAULT_DOMAIN,
+    defaultViewMode: 'rgb', // 'rgb' or 'channel'
+    defaultProduct: DEFAULT_RGB_PRODUCT, // can be RGB product or channel
     useLocalTime: false, // false = UTC, true = local time
   });
 
@@ -88,6 +90,30 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     loadPreferences();
   }, []);
+
+  // Load default view from settings on app startup
+  useEffect(() => {
+    if (settings.defaultDomain && settings.defaultProduct) {
+      // Only apply defaults if we're still on the initial default values
+      // This prevents overriding user changes after app startup
+      const isStillOnDefaults =
+        selectedDomain?.id === DEFAULT_DOMAIN?.id &&
+        ((viewMode === 'rgb' && selectedRGBProduct?.id === DEFAULT_RGB_PRODUCT?.id) ||
+         (viewMode === 'channel' && selectedChannel?.number === DEFAULT_CHANNEL?.number));
+
+      if (isStillOnDefaults) {
+        console.log('Loading saved default view:', settings.defaultViewMode, settings.defaultProduct?.name || settings.defaultProduct?.number);
+        setSelectedDomain(settings.defaultDomain);
+        setViewMode(settings.defaultViewMode);
+
+        if (settings.defaultViewMode === 'rgb') {
+          setSelectedRGBProduct(settings.defaultProduct);
+        } else {
+          setSelectedChannel(settings.defaultProduct);
+        }
+      }
+    }
+  }, [settings.defaultDomain, settings.defaultProduct, settings.defaultViewMode]);
 
   const loadPreferences = async () => {
     try {
@@ -119,6 +145,8 @@ export const AppProvider = ({ children }) => {
           autoRefreshInterval: 5,
           showColorScale: true,
           defaultDomain: DEFAULT_DOMAIN,
+          defaultViewMode: 'rgb',
+          defaultProduct: DEFAULT_RGB_PRODUCT,
           useLocalTime: false,
         };
         const mergedSettings = { ...defaultSettings, ...parsed };
@@ -138,6 +166,23 @@ export const AppProvider = ({ children }) => {
       await AsyncStorage.setItem('settings', JSON.stringify(updatedSettings));
     } catch (error) {
       console.error('Error saving settings:', error);
+    }
+  };
+
+  // Set current view as home/default
+  const setAsHome = async () => {
+    try {
+      const newHomeSettings = {
+        defaultDomain: selectedDomain,
+        defaultViewMode: viewMode,
+        defaultProduct: viewMode === 'rgb' ? selectedRGBProduct : selectedChannel,
+      };
+      await updateSettings(newHomeSettings);
+      console.log('Set current view as home:', newHomeSettings);
+      return true;
+    } catch (error) {
+      console.error('Error setting home view:', error);
+      return false;
     }
   };
 
@@ -367,6 +412,7 @@ export const AppProvider = ({ children }) => {
     loadFavorite,
     generateFavoriteName,
     updateSettings,
+    setAsHome,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

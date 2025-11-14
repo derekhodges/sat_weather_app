@@ -14,11 +14,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 
 export const SettingsModal = ({ visible, onClose }) => {
-  const { settings, updateSettings } = useApp();
+  const {
+    settings,
+    updateSettings,
+    setAsHome,
+    selectedDomain,
+    selectedRGBProduct,
+    selectedChannel,
+    viewMode
+  } = useApp();
   const [localAnimationSpeed, setLocalAnimationSpeed] = useState(settings.animationSpeed.toString());
   const [localFrameCount, setLocalFrameCount] = useState(settings.frameCount.toString());
   const [localFrameSkip, setLocalFrameSkip] = useState(settings.frameSkip.toString());
   const [showCustomFrameSkip, setShowCustomFrameSkip] = useState(false);
+  const [showHomeConfirm, setShowHomeConfirm] = useState(false);
 
   const handleAnimationSpeedChange = (value) => {
     setLocalAnimationSpeed(value);
@@ -52,6 +61,28 @@ export const SettingsModal = ({ visible, onClose }) => {
 
   const handleCustomFrameSkipToggle = () => {
     setShowCustomFrameSkip(true);
+  };
+
+  const handleSetHome = async () => {
+    const success = await setAsHome();
+    if (success) {
+      setShowHomeConfirm(true);
+      setTimeout(() => setShowHomeConfirm(false), 2000);
+    }
+  };
+
+  // Generate current view name
+  const getCurrentViewName = () => {
+    const domainName = selectedDomain?.name || 'Unknown';
+    let productName = 'Unknown';
+
+    if (viewMode === 'rgb' && selectedRGBProduct) {
+      productName = selectedRGBProduct.name;
+    } else if (viewMode === 'channel' && selectedChannel) {
+      productName = `Channel ${selectedChannel.number}`;
+    }
+
+    return `${productName} - ${domainName}`;
   };
 
   return (
@@ -270,6 +301,31 @@ export const SettingsModal = ({ visible, onClose }) => {
                 trackColor={{ false: '#666', true: '#2196F3' }}
                 thumbColor="#fff"
               />
+            </View>
+          </View>
+
+          {/* Home View Settings */}
+          <View style={styles.settingsSection}>
+            <Text style={styles.settingsSectionTitle}>Default View</Text>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Set Current View as Home</Text>
+                <Text style={styles.settingDescription}>
+                  Click this to set the current domain and map as default. The app will launch with this view instead of Oklahoma Geocolor.
+                </Text>
+                <Text style={[styles.settingDescription, { marginTop: 8, fontWeight: '600', color: '#2196F3' }]}>
+                  Current view: {getCurrentViewName()}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.setHomeButton, showHomeConfirm && styles.setHomeButtonConfirm]}
+                onPress={handleSetHome}
+              >
+                <Text style={styles.setHomeButtonText}>
+                  {showHomeConfirm ? '✓ Set as Home' : 'Set as Home'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -597,6 +653,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
   },
   subscriptionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  setHomeButton: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  setHomeButtonConfirm: {
+    backgroundColor: '#4CAF50',
+  },
+  setHomeButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
