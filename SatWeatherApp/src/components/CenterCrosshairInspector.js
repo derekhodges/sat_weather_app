@@ -109,23 +109,25 @@ export const CenterCrosshairInspector = () => {
         <View style={styles.centerDot} />
       </View>
 
-      {/* Value display box */}
+      {/* Fixed value display box in bottom right corner */}
       {centerValue && (
-        <View style={styles.valueBox}>
+        <View style={styles.valueBoxBottomRight}>
           <View style={styles.valueBoxHeader}>
             <View style={[styles.colorIndicator, { backgroundColor: centerValue.color }]} />
-            <Text style={styles.valueLabel}>{centerValue.label}</Text>
+            <View style={styles.valueTextContainer}>
+              <Text style={styles.valueLabel}>{centerValue.label}</Text>
+              {centerValue.description && (
+                <Text style={styles.valueDescription}>{centerValue.description}</Text>
+              )}
+            </View>
           </View>
-          {centerValue.description && (
-            <Text style={styles.valueDescription}>{centerValue.description}</Text>
-          )}
         </View>
       )}
 
       {/* Instruction text */}
       <View style={styles.instructionContainer}>
         <Text style={styles.instructionText}>
-          Center Crosshair - Pan to analyze
+          Inspector Mode - Pan locked
         </Text>
       </View>
     </View>
@@ -226,31 +228,50 @@ const styles = StyleSheet.create({
     minWidth: 180,
     maxWidth: 280,
   },
+  valueBoxBottomRight: {
+    position: 'absolute',
+    bottom: 80, // Above bottom controls
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#00ff00',
+    minWidth: 200,
+    maxWidth: 280,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
   valueBoxHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'flex-start',
   },
   colorIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 3,
-    marginRight: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    marginRight: 10,
     borderWidth: 1,
     borderColor: '#fff',
+    marginTop: 2,
+  },
+  valueTextContainer: {
+    flex: 1,
   },
   valueLabel: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    flex: 1,
+    marginBottom: 4,
   },
   valueDescription: {
     color: '#ccc',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '400',
-    marginTop: 2,
-    lineHeight: 14,
+    lineHeight: 16,
   },
   instructionContainer: {
     position: 'absolute',

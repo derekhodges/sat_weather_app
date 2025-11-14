@@ -27,6 +27,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     settings,
     hasLoadedOnce,
     setHasLoadedOnce,
+    isInspectorMode,
   } = useApp();
 
   // Dual image state to prevent black flicker
@@ -106,7 +107,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     });
 
   // Pan gesture for panning - more responsive with immediate feedback
+  // DISABLED when inspector mode is active to allow inspecting corners
   const panGesture = Gesture.Pan()
+    .enabled(!isInspectorMode)
     .onUpdate((event) => {
       const newX = savedTranslateX.value + event.translationX;
       const newY = savedTranslateY.value + event.translationY;
