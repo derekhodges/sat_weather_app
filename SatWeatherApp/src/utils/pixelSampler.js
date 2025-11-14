@@ -18,12 +18,16 @@ import * as ImageManipulator from 'expo-image-manipulator';
  */
 export const samplePixelColor = async (viewRef, x, y) => {
   try {
+    console.log(`[PIXEL SAMPLE] Starting sample at screen coords (${x.toFixed(1)}, ${y.toFixed(1)})`);
+
     // Step 1: Capture the entire view as a PNG
     const uri = await captureRef(viewRef, {
       format: 'png',
       quality: 1.0,
       result: 'tmpfile',
     });
+
+    console.log(`[PIXEL SAMPLE] Captured view to: ${uri}`);
 
     // Step 2: Crop to a small region around the tap point (5x5 pixels)
     // We use a small region for better accuracy
@@ -32,6 +36,8 @@ export const samplePixelColor = async (viewRef, x, y) => {
 
     const cropX = Math.max(0, Math.floor(x - halfSize));
     const cropY = Math.max(0, Math.floor(y - halfSize));
+
+    console.log(`[PIXEL SAMPLE] Cropping at (${cropX}, ${cropY}) with size ${cropSize}x${cropSize}`);
 
     // Step 3: Crop and resize to 1x1 pixel
     // This effectively gives us the average color of the region, which is very close to the center pixel
@@ -59,6 +65,8 @@ export const samplePixelColor = async (viewRef, x, y) => {
     // Step 4: Extract RGB from the 1x1 pixel PNG
     const rgb = await extractRGBFromSinglePixelPNG(manipulated.base64);
 
+    console.log(`[PIXEL SAMPLE] Extracted RGB: (${rgb.r}, ${rgb.g}, ${rgb.b})`);
+
     return {
       r: rgb.r,
       g: rgb.g,
@@ -66,7 +74,7 @@ export const samplePixelColor = async (viewRef, x, y) => {
       sampled: true,
     };
   } catch (error) {
-    console.error('Error sampling pixel:', error);
+    console.error('[PIXEL SAMPLE] Error sampling pixel:', error);
     // Return null to trigger fallback to estimation
     return null;
   }

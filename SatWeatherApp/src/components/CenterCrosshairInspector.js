@@ -76,19 +76,27 @@ export const CenterCrosshairInspector = () => {
     const sampleCrosshair = async () => {
       const product = viewMode === 'channel' ? selectedChannel : selectedRGBProduct;
 
+      console.log(`[INSPECTOR] Sampling at crosshair (${crosshairX.toFixed(1)}, ${crosshairY.toFixed(1)})`);
+
       let sampledColor = null;
 
       // Try to sample actual pixel color if we have a reference to the image container
       if (imageContainerRef && imageContainerRef.current) {
         try {
           sampledColor = await samplePixelColor(imageContainerRef.current, crosshairX, crosshairY);
+          if (sampledColor) {
+            console.log('[INSPECTOR] Successfully sampled pixel');
+          }
         } catch (error) {
-          console.log('Pixel sampling failed, falling back to estimation:', error);
+          console.log('[INSPECTOR] Pixel sampling failed, falling back to estimation:', error);
         }
+      } else {
+        console.log('[INSPECTOR] No image container ref available, using estimation');
       }
 
       // Fall back to estimation if sampling failed or not available
       if (!sampledColor) {
+        console.log('[INSPECTOR] Using coordinate-based estimation');
         sampledColor = estimateColorFromCoordinates(
           crosshairX,
           crosshairY,
@@ -98,6 +106,8 @@ export const CenterCrosshairInspector = () => {
         );
       }
 
+      console.log(`[INSPECTOR] Color: RGB(${sampledColor.r}, ${sampledColor.g}, ${sampledColor.b}), sampled=${sampledColor.sampled || false}`);
+
       // Analyze the color
       const analysis = analyzePixelColor(
         sampledColor.r,
@@ -106,6 +116,8 @@ export const CenterCrosshairInspector = () => {
         viewMode,
         product
       );
+
+      console.log(`[INSPECTOR] Analysis: ${analysis.label} - ${analysis.description}`);
 
       setCenterValue({
         label: analysis.label,
