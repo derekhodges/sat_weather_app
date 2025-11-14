@@ -37,9 +37,6 @@ export const CenterCrosshairInspector = () => {
       setCrosshairPosition({
         x: screenWidth / 2,
         y: screenHeight / 2,
-        scale: 1,
-        translateX: 0,
-        translateY: 0,
       });
     }
   }, [isInspectorMode, crosshairPosition, screenWidth, screenHeight]);
