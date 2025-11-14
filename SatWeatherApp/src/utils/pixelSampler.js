@@ -5,6 +5,7 @@
 
 import { captureRef } from 'react-native-view-shot';
 import * as ImageManipulator from 'expo-image-manipulator';
+import UPNG from 'upng-js';
 
 /**
  * Sample pixel color at a specific point in the image view
@@ -82,70 +83,43 @@ export const samplePixelColor = async (viewRef, x, y) => {
 
 /**
  * Extract RGB color from a base64-encoded 1x1 pixel PNG image
- * This is much simpler than parsing a multi-pixel PNG
+ * Uses UPNG library for proper PNG decoding
  *
  * @param {string} base64 - Base64 encoded PNG data (without data URI prefix)
  * @returns {Promise<{r, g, b}>} - RGB values
  */
 const extractRGBFromSinglePixelPNG = async (base64) => {
   try {
-    // Decode base64 to binary
+    // Decode base64 to ArrayBuffer
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // PNG format: 8-byte signature, then chunks (IHDR, IDAT, IEND)
-    // For a 1x1 pixel PNG, the IDAT chunk contains very little data
+    console.log(`[PNG DECODE] Decoding PNG, size: ${bytes.length} bytes`);
 
-    // Find IDAT chunk (contains pixel data)
-    let idatStart = -1;
-    let idatLength = 0;
+    // Use UPNG to decode the PNG
+    const png = UPNG.decode(bytes.buffer);
 
-    for (let i = 8; i < bytes.length - 4; i++) {
-      // Check for "IDAT" chunk type (49 44 41 54 in ASCII)
-      if (bytes[i] === 73 && bytes[i+1] === 68 && bytes[i+2] === 65 && bytes[i+3] === 84) {
-        // Length is 4 bytes before chunk type
-        idatLength = (bytes[i-4] << 24) | (bytes[i-3] << 16) | (bytes[i-2] << 8) | bytes[i-1];
-        idatStart = i + 4; // Start of IDAT data (after chunk type)
-        break;
-      }
-    }
+    console.log(`[PNG DECODE] PNG decoded: ${png.width}x${png.height}, ${png.depth} bit`);
 
-    if (idatStart === -1) {
-      throw new Error('Could not find IDAT chunk in PNG');
-    }
+    // Convert to RGBA
+    const rgba = UPNG.toRGBA8(png)[0]; // Get first frame (we only have one)
 
-    // IDAT data is zlib compressed, but for a 1x1 pixel it's minimal
-    // The actual RGB values are somewhere in this small compressed block
-    // Strategy: scan for reasonable RGB values (not compression artifacts)
+    // RGBA is a Uint8Array with 4 bytes per pixel (R, G, B, A)
+    // For a 1x1 image, we just need the first pixel
+    const r = rgba[0];
+    const g = rgba[1];
+    const b = rgba[2];
+    const a = rgba[3];
 
-    const rgbCandidates = [];
+    console.log(`[PNG DECODE] Pixel color: RGB(${r}, ${g}, ${b}), Alpha: ${a}`);
 
-    // Scan through the IDAT data looking for RGB triplets
-    for (let i = idatStart; i < idatStart + idatLength - 2 && i < bytes.length - 2; i++) {
-      const r = bytes[i];
-      const g = bytes[i + 1];
-      const b = bytes[i + 2];
-
-      // Valid RGB values that look like actual colors
-      // (Not metadata like 0,0,0 or 255,255,255 or compression artifacts)
-      if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255) {
-        rgbCandidates.push({ r, g, b, index: i });
-      }
-    }
-
-    // Return the most likely candidate (middle of the scan)
-    if (rgbCandidates.length > 0) {
-      const middleIndex = Math.floor(rgbCandidates.length / 2);
-      return rgbCandidates[middleIndex];
-    }
-
-    throw new Error('Could not extract pixel data from PNG');
+    return { r, g, b };
 
   } catch (error) {
-    console.error('Error extracting RGB from PNG:', error);
+    console.error('[PNG DECODE] Error extracting RGB from PNG:', error);
     throw error;
   }
 };
