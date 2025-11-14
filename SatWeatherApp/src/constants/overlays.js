@@ -89,7 +89,7 @@ export const OVERLAYS = {
     id: 'county_lines',
     name: 'County Boundaries',
     category: OVERLAY_CATEGORIES.BOUNDARIES,
-    description: 'County boundary lines',
+    description: 'County boundary lines (from COD)',
     enabled: false,
   },
 
@@ -97,7 +97,7 @@ export const OVERLAYS = {
     id: 'state_lines',
     name: 'State Boundaries',
     category: OVERLAY_CATEGORIES.BOUNDARIES,
-    description: 'State boundary lines',
+    description: 'State and political boundary lines (from COD)',
     enabled: true, // Default on
   },
 

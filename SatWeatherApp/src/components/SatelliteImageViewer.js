@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
+import { BoundaryOverlay } from './BoundaryOverlay';
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { forceContainMode = false } = props;
@@ -406,6 +407,13 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         </View>
 
         {/* Overlays rendered OUTSIDE the pixel sampling ref */}
+        {/* Boundary overlay - must be rendered before location marker to stay below it */}
+        <BoundaryOverlay
+          scale={scale}
+          translateX={translateX}
+          translateY={translateY}
+        />
+
         {/* Location marker overlay */}
         <LocationMarker />
       </View>
