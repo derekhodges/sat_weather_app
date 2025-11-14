@@ -82,14 +82,14 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     'worklet';
 
     // For contain mode, image fits in screen, so allow moderate panning to see all parts
-    // For cover mode, image is 200% size, so allow more movement
+    // For cover mode, image is 200% size (extends 50% beyond each edge), need full panning
     const imageSize = effectiveDisplayMode === 'cover' ? 2 : 1;
 
     // Calculate maximum allowed translation based on zoom level
     // When zoomed in, allow more panning. When zoomed out, still allow some panning.
-    // For contain mode: allow panning up to 50% of screen width/height to see edges
-    // For cover mode: allow more panning since image is larger
-    const basePanAllowance = effectiveDisplayMode === 'cover' ? 0.2 : 0.5;
+    // For contain mode: allow panning up to 50% of screen to see edges
+    // For cover mode: image extends 50% beyond each edge, so need 50% pan to see all
+    const basePanAllowance = 0.5;
     const maxOffsetX = (screenWidth * (currentScale - 1) * imageSize) / 2 + (screenWidth * basePanAllowance);
     const maxOffsetY = (screenHeight * (currentScale - 1) * imageSize) / 2 + (screenHeight * basePanAllowance);
 
