@@ -2,6 +2,8 @@
  * Utility functions for colorbar display and inspector functionality
  */
 
+import { IR_COLOR_TABLES, temperatureFromColor, interpretRGBProductColor } from '../constants/colorTables';
+
 /**
  * Determines if a colorbar should be displayed based on the current product/channel
  *
@@ -151,9 +153,8 @@ export const findClosestColorInGradient = (r, g, b, gradient = null) => {
 };
 
 /**
- * Maps a gradient position to a temperature value
- * This is a placeholder that will be replaced with actual temperature mapping
- * based on the specific channel or product
+ * Maps a gradient position to a temperature value FOR COLORBARS
+ * Note: This is for the colorbar display, not for actual pixel sampling
  *
  * @param {number} percentage - Position in gradient (0-100)
  * @param {string} viewMode - 'rgb' or 'channel'
@@ -161,27 +162,86 @@ export const findClosestColorInGradient = (r, g, b, gradient = null) => {
  * @returns {object} - {value, unit, label} for display
  */
 export const mapGradientToValue = (percentage, viewMode, product) => {
-  // Placeholder implementation
-  // TODO: Implement actual temperature/value mapping based on channel type
-
   if (viewMode === 'channel' && product?.type === 'infrared') {
-    // For IR channels, typically map from cold (high) to warm (low)
-    // This is a rough estimate - actual values depend on the channel
-    const tempC = -80 + (percentage / 100) * 120; // Range: -80°C to +40°C
-    const tempF = (tempC * 9/5) + 32;
+    // Get the actual temperature range for this IR channel
+    const channel = `C${product.number.toString().padStart(2, '0')}`;
+    const colorTable = IR_COLOR_TABLES[channel];
 
-    return {
-      value: tempC.toFixed(1),
-      valueF: tempF.toFixed(1),
-      unit: '°C',
-      label: `${tempC.toFixed(1)}°C (${tempF.toFixed(1)}°F)`,
-    };
+    if (colorTable && colorTable.temperatures) {
+      const temps = colorTable.temperatures;
+      const minTemp = Math.min(...temps);
+      const maxTemp = Math.max(...temps);
+
+      // Map percentage to temperature range
+      const tempC = minTemp + (percentage / 100) * (maxTemp - minTemp);
+      const tempF = (tempC * 9/5) + 32;
+
+      return {
+        value: tempC.toFixed(1),
+        valueF: tempF.toFixed(1),
+        unit: '°C',
+        label: `${tempC.toFixed(1)}°C (${tempF.toFixed(1)}°F)`,
+      };
+    }
   }
 
-  // For other products, just return the percentage for now
+  // For RGB products, just return the percentage
   return {
     value: percentage.toFixed(1),
     unit: '%',
     label: `Position: ${percentage.toFixed(1)}%`,
+  };
+};
+
+/**
+ * Analyze a sampled pixel color and return interpretation
+ * This uses actual pixel RGB values from the image
+ *
+ * @param {number} r - Red value (0-255)
+ * @param {number} g - Green value (0-255)
+ * @param {number} b - Blue value (0-255)
+ * @param {string} viewMode - 'rgb' or 'channel'
+ * @param {object} product - Current channel or RGB product
+ * @returns {object} - Interpretation with label, value, description
+ */
+export const analyzePixelColor = (r, g, b, viewMode, product) => {
+  if (viewMode === 'channel' && product?.type === 'infrared') {
+    // For IR channels, match the color to find temperature
+    const tempC = temperatureFromColor(r, g, b, product.number);
+
+    if (tempC !== null) {
+      const tempF = (tempC * 9/5) + 32;
+      return {
+        label: `${tempC.toFixed(1)}°C (${tempF.toFixed(1)}°F)`,
+        value: tempC.toFixed(1),
+        unit: '°C',
+        description: `Brightness Temperature`,
+        color: `rgb(${r}, ${g}, ${b})`,
+      };
+    }
+  }
+
+  if (viewMode === 'rgb' && product) {
+    // For RGB products, interpret the color
+    const interpretation = interpretRGBProductColor(r, g, b, product.id);
+
+    if (interpretation) {
+      return {
+        label: interpretation.label,
+        value: null,
+        unit: null,
+        description: interpretation.description,
+        color: `rgb(${r}, ${g}, ${b})`,
+      };
+    }
+  }
+
+  // Fallback
+  return {
+    label: `RGB(${r}, ${g}, ${b})`,
+    value: null,
+    unit: null,
+    description: 'Color value',
+    color: `rgb(${r}, ${g}, ${b})`,
   };
 };

@@ -17,7 +17,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
-import { mapGradientToValue } from '../utils/colorbarUtils';
+import { analyzePixelColor } from '../utils/colorbarUtils';
+import { estimateColorFromCoordinates } from '../utils/pixelSampler';
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { forceContainMode = false } = props;
@@ -130,24 +131,31 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
 
   // Tap gesture for inspector mode - analyze color at touch point
   const handleInspectorTap = (x, y) => {
-    // For now, use a simple gradient mapping based on y-coordinate
-    // In the future, this can be enhanced to sample actual pixel data or use data layers
-    const percentage = Math.max(0, Math.min(100, (y / screenHeight) * 100));
-
     // Get the product for value mapping
     const product = viewMode === 'channel' ? selectedChannel : selectedRGBProduct;
 
-    // Map the gradient position to a value (temperature, etc.)
-    const valueInfo = mapGradientToValue(percentage, viewMode, product);
+    // Estimate the pixel color based on coordinates and colorbar gradient
+    // This uses the actual color tables from color_plus.py
+    const estimatedColor = estimateColorFromCoordinates(x, y, screenHeight, viewMode, product);
 
-    // Set the inspector value with position and value info
+    // Analyze the color using the actual color tables
+    const analysis = analyzePixelColor(
+      estimatedColor.r,
+      estimatedColor.g,
+      estimatedColor.b,
+      viewMode,
+      product
+    );
+
+    // Set the inspector value with position and analyzed color info
     setInspectorValue({
       x,
       y,
-      label: valueInfo.label,
-      color: `hsl(${240 - (percentage / 100 * 240)}, 100%, 50%)`, // Match colorbar gradient
-      percentage,
-      ...valueInfo,
+      label: analysis.label,
+      description: analysis.description,
+      color: analysis.color,
+      estimated: estimatedColor.estimated,
+      ...analysis,
     });
   };
 

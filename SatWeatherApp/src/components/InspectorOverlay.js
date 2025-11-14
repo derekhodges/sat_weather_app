@@ -14,7 +14,7 @@ export const InspectorOverlay = () => {
     return null;
   }
 
-  const { x, y, label, color } = inspectorValue;
+  const { x, y, label, description, color } = inspectorValue;
 
   return (
     <View style={styles.container} pointerEvents="none">
@@ -35,8 +35,13 @@ export const InspectorOverlay = () => {
           <View style={[styles.colorSwatch, { backgroundColor: color }]} />
         )}
 
-        {/* Value text */}
-        <Text style={styles.tooltipText}>{label}</Text>
+        {/* Value text container */}
+        <View style={styles.tooltipTextContainer}>
+          <Text style={styles.tooltipText}>{label}</Text>
+          {description && (
+            <Text style={styles.tooltipDescription}>{description}</Text>
+          )}
+        </View>
       </View>
 
       {/* Instruction text at top of screen */}
@@ -76,14 +81,15 @@ const styles = StyleSheet.create({
   },
   tooltip: {
     position: 'absolute',
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     padding: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#00ff00',
-    minWidth: 150,
+    minWidth: 180,
+    maxWidth: 280,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   colorSwatch: {
     width: 24,
@@ -92,12 +98,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fff',
     marginRight: 8,
+    marginTop: 2,
+  },
+  tooltipTextContainer: {
+    flex: 1,
   },
   tooltipText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
-    flex: 1,
+    marginBottom: 2,
+  },
+  tooltipDescription: {
+    color: '#ccc',
+    fontSize: 11,
+    fontWeight: '400',
+    lineHeight: 14,
   },
   instructionContainer: {
     position: 'absolute',
