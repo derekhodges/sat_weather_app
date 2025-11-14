@@ -312,6 +312,15 @@ const DomainPanel = ({ onSelect, onShowMap, selectedSatellite, onSelectSatellite
 const OverlaysPanel = ({ overlayStates, onToggle }) => {
   const categories = Object.keys(OVERLAYS_BY_CATEGORY);
 
+  // Safety check for overlayStates
+  if (!overlayStates) {
+    return (
+      <ScrollView style={styles.panel}>
+        <Text style={styles.panelTitle}>Loading overlays...</Text>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView style={styles.panel}>
       <Text style={styles.panelTitle}>SELECT OVERLAYS</Text>

@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
+import { BoundaryOverlay } from './BoundaryOverlay';
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { forceContainMode = false } = props;
@@ -80,15 +81,17 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const constrainTranslation = (x, y, currentScale) => {
     'worklet';
 
-    // For contain mode, image fits in screen, so constrain more tightly
-    // For cover mode, image is 200% size, so allow more movement
+    // For contain mode, image fits in screen, so allow moderate panning to see all parts
+    // For cover mode, image is 200% size (extends 50% beyond each edge), need full panning
     const imageSize = effectiveDisplayMode === 'cover' ? 2 : 1;
 
     // Calculate maximum allowed translation based on zoom level
-    // When zoomed in, allow more panning. When zoomed out, constrain more.
-    // The idea: don't let more than 20% of the image go off screen
-    const maxOffsetX = (screenWidth * (currentScale - 1) * imageSize) / 2 + (screenWidth * 0.2);
-    const maxOffsetY = (screenHeight * (currentScale - 1) * imageSize) / 2 + (screenHeight * 0.2);
+    // When zoomed in, allow more panning. When zoomed out, still allow some panning.
+    // For contain mode: allow panning up to 50% of screen to see edges
+    // For cover mode: image extends 50% beyond each edge, so need 50% pan to see all
+    const basePanAllowance = 0.5;
+    const maxOffsetX = (screenWidth * (currentScale - 1) * imageSize) / 2 + (screenWidth * basePanAllowance);
+    const maxOffsetY = (screenHeight * (currentScale - 1) * imageSize) / 2 + (screenHeight * basePanAllowance);
 
     // Constrain to bounds
     const constrainedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, x));
@@ -406,6 +409,14 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         </View>
 
         {/* Overlays rendered OUTSIDE the pixel sampling ref */}
+        {/* Boundary overlay - must be rendered before location marker to stay below it */}
+        <BoundaryOverlay
+          scale={scale}
+          translateX={translateX}
+          translateY={translateY}
+          displayMode={effectiveDisplayMode}
+        />
+
         {/* Location marker overlay */}
         <LocationMarker />
       </View>

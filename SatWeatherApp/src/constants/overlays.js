@@ -9,7 +9,7 @@ export const OVERLAY_CATEGORIES = {
 
 export const OVERLAYS = {
   // Lightning
-  GLM_FLASH: {
+  glm_flash: {
     id: 'glm_flash',
     name: 'GLM Flash Extent',
     category: OVERLAY_CATEGORIES.LIGHTNING,
@@ -17,7 +17,7 @@ export const OVERLAYS = {
     enabled: false,
   },
 
-  GLM_GROUPS: {
+  glm_groups: {
     id: 'glm_groups',
     name: 'GLM Groups',
     category: OVERLAY_CATEGORIES.LIGHTNING,
@@ -26,7 +26,7 @@ export const OVERLAYS = {
   },
 
   // Radar
-  MRMS: {
+  mrms: {
     id: 'mrms',
     name: 'MRMS Reflectivity',
     category: OVERLAY_CATEGORIES.RADAR,
@@ -34,7 +34,7 @@ export const OVERLAYS = {
     enabled: false,
   },
 
-  COMPOSITE_RADAR: {
+  composite_radar: {
     id: 'composite_radar',
     name: 'Composite Radar',
     category: OVERLAY_CATEGORIES.RADAR,
@@ -43,7 +43,7 @@ export const OVERLAYS = {
   },
 
   // NWS Products
-  WARNINGS: {
+  warnings: {
     id: 'warnings',
     name: 'Warnings',
     category: OVERLAY_CATEGORIES.NWS,
@@ -51,7 +51,7 @@ export const OVERLAYS = {
     enabled: false,
   },
 
-  WATCHES: {
+  watches: {
     id: 'watches',
     name: 'Watches',
     category: OVERLAY_CATEGORIES.NWS,
@@ -59,7 +59,7 @@ export const OVERLAYS = {
     enabled: false,
   },
 
-  MESOSCALE_DISCUSSIONS: {
+  meso_disc: {
     id: 'meso_disc',
     name: 'Mesoscale Discussions',
     category: OVERLAY_CATEGORIES.NWS,
@@ -68,7 +68,7 @@ export const OVERLAYS = {
   },
 
   // SPC Products
-  SPC_OUTLOOK: {
+  spc_outlook: {
     id: 'spc_outlook',
     name: 'SPC Convective Outlook',
     category: OVERLAY_CATEGORIES.SPC,
@@ -76,7 +76,7 @@ export const OVERLAYS = {
     enabled: false,
   },
 
-  SPC_TORNADO: {
+  spc_tornado: {
     id: 'spc_tornado',
     name: 'Tornado Probabilities',
     category: OVERLAY_CATEGORIES.SPC,
@@ -84,8 +84,16 @@ export const OVERLAYS = {
     enabled: false,
   },
 
-  // Boundaries
-  COUNTY_LINES: {
+  // Boundaries - Political
+  state_lines: {
+    id: 'state_lines',
+    name: 'State Boundaries',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'State and political boundary lines',
+    enabled: true, // Default on
+  },
+
+  county_lines: {
     id: 'county_lines',
     name: 'County Boundaries',
     category: OVERLAY_CATEGORIES.BOUNDARIES,
@@ -93,15 +101,58 @@ export const OVERLAYS = {
     enabled: false,
   },
 
-  STATE_LINES: {
-    id: 'state_lines',
-    name: 'State Boundaries',
+  nws_cwa: {
+    id: 'nws_cwa',
+    name: 'NWS County Warning Areas',
     category: OVERLAY_CATEGORIES.BOUNDARIES,
-    description: 'State boundary lines',
-    enabled: true, // Default on
+    description: 'National Weather Service county warning areas',
+    enabled: false,
   },
 
-  CITIES: {
+  // Boundaries - Geographic
+  latlon: {
+    id: 'latlon',
+    name: 'Lat/Lon Grid',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'Latitude/longitude grid lines',
+    enabled: false,
+  },
+
+  rivers: {
+    id: 'rivers',
+    name: 'Rivers',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'Major rivers and waterways',
+    enabled: false,
+  },
+
+  // Boundaries - Infrastructure
+  usint: {
+    id: 'usint',
+    name: 'US Interstates',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'Interstate highway system',
+    enabled: false,
+  },
+
+  ushw: {
+    id: 'ushw',
+    name: 'US Highways',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'US highway system',
+    enabled: false,
+  },
+
+  usstrd: {
+    id: 'usstrd',
+    name: 'US Roads',
+    category: OVERLAY_CATEGORIES.BOUNDARIES,
+    description: 'State roads and highways',
+    enabled: false,
+  },
+
+  // Boundaries - Labels
+  cities: {
     id: 'cities',
     name: 'Cities',
     category: OVERLAY_CATEGORIES.BOUNDARIES,
