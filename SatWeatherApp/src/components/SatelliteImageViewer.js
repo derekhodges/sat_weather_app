@@ -359,7 +359,6 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
           ref={imageOnlyRef}
           style={StyleSheet.absoluteFill}
           collapsable={false}
-          pointerEvents="none"
         >
           <GestureDetector gesture={zoomPanGesture}>
             <Animated.View style={[styles.imageContainer, animatedStyle]}>
