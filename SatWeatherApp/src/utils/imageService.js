@@ -51,7 +51,16 @@ export const generateCODImageUrl = (domain, product, timestamp = null) => {
   }
 
   // Product can be either an RGB product (with codName) or a channel (with number)
-  const productName = product.codName || product.number?.toString();
+  // For channels, pad with leading zero (e.g., 2 becomes "02")
+  let productName;
+  if (product.codName) {
+    productName = product.codName;
+  } else if (product.number !== undefined) {
+    // Pad channel numbers with leading zero for URLs (e.g., 02, 05, 13)
+    productName = String(product.number).padStart(2, '0');
+  } else {
+    productName = null;
+  }
 
   if (!productName) {
     console.error('generateCODImageUrl: Product missing codName and number', product);

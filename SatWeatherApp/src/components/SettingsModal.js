@@ -43,8 +43,10 @@ export const SettingsModal = ({ visible, onClose }) => {
   const [showHomeConfirm, setShowHomeConfirm] = useState(false);
   const [showDevTools, setShowDevTools] = useState(false);
 
-  // Developer tools - hidden in production
-  const isDevelopment = process.env.EXPO_PUBLIC_APP_ENV === 'development';
+  // Developer tools - set to true to always show, false to hide in production
+  // TODO: Set to false before releasing to production
+  const SHOW_DEV_TOOLS = true; // Change to false for production release
+  const isDevelopment = SHOW_DEV_TOOLS || process.env.EXPO_PUBLIC_APP_ENV === 'development';
 
   // Handle tier override for testing
   const handleTierOverride = async (tier) => {
