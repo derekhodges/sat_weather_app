@@ -185,6 +185,12 @@ export const MainScreen = () => {
         console.error('Error loading and caching frames:', error);
         if (isMounted) {
           setError('Failed to load satellite frames. Please try refreshing.');
+          // Show alert for critical loading errors
+          Alert.alert(
+            'Loading Error',
+            'Failed to load satellite images. This may be due to a network issue. Please check your connection and try again.',
+            [{ text: 'OK' }]
+          );
         }
       } finally {
         if (isMounted) {
@@ -202,7 +208,7 @@ export const MainScreen = () => {
 
   // Load image for current frame
   useEffect(() => {
-    if (availableTimestamps.length > 0 && currentFrameIndex >= 0) {
+    if (availableTimestamps.length > 0 && currentFrameIndex >= 0 && currentFrameIndex < availableTimestamps.length) {
       const timestamp = availableTimestamps[currentFrameIndex];
       loadImageForTimestamp(timestamp);
     }
@@ -238,6 +244,8 @@ export const MainScreen = () => {
 
   // Auto-refresh functionality
   useEffect(() => {
+    let isMounted = true;
+
     // Always clear any existing interval first
     if (autoRefreshIntervalRef.current) {
       clearInterval(autoRefreshIntervalRef.current);
@@ -250,6 +258,8 @@ export const MainScreen = () => {
       console.log(`Auto-refresh enabled: refreshing every ${settings.autoRefreshInterval} minute(s)`);
 
       autoRefreshIntervalRef.current = setInterval(async () => {
+        if (!isMounted) return; // Skip if component unmounted
+
         console.log('Auto-refresh: Reloading frames for current selection...');
         const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
 
@@ -262,7 +272,7 @@ export const MainScreen = () => {
         frameCache.clearForProduct(selectedDomain, product);
 
         try {
-          setIsLoading(true);
+          if (isMounted) setIsLoading(true);
 
           // Generate validated timestamps (only frames that exist)
           const validFrames = await generateValidatedTimestampArray(
@@ -272,9 +282,11 @@ export const MainScreen = () => {
             5
           );
 
+          if (!isMounted) return; // Check again after async operation
+
           if (validFrames.length === 0) {
             console.error('Auto-refresh: No valid frames available');
-            setIsLoading(false);
+            if (isMounted) setIsLoading(false);
             return;
           }
 
@@ -287,6 +299,8 @@ export const MainScreen = () => {
               timestamp: f.timestamp,
             }))
           );
+
+          if (!isMounted) return; // Check again after async operation
 
           // Update available timestamps (only the validated ones)
           const timestamps = validFrames.map(f => f.timestamp);
@@ -301,14 +315,15 @@ export const MainScreen = () => {
           }
         } catch (error) {
           console.error('Error during auto-refresh:', error);
-          setError('Auto-refresh failed. Will retry next interval.');
+          if (isMounted) setError('Auto-refresh failed. Will retry next interval.');
         } finally {
-          setIsLoading(false);
+          if (isMounted) setIsLoading(false);
         }
       }, intervalMs);
     }
 
     return () => {
+      isMounted = false;
       if (autoRefreshIntervalRef.current) {
         clearInterval(autoRefreshIntervalRef.current);
         autoRefreshIntervalRef.current = null;
@@ -526,6 +541,12 @@ export const MainScreen = () => {
 
   const handleSaveGif = async () => {
     try {
+      // Check if we have any frames available
+      if (availableTimestamps.length === 0) {
+        Alert.alert('No Frames Available', 'Please wait for satellite images to load before creating a GIF.');
+        return;
+      }
+
       const frameCount = Math.min(availableTimestamps.length, 10);
 
       Alert.alert(
@@ -605,6 +626,12 @@ export const MainScreen = () => {
 
   const handleShareGif = async () => {
     try {
+      // Check if we have any frames available
+      if (availableTimestamps.length === 0) {
+        Alert.alert('No Frames Available', 'Please wait for satellite images to load before creating a GIF.');
+        return;
+      }
+
       const frameCount = Math.min(availableTimestamps.length, 10);
 
       Alert.alert(
@@ -653,8 +680,6 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
-                setForceContainForCapture(false);
-                setActualImageHeight(null);
 
                 // NOW show loading while sharing
                 setIsLoading(true);

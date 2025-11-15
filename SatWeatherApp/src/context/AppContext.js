@@ -116,46 +116,75 @@ export const AppProvider = ({ children }) => {
   }, [settings.defaultDomain, settings.defaultProduct, settings.defaultViewMode]);
 
   const loadPreferences = async () => {
+    // Load home location
     try {
       const savedHome = await AsyncStorage.getItem('homeLocation');
       if (savedHome) {
-        setSavedHomeLocation(JSON.parse(savedHome));
-      }
-
-      const savedFavorites = await AsyncStorage.getItem('favorites');
-      if (savedFavorites) {
-        setFavorites(JSON.parse(savedFavorites));
-      }
-
-      const savedSettings = await AsyncStorage.getItem('settings');
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        // Migrate old default (500ms) to new default (800ms)
-        if (parsed.animationSpeed === 500) {
-          parsed.animationSpeed = 800;
-          console.log('Migrated animation speed from 500ms to 800ms');
+        try {
+          setSavedHomeLocation(JSON.parse(savedHome));
+        } catch (parseError) {
+          console.error('Error parsing saved home location:', parseError);
+          // Clear corrupted data
+          await AsyncStorage.removeItem('homeLocation');
         }
-        // Merge with defaults to ensure new settings are applied
-        const defaultSettings = {
-          animationSpeed: 800,
-          frameCount: 12,
-          frameSkip: 0,
-          imageDisplayMode: 'contain',
-          autoRefresh: false,
-          autoRefreshInterval: 5,
-          showColorScale: true,
-          defaultDomain: DEFAULT_DOMAIN,
-          defaultViewMode: 'rgb',
-          defaultProduct: DEFAULT_RGB_PRODUCT,
-          useLocalTime: false,
-        };
-        const mergedSettings = { ...defaultSettings, ...parsed };
-        setSettings(mergedSettings);
-        // Save migrated settings back to storage
-        await AsyncStorage.setItem('settings', JSON.stringify(mergedSettings));
       }
     } catch (error) {
-      console.error('Error loading preferences:', error);
+      console.error('Error loading home location:', error);
+    }
+
+    // Load favorites
+    try {
+      const savedFavorites = await AsyncStorage.getItem('favorites');
+      if (savedFavorites) {
+        try {
+          setFavorites(JSON.parse(savedFavorites));
+        } catch (parseError) {
+          console.error('Error parsing saved favorites:', parseError);
+          // Clear corrupted data
+          await AsyncStorage.removeItem('favorites');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+    }
+
+    // Load settings
+    try {
+      const savedSettings = await AsyncStorage.getItem('settings');
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings);
+          // Migrate old default (500ms) to new default (800ms)
+          if (parsed.animationSpeed === 500) {
+            parsed.animationSpeed = 800;
+            console.log('Migrated animation speed from 500ms to 800ms');
+          }
+          // Merge with defaults to ensure new settings are applied
+          const defaultSettings = {
+            animationSpeed: 800,
+            frameCount: 12,
+            frameSkip: 0,
+            imageDisplayMode: 'contain',
+            autoRefresh: false,
+            autoRefreshInterval: 5,
+            showColorScale: true,
+            defaultDomain: DEFAULT_DOMAIN,
+            defaultViewMode: 'rgb',
+            defaultProduct: DEFAULT_RGB_PRODUCT,
+            useLocalTime: false,
+          };
+          const mergedSettings = { ...defaultSettings, ...parsed };
+          setSettings(mergedSettings);
+          // Save migrated settings back to storage
+          await AsyncStorage.setItem('settings', JSON.stringify(mergedSettings));
+        } catch (parseError) {
+          console.error('Error parsing saved settings:', parseError);
+          // Clear corrupted data
+          await AsyncStorage.removeItem('settings');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
     }
   };
 

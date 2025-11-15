@@ -7,6 +7,32 @@
 const COD_BASE_URL = 'https://weather.cod.edu/data/satellite';
 
 /**
+ * Fetch with timeout to prevent hanging on slow/dead connections
+ * @param {string} url - URL to fetch
+ * @param {object} options - Fetch options
+ * @param {number} timeout - Timeout in milliseconds (default: 10 seconds)
+ */
+const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout');
+    }
+    throw error;
+  }
+};
+
+/**
  * Generate COD image URL based on domain, product, and timestamp
  * Examples:
  * - https://weather.cod.edu/data/satellite/local/Oklahoma/truecolor/Oklahoma.truecolor.20251109.220118.jpg
@@ -174,9 +200,13 @@ export const formatTimestamp = (timestamp, useLocalTime = false) => {
  */
 export const checkImageExists = async (url) => {
   try {
-    const response = await fetch(url, { method: 'HEAD' });
+    const response = await fetchWithTimeout(url, { method: 'HEAD' }, 10000);
     return response.ok;
   } catch (error) {
+    // Log timeout errors vs network errors for debugging
+    if (error.message === 'Request timeout') {
+      console.warn('Image check timeout for:', url);
+    }
     return false;
   }
 };
