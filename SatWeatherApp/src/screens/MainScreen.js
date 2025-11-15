@@ -49,6 +49,7 @@ export const MainScreen = () => {
     setImageTimestamp,
     setIsLoading,
     setError,
+    setIsImageReadyForOverlays,
     isAnimating,
     toggleAnimation,
     availableTimestamps,
@@ -139,6 +140,8 @@ export const MainScreen = () => {
       console.log('Loading and caching frames...');
       setIsLoading(true);
       setError(null);
+      // Reset overlay readiness - overlays should wait for first image to load
+      setIsImageReadyForOverlays(false);
 
       try {
         // Clear old cache for this product

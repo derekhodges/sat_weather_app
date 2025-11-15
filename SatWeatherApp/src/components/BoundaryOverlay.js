@@ -14,9 +14,10 @@ import { DOMAIN_TYPES } from '../constants/domains';
  * TODO: Switch to AWS-hosted boundaries when available
  */
 export const BoundaryOverlay = ({ scale, translateX, translateY, displayMode }) => {
-  const { selectedDomain, overlayStates } = useApp();
+  const { selectedDomain, overlayStates, isImageReadyForOverlays } = useApp();
 
-  if (!selectedDomain) {
+  // Don't render overlays until the image is ready - prevents misalignment
+  if (!selectedDomain || !isImageReadyForOverlays) {
     return null;
   }
 

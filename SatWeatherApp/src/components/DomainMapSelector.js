@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
+  Pressable,
   Dimensions,
   Image,
   ActivityIndicator,
@@ -217,6 +218,7 @@ export const DomainMapSelector = () => {
     });
 
   const panGesture = Gesture.Pan()
+    .minDistance(10) // Require some movement to start panning (allows taps to work)
     .onStart(() => {
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
@@ -311,7 +313,7 @@ export const DomainMapSelector = () => {
       const color = generateRegionColor(regionKey);
 
       return (
-        <TouchableOpacity
+        <Pressable
           key={regionKey}
           style={[
             styles.regionDotContainer,
@@ -321,27 +323,31 @@ export const DomainMapSelector = () => {
             },
           ]}
           onPress={() => handleRegionSelect(regionKey)}
-          activeOpacity={0.7}
+          hitSlop={0}
         >
-          {/* Show coverage rectangle as border */}
-          {rect && (
-            <View
-              style={[
-                styles.coverageRect,
-                {
-                  left: rect.left - position.x + 12,
-                  top: rect.top - position.y + 12,
-                  width: rect.width,
-                  height: rect.height,
-                  borderColor: color,
-                },
-              ]}
-              pointerEvents="none"
-            />
+          {({ pressed }) => (
+            <>
+              {/* Show coverage rectangle as border */}
+              {rect && (
+                <View
+                  style={[
+                    styles.coverageRect,
+                    {
+                      left: rect.left - position.x + 12,
+                      top: rect.top - position.y + 12,
+                      width: rect.width,
+                      height: rect.height,
+                      borderColor: color,
+                    },
+                  ]}
+                  pointerEvents="none"
+                />
+              )}
+              {/* Center dot */}
+              <View style={[styles.regionDot, { backgroundColor: color, opacity: pressed ? 0.7 : 1 }]} />
+            </>
           )}
-          {/* Center dot */}
-          <View style={[styles.regionDot, { backgroundColor: color }]} />
-        </TouchableOpacity>
+        </Pressable>
       );
     });
   };

@@ -36,6 +36,7 @@ export const AppProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if any image has loaded
+  const [isImageReadyForOverlays, setIsImageReadyForOverlays] = useState(false); // Track if current image is ready for overlays
 
   // Animation
   const [isAnimating, setIsAnimating] = useState(false);
@@ -263,6 +264,8 @@ export const AppProvider = ({ children }) => {
     setSelectedDomain(domain);
     setActiveMenu(null);
     setShowDomainMap(false);
+    // Reset overlay readiness when domain changes - overlays will wait for image to load
+    setIsImageReadyForOverlays(false);
     // Stop animation and reset to most recent frame when domain changes
     if (isAnimating) {
       setIsAnimating(false);
@@ -397,6 +400,7 @@ export const AppProvider = ({ children }) => {
     isLoading,
     error,
     hasLoadedOnce,
+    isImageReadyForOverlays,
     isAnimating,
     availableTimestamps,
     currentFrameIndex,
@@ -430,6 +434,7 @@ export const AppProvider = ({ children }) => {
     setIsLoading,
     setError,
     setHasLoadedOnce,
+    setIsImageReadyForOverlays,
     toggleAnimation,
     setAvailableTimestamps,
     setCurrentFrameIndex,
