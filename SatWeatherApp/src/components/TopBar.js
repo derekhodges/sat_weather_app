@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { SATELLITES } from '../constants/satellites';
 
 import { formatTimestamp } from '../utils/imageService';
 
-export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
+const TopBarComponent = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
   const {
     selectedSatellite,
     selectedDomain,
@@ -135,6 +135,9 @@ export const TopBar = ({ onMenuPress, onRefresh, onFavoritesPress }) => {
     </View>
   );
 };
+
+// Memoize to prevent unnecessary re-renders when props haven't changed
+export const TopBar = memo(TopBarComponent);
 
 const styles = StyleSheet.create({
   container: {
