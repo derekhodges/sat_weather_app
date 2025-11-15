@@ -7,6 +7,32 @@
 const COD_BASE_URL = 'https://weather.cod.edu/data/satellite';
 
 /**
+ * Fetch with timeout to prevent hanging on slow/dead connections
+ * @param {string} url - URL to fetch
+ * @param {object} options - Fetch options
+ * @param {number} timeout - Timeout in milliseconds (default: 10 seconds)
+ */
+const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout');
+    }
+    throw error;
+  }
+};
+
+/**
  * Generate COD image URL based on domain, product, and timestamp
  * Examples:
  * - https://weather.cod.edu/data/satellite/local/Oklahoma/truecolor/Oklahoma.truecolor.20251109.220118.jpg
@@ -174,9 +200,13 @@ export const formatTimestamp = (timestamp, useLocalTime = false) => {
  */
 export const checkImageExists = async (url) => {
   try {
-    const response = await fetch(url, { method: 'HEAD' });
+    const response = await fetchWithTimeout(url, { method: 'HEAD' }, 10000);
     return response.ok;
   } catch (error) {
+    // Log timeout errors vs network errors for debugging
+    if (error.message === 'Request timeout') {
+      console.warn('Image check timeout for:', url);
+    }
     return false;
   }
 };
@@ -232,8 +262,27 @@ export const getLatestImageUrl = async (domain, product, maxAttempts = 24) => {
 };
 
 /**
+ * Helper function to batch async operations to avoid overwhelming the network
+ * @param {Array} items - Items to process
+ * @param {Function} processItem - Async function to process each item
+ * @param {number} batchSize - Number of concurrent operations (default: 4)
+ */
+const processBatched = async (items, processItem, batchSize = 4) => {
+  const results = [];
+
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(processItem));
+    results.push(...batchResults);
+  }
+
+  return results;
+};
+
+/**
  * Generate validated timestamp array - only includes frames that actually exist
  * This prevents the app from breaking when recent frames haven't been plotted yet
+ * Uses batched requests to avoid overwhelming the network with 12+ parallel requests
  */
 export const generateValidatedTimestampArray = async (
   domain,
@@ -246,9 +295,10 @@ export const generateValidatedTimestampArray = async (
   // First generate all possible timestamps
   const possibleTimestamps = generateTimestampArray(count, intervalMinutes);
 
-  // Check each timestamp in parallel
-  const validationResults = await Promise.all(
-    possibleTimestamps.map(async (timestamp) => {
+  // Check each timestamp in batches of 4 to avoid network congestion
+  const validationResults = await processBatched(
+    possibleTimestamps,
+    async (timestamp) => {
       const url = generateCODImageUrl(domain, product, timestamp);
       if (!url) {
         return { timestamp, url: null, exists: false };
@@ -256,7 +306,8 @@ export const generateValidatedTimestampArray = async (
 
       const exists = await checkImageExists(url);
       return { timestamp, url, exists };
-    })
+    },
+    4 // Concurrent requests per batch
   );
 
   // Filter to only existing frames

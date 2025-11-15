@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 
-export const BottomControls = ({
+const BottomControlsComponent = ({
   onInspectorPress,
   onLocationPress,
   onPlayPress,
@@ -72,6 +72,10 @@ export const BottomControls = ({
     </View>
   );
 };
+
+// Memoize to prevent unnecessary re-renders during image changes
+// Only re-renders when props actually change
+export const BottomControls = memo(BottomControlsComponent);
 
 const styles = StyleSheet.create({
   container: {

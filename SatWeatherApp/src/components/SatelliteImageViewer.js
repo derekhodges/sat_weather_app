@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import {
   View,
   Image,
@@ -41,6 +41,20 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   // so we sample the actual satellite image, not the green crosshairs
   const imageOnlyRef = useRef(null);
 
+  // Track mounted state to prevent RAF callbacks on unmounted component
+  const isMountedRef = useRef(true);
+  const rafIdsRef = useRef([]);
+
+  // Cleanup RAF callbacks on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      // Cancel all pending RAF callbacks
+      rafIdsRef.current.forEach(id => cancelAnimationFrame(id));
+      rafIdsRef.current = [];
+    };
+  }, []);
+
   // Expose the image-only ref via context for pixel sampling
   useEffect(() => {
     if (setImageContainerRef) {
@@ -68,14 +82,36 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // Get screen dimensions for bounds checking
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
+  // Get screen dimensions for bounds checking - update on orientation change
+  const [screenDimensions, setScreenDimensions] = useState({
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  });
+
+  // Listen for dimension changes (orientation changes)
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions({
+        width: window.width,
+        height: window.height,
+      });
+    });
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  const screenWidth = screenDimensions.width;
+  const screenHeight = screenDimensions.height;
 
   // For cover mode, we want the image to be larger so it can extend beyond the viewport
   // This allows panning to see all parts without cropping
   // forceContainMode overrides this for screenshots
-  const effectiveDisplayMode = forceContainMode ? 'contain' : settings.imageDisplayMode;
+  const effectiveDisplayMode = useMemo(
+    () => forceContainMode ? 'contain' : settings.imageDisplayMode,
+    [forceContainMode, settings.imageDisplayMode]
+  );
 
   // Helper function to constrain translation based on current scale
   const constrainTranslation = (x, y, currentScale) => {
@@ -208,11 +244,15 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         opacityA.value = 1;
         // CRITICAL: Wait for the opacity change to actually render on screen
         // before removing the loading overlay (prevents black flash)
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            setImageALoaded(true);
+        const rafId1 = requestAnimationFrame(() => {
+          const rafId2 = requestAnimationFrame(() => {
+            if (isMountedRef.current) {
+              setImageALoaded(true);
+            }
           });
+          rafIdsRef.current.push(rafId2);
         });
+        rafIdsRef.current.push(rafId1);
       } else {
         setImageALoaded(true);
         // CRITICAL: To prevent black flicker, we use a two-step process:
@@ -224,10 +264,13 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         opacityA.value = 1;
 
         // Step 2: After new image is visible, fade out the old image
-        requestAnimationFrame(() => {
-          setActiveSlot('A');
-          opacityB.value = withTiming(0, { duration: 100 });
+        const rafId = requestAnimationFrame(() => {
+          if (isMountedRef.current) {
+            setActiveSlot('A');
+            opacityB.value = withTiming(0, { duration: 100 });
+          }
         });
+        rafIdsRef.current.push(rafId);
       }
     }
   };
@@ -240,11 +283,15 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         opacityB.value = 1;
         // CRITICAL: Wait for the opacity change to actually render on screen
         // before removing the loading overlay (prevents black flash)
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            setImageBLoaded(true);
+        const rafId1 = requestAnimationFrame(() => {
+          const rafId2 = requestAnimationFrame(() => {
+            if (isMountedRef.current) {
+              setImageBLoaded(true);
+            }
           });
+          rafIdsRef.current.push(rafId2);
         });
+        rafIdsRef.current.push(rafId1);
       } else {
         setImageBLoaded(true);
         // CRITICAL: To prevent black flicker, we use a two-step process:
@@ -256,10 +303,13 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         opacityB.value = 1;
 
         // Step 2: After new image is visible, fade out the old image
-        requestAnimationFrame(() => {
-          setActiveSlot('B');
-          opacityA.value = withTiming(0, { duration: 100 });
+        const rafId = requestAnimationFrame(() => {
+          if (isMountedRef.current) {
+            setActiveSlot('B');
+            opacityA.value = withTiming(0, { duration: 100 });
+          }
         });
+        rafIdsRef.current.push(rafId);
       }
     }
   };

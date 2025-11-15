@@ -92,18 +92,51 @@ class FrameCache {
   }
 
   /**
-   * Prefetch multiple frames
+   * Prefetch multiple frames with smart prioritization
+   * Strategy: newest first (current frame), then oldest (loop start), then work backwards
+   * This ensures smooth playback when animation starts
    * Returns array of successfully prefetched frames with their timestamps
    */
   async prefetchFrames(frames) {
-    console.log(`Prefetching ${frames.length} frames...`);
+    if (frames.length === 0) return [];
 
-    const results = await Promise.all(
-      frames.map(async ({ url, domain, product, timestamp }) => {
-        const result = await this.prefetchFrame(url, domain, product, timestamp);
-        return { timestamp, url: result, success: result !== null };
-      })
-    );
+    console.log(`Prefetching ${frames.length} frames with smart prioritization...`);
+
+    // Prioritize frames for optimal user experience:
+    // 1. Newest frame (index length-1) - shown immediately
+    // 2. Oldest frame (index 0) - needed when loop restarts
+    // 3. Rest in reverse order (length-2, length-3, ..., 1) - animation order
+    const priorityOrder = [];
+
+    if (frames.length > 0) {
+      // Newest frame first (most important - displayed immediately)
+      priorityOrder.push(frames[frames.length - 1]);
+    }
+
+    if (frames.length > 1) {
+      // Oldest frame second (important - loop restart point)
+      priorityOrder.push(frames[0]);
+    }
+
+    // Add remaining frames in reverse order (working backwards from newest)
+    for (let i = frames.length - 2; i >= 1; i--) {
+      priorityOrder.push(frames[i]);
+    }
+
+    // Prefetch in batches of 3 to balance speed vs network load
+    const batchSize = 3;
+    const results = [];
+
+    for (let i = 0; i < priorityOrder.length; i += batchSize) {
+      const batch = priorityOrder.slice(i, i + batchSize);
+      const batchResults = await Promise.all(
+        batch.map(async ({ url, domain, product, timestamp }) => {
+          const result = await this.prefetchFrame(url, domain, product, timestamp);
+          return { timestamp, url: result, success: result !== null };
+        })
+      );
+      results.push(...batchResults);
+    }
 
     const successful = results.filter(r => r.success);
     console.log(`Successfully prefetched ${successful.length}/${frames.length} frames`);

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -122,8 +122,10 @@ export const MainScreen = () => {
   }, [layoutOrientation, toggleOrientation]);
 
   // Generate validated timestamps and prefetch frames
+  // Debounced to prevent excessive network requests when rapidly switching domains/products
   useEffect(() => {
     let isMounted = true;
+    let debounceTimer = null;
 
     const loadAndCacheFrames = async () => {
       const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
@@ -185,6 +187,12 @@ export const MainScreen = () => {
         console.error('Error loading and caching frames:', error);
         if (isMounted) {
           setError('Failed to load satellite frames. Please try refreshing.');
+          // Show alert for critical loading errors
+          Alert.alert(
+            'Loading Error',
+            'Failed to load satellite images. This may be due to a network issue. Please check your connection and try again.',
+            [{ text: 'OK' }]
+          );
         }
       } finally {
         if (isMounted) {
@@ -193,16 +201,24 @@ export const MainScreen = () => {
       }
     };
 
-    loadAndCacheFrames();
+    // Debounce by 300ms to avoid firing too many requests when rapidly switching
+    debounceTimer = setTimeout(() => {
+      if (isMounted) {
+        loadAndCacheFrames();
+      }
+    }, 300);
 
     return () => {
       isMounted = false;
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
     };
   }, [selectedDomain, selectedRGBProduct, selectedChannel, viewMode]);
 
   // Load image for current frame
   useEffect(() => {
-    if (availableTimestamps.length > 0 && currentFrameIndex >= 0) {
+    if (availableTimestamps.length > 0 && currentFrameIndex >= 0 && currentFrameIndex < availableTimestamps.length) {
       const timestamp = availableTimestamps[currentFrameIndex];
       loadImageForTimestamp(timestamp);
     }
@@ -238,6 +254,8 @@ export const MainScreen = () => {
 
   // Auto-refresh functionality
   useEffect(() => {
+    let isMounted = true;
+
     // Always clear any existing interval first
     if (autoRefreshIntervalRef.current) {
       clearInterval(autoRefreshIntervalRef.current);
@@ -250,6 +268,8 @@ export const MainScreen = () => {
       console.log(`Auto-refresh enabled: refreshing every ${settings.autoRefreshInterval} minute(s)`);
 
       autoRefreshIntervalRef.current = setInterval(async () => {
+        if (!isMounted) return; // Skip if component unmounted
+
         console.log('Auto-refresh: Reloading frames for current selection...');
         const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
 
@@ -262,7 +282,7 @@ export const MainScreen = () => {
         frameCache.clearForProduct(selectedDomain, product);
 
         try {
-          setIsLoading(true);
+          if (isMounted) setIsLoading(true);
 
           // Generate validated timestamps (only frames that exist)
           const validFrames = await generateValidatedTimestampArray(
@@ -272,9 +292,11 @@ export const MainScreen = () => {
             5
           );
 
+          if (!isMounted) return; // Check again after async operation
+
           if (validFrames.length === 0) {
             console.error('Auto-refresh: No valid frames available');
-            setIsLoading(false);
+            if (isMounted) setIsLoading(false);
             return;
           }
 
@@ -287,6 +309,8 @@ export const MainScreen = () => {
               timestamp: f.timestamp,
             }))
           );
+
+          if (!isMounted) return; // Check again after async operation
 
           // Update available timestamps (only the validated ones)
           const timestamps = validFrames.map(f => f.timestamp);
@@ -301,14 +325,15 @@ export const MainScreen = () => {
           }
         } catch (error) {
           console.error('Error during auto-refresh:', error);
-          setError('Auto-refresh failed. Will retry next interval.');
+          if (isMounted) setError('Auto-refresh failed. Will retry next interval.');
         } finally {
-          setIsLoading(false);
+          if (isMounted) setIsLoading(false);
         }
       }, intervalMs);
     }
 
     return () => {
+      isMounted = false;
       if (autoRefreshIntervalRef.current) {
         clearInterval(autoRefreshIntervalRef.current);
         autoRefreshIntervalRef.current = null;
@@ -381,7 +406,7 @@ export const MainScreen = () => {
     setImageTimestamp(timestamp);
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     // Clear cache and reload
     const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
     if (product) {
@@ -393,9 +418,9 @@ export const MainScreen = () => {
 
     // Trigger frame cache reload by re-running the effect
     // This will happen automatically since selectedDomain/product dependencies will trigger it
-  };
+  }, [viewMode, selectedRGBProduct, selectedChannel, selectedDomain]);
 
-  const handleInspectorPress = () => {
+  const handleInspectorPress = useCallback(() => {
     if (isInspectorMode) {
       // Turn off inspector mode
       setIsInspectorMode(false);
@@ -404,7 +429,7 @@ export const MainScreen = () => {
       // Turn on inspector mode
       setIsInspectorMode(true);
     }
-  };
+  }, [isInspectorMode, setIsInspectorMode, setInspectorValue]);
 
   const handleLocationPress = async () => {
     // If location is already shown, just toggle it off
@@ -437,7 +462,7 @@ export const MainScreen = () => {
     }
   };
 
-  const handleEditPress = () => {
+  const handleEditPress = useCallback(() => {
     if (isDrawingMode) {
       // When turning off drawing mode, clear all drawings
       clearDrawings();
@@ -446,17 +471,17 @@ export const MainScreen = () => {
       // When turning on drawing mode
       setIsDrawingMode(true);
     }
-  };
+  }, [isDrawingMode, clearDrawings, setIsDrawingMode]);
 
-  const handleEditLongPress = () => {
+  const handleEditLongPress = useCallback(() => {
     // Long press shows color picker
     setShowColorPickerFromButton(true);
-  };
+  }, []);
 
-  const handleSharePress = () => {
+  const handleSharePress = useCallback(() => {
     // Open the share menu instead of directly sharing
     setShowShareMenu(true);
-  };
+  }, []);
 
   const handleSaveScreenshot = async () => {
     try {
@@ -526,6 +551,12 @@ export const MainScreen = () => {
 
   const handleSaveGif = async () => {
     try {
+      // Check if we have any frames available
+      if (availableTimestamps.length === 0) {
+        Alert.alert('No Frames Available', 'Please wait for satellite images to load before creating a GIF.');
+        return;
+      }
+
       const frameCount = Math.min(availableTimestamps.length, 10);
 
       Alert.alert(
@@ -605,6 +636,12 @@ export const MainScreen = () => {
 
   const handleShareGif = async () => {
     try {
+      // Check if we have any frames available
+      if (availableTimestamps.length === 0) {
+        Alert.alert('No Frames Available', 'Please wait for satellite images to load before creating a GIF.');
+        return;
+      }
+
       const frameCount = Math.min(availableTimestamps.length, 10);
 
       Alert.alert(
@@ -653,8 +690,6 @@ export const MainScreen = () => {
                 }
 
                 setShowBrandingOverlay(false);
-                setForceContainForCapture(false);
-                setActualImageHeight(null);
 
                 // NOW show loading while sharing
                 setIsLoading(true);
@@ -703,16 +738,20 @@ export const MainScreen = () => {
     }
   };
 
-  const handleFavoritesPress = () => {
-    setShowFavoritesMenu(true);
-  };
+  const handleMenuPress = useCallback(() => {
+    setShowSettingsModal(true);
+  }, [setShowSettingsModal]);
 
-  const handleResetView = () => {
+  const handleFavoritesPress = useCallback(() => {
+    setShowFavoritesMenu(true);
+  }, [setShowFavoritesMenu]);
+
+  const handleResetView = useCallback(() => {
     // Call the reset function on SatelliteImageViewer via ref
     if (satelliteImageViewerRef.current) {
       satelliteImageViewerRef.current.resetView();
     }
-  };
+  }, []);
 
   return (
     <SafeAreaView
@@ -727,7 +766,7 @@ export const MainScreen = () => {
       <View style={styles.container} ref={viewRef}>
         {/* Top bar */}
         <TopBar
-          onMenuPress={() => setShowSettingsModal(true)}
+          onMenuPress={handleMenuPress}
           onRefresh={handleRefresh}
           onFavoritesPress={handleFavoritesPress}
         />
