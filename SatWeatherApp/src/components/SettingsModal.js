@@ -8,10 +8,13 @@ import {
   TextInput,
   Switch,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { SUBSCRIPTION_TIERS, getTierFeatures } from '../config/subscription';
 
 export const SettingsModal = ({ visible, onClose }) => {
   const {
@@ -23,11 +26,44 @@ export const SettingsModal = ({ visible, onClose }) => {
     selectedChannel,
     viewMode
   } = useApp();
+
+  const {
+    subscriptionTier,
+    actualSubscriptionTier,
+    devTierOverride,
+    setDeveloperTierOverride,
+    getAnimationMaxFrames,
+    shouldDisplayAds,
+  } = useAuth();
+
   const [localAnimationSpeed, setLocalAnimationSpeed] = useState(settings.animationSpeed.toString());
   const [localFrameCount, setLocalFrameCount] = useState(settings.frameCount.toString());
   const [localFrameSkip, setLocalFrameSkip] = useState(settings.frameSkip.toString());
   const [showCustomFrameSkip, setShowCustomFrameSkip] = useState(false);
   const [showHomeConfirm, setShowHomeConfirm] = useState(false);
+  const [showDevTools, setShowDevTools] = useState(false);
+
+  // Developer tools - set to true to always show, false to hide in production
+  // TODO: Set to false before releasing to production
+  const SHOW_DEV_TOOLS = true; // Change to false for production release
+  const isDevelopment = SHOW_DEV_TOOLS || process.env.EXPO_PUBLIC_APP_ENV === 'development';
+
+  // Handle tier override for testing
+  const handleTierOverride = async (tier) => {
+    const success = await setDeveloperTierOverride(tier);
+    if (success) {
+      Alert.alert('Tier Changed', `Subscription tier set to: ${tier || 'Default'}`);
+    } else {
+      Alert.alert('Error', 'Failed to change tier');
+    }
+  };
+
+  const clearTierOverride = async () => {
+    const success = await setDeveloperTierOverride(null);
+    if (success) {
+      Alert.alert('Tier Reset', 'Subscription tier reset to actual value');
+    }
+  };
 
   const handleAnimationSpeedChange = (value) => {
     setLocalAnimationSpeed(value);
@@ -385,8 +421,27 @@ export const SettingsModal = ({ visible, onClose }) => {
           <View style={styles.settingsSection}>
             <Text style={styles.settingsSectionTitle}>Subscription</Text>
 
+            {/* Current Status */}
+            <View style={styles.currentStatusBox}>
+              <Text style={styles.currentStatusLabel}>Current Plan:</Text>
+              <Text style={styles.currentStatusValue}>
+                {getTierFeatures(subscriptionTier).name}
+                {devTierOverride && ' (Override)'}
+              </Text>
+              {devTierOverride && (
+                <Text style={styles.currentStatusNote}>
+                  Actual plan: {getTierFeatures(actualSubscriptionTier).name}
+                </Text>
+              )}
+            </View>
+
             {/* Free Tier */}
-            <TouchableOpacity style={styles.subscriptionTier}>
+            <TouchableOpacity
+              style={[
+                styles.subscriptionTier,
+                subscriptionTier === SUBSCRIPTION_TIERS.FREE && styles.subscriptionTierActive
+              ]}
+            >
               <View style={styles.subscriptionTierHeader}>
                 <Text style={styles.subscriptionTierName}>Free</Text>
                 <Text style={styles.subscriptionTierPrice}>$0</Text>
@@ -395,49 +450,174 @@ export const SettingsModal = ({ visible, onClose }) => {
                 <Text style={styles.subscriptionFeature}>✓ Geocolor RGB product</Text>
                 <Text style={styles.subscriptionFeature}>✓ Channel 13 (Clean IR)</Text>
                 <Text style={styles.subscriptionFeature}>✓ Basic animation (6 frames)</Text>
-                <Text style={styles.subscriptionFeature}>✓ All domains</Text>
+                <Text style={styles.subscriptionFeature}>✓ Map overlays (states, counties)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Drawing & sharing tools</Text>
+                <Text style={styles.subscriptionFeature}>• Contains ads</Text>
               </View>
-              <View style={styles.subscriptionBadge}>
-                <Text style={styles.subscriptionBadgeText}>CURRENT</Text>
-              </View>
+              {subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
+                <View style={styles.subscriptionBadge}>
+                  <Text style={styles.subscriptionBadgeText}>CURRENT</Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             {/* Pro Subscription */}
-            <TouchableOpacity style={styles.subscriptionTier}>
+            <TouchableOpacity
+              style={[
+                styles.subscriptionTier,
+                subscriptionTier === SUBSCRIPTION_TIERS.PRO && styles.subscriptionTierActive
+              ]}
+            >
               <View style={styles.subscriptionTierHeader}>
                 <Text style={styles.subscriptionTierName}>Pro</Text>
-                <Text style={styles.subscriptionTierPrice}>$0.99/mo or $10/year</Text>
+                <Text style={styles.subscriptionTierPrice}>$0.99/mo or $10/yr</Text>
               </View>
               <View style={styles.subscriptionFeatures}>
                 <Text style={styles.subscriptionFeature}>✓ All RGB products</Text>
                 <Text style={styles.subscriptionFeature}>✓ All 16 channels</Text>
                 <Text style={styles.subscriptionFeature}>✓ Extended animation (24 frames)</Text>
-                <Text style={styles.subscriptionFeature}>✓ Basic overlays</Text>
-                <Text style={styles.subscriptionFeature}>✓ Drawing tools</Text>
+                <Text style={styles.subscriptionFeature}>✓ Lightning overlays (GLM)</Text>
+                <Text style={styles.subscriptionFeature}>✓ NWS warnings & watches</Text>
+                <Text style={styles.subscriptionFeature}>✓ Ad-free experience</Text>
               </View>
-              <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
-                <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
-              </View>
+              {subscriptionTier === SUBSCRIPTION_TIERS.PRO ? (
+                <View style={styles.subscriptionBadge}>
+                  <Text style={styles.subscriptionBadgeText}>CURRENT</Text>
+                </View>
+              ) : (
+                <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
+                  <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             {/* Pro Plus Subscription */}
-            <TouchableOpacity style={styles.subscriptionTier}>
+            <TouchableOpacity
+              style={[
+                styles.subscriptionTier,
+                subscriptionTier === SUBSCRIPTION_TIERS.PRO_PLUS && styles.subscriptionTierActive
+              ]}
+            >
               <View style={styles.subscriptionTierHeader}>
                 <Text style={styles.subscriptionTierName}>Pro Plus</Text>
-                <Text style={styles.subscriptionTierPrice}>$2.99/mo or $30/year</Text>
+                <Text style={styles.subscriptionTierPrice}>$2.99/mo or $30/yr</Text>
               </View>
               <View style={styles.subscriptionFeatures}>
                 <Text style={styles.subscriptionFeature}>✓ Everything in Pro</Text>
-                <Text style={styles.subscriptionFeature}>✓ Extended animation (48 frames)</Text>
-                <Text style={styles.subscriptionFeature}>✓ All overlays</Text>
+                <Text style={styles.subscriptionFeature}>✓ Extended animation (36 frames)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Radar overlays (MRMS)</Text>
+                <Text style={styles.subscriptionFeature}>✓ SPC overlays (convective, tornado)</Text>
+                <Text style={styles.subscriptionFeature}>✓ Custom time selection</Text>
                 <Text style={styles.subscriptionFeature}>✓ Priority support</Text>
-                <Text style={styles.subscriptionFeature}>✓ Export high-res images</Text>
               </View>
-              <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
-                <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
-              </View>
+              {subscriptionTier === SUBSCRIPTION_TIERS.PRO_PLUS ? (
+                <View style={styles.subscriptionBadge}>
+                  <Text style={styles.subscriptionBadgeText}>CURRENT</Text>
+                </View>
+              ) : (
+                <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
+                  <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
+
+          {/* Developer Tools - For Testing Only */}
+          {isDevelopment && (
+            <View style={styles.settingsSection}>
+              <TouchableOpacity
+                style={styles.devToolsHeader}
+                onPress={() => setShowDevTools(!showDevTools)}
+              >
+                <Text style={styles.settingsSectionTitle}>Developer Tools</Text>
+                <Ionicons
+                  name={showDevTools ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#FF6B6B"
+                />
+              </TouchableOpacity>
+
+              {showDevTools && (
+                <View>
+                  <Text style={styles.devWarning}>
+                    ⚠️ These tools are for testing only and will be hidden in production.
+                  </Text>
+
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingInfo}>
+                      <Text style={styles.settingLabel}>Override Subscription Tier</Text>
+                      <Text style={styles.settingDescription}>
+                        Test features for different subscription levels
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.tierButtonsContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.tierButton,
+                        subscriptionTier === SUBSCRIPTION_TIERS.FREE && styles.tierButtonActive
+                      ]}
+                      onPress={() => handleTierOverride(SUBSCRIPTION_TIERS.FREE)}
+                    >
+                      <Text style={[
+                        styles.tierButtonText,
+                        subscriptionTier === SUBSCRIPTION_TIERS.FREE && styles.tierButtonTextActive
+                      ]}>
+                        Free
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.tierButton,
+                        subscriptionTier === SUBSCRIPTION_TIERS.PRO && styles.tierButtonActive
+                      ]}
+                      onPress={() => handleTierOverride(SUBSCRIPTION_TIERS.PRO)}
+                    >
+                      <Text style={[
+                        styles.tierButtonText,
+                        subscriptionTier === SUBSCRIPTION_TIERS.PRO && styles.tierButtonTextActive
+                      ]}>
+                        Pro
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.tierButton,
+                        subscriptionTier === SUBSCRIPTION_TIERS.PRO_PLUS && styles.tierButtonActive
+                      ]}
+                      onPress={() => handleTierOverride(SUBSCRIPTION_TIERS.PRO_PLUS)}
+                    >
+                      <Text style={[
+                        styles.tierButtonText,
+                        subscriptionTier === SUBSCRIPTION_TIERS.PRO_PLUS && styles.tierButtonTextActive
+                      ]}>
+                        Pro Plus
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {devTierOverride && (
+                    <TouchableOpacity
+                      style={styles.clearOverrideButton}
+                      onPress={clearTierOverride}
+                    >
+                      <Text style={styles.clearOverrideText}>Clear Override</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <View style={styles.devInfoBox}>
+                    <Text style={styles.devInfoText}>
+                      Max frames: {getAnimationMaxFrames()}{'\n'}
+                      Show ads: {shouldDisplayAds() ? 'Yes' : 'No'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -598,6 +778,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
+  currentStatusBox: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  currentStatusLabel: {
+    color: '#999',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  currentStatusValue: {
+    color: '#2196F3',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  currentStatusNote: {
+    color: '#FF6B6B',
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
   subscriptionTier: {
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
@@ -605,6 +809,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#333',
+  },
+  subscriptionTierActive: {
+    borderColor: '#2196F3',
+    borderWidth: 2,
   },
   subscriptionTierHeader: {
     flexDirection: 'row',
@@ -656,6 +864,70 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  devToolsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  devWarning: {
+    color: '#FF6B6B',
+    fontSize: 12,
+    marginBottom: 16,
+    padding: 8,
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    borderRadius: 6,
+  },
+  tierButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  tierButton: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  tierButtonActive: {
+    backgroundColor: '#FF6B6B',
+    borderColor: '#FF6B6B',
+  },
+  tierButtonText: {
+    color: '#999',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tierButtonTextActive: {
+    color: '#fff',
+  },
+  clearOverrideButton: {
+    backgroundColor: '#333',
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  clearOverrideText: {
+    color: '#FF6B6B',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  devInfoBox: {
+    backgroundColor: '#0a0a0a',
+    padding: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  devInfoText: {
+    color: '#999',
+    fontSize: 12,
+    fontFamily: 'monospace',
+    lineHeight: 18,
   },
   setHomeButton: {
     backgroundColor: '#2196F3',

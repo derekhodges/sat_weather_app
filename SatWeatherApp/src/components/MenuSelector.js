@@ -6,9 +6,11 @@ import {
   StyleSheet,
   ScrollView,
   Modal,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { CHANNELS, SATELLITES } from '../constants/satellites';
 import { RGB_PRODUCTS } from '../constants/products';
 import { DOMAINS, DOMAINS_BY_TYPE, DOMAIN_TYPES } from '../constants/domains';
@@ -68,33 +70,55 @@ const MenuButton = ({ label, isActive, onPress }) => (
 
 const ChannelPanel = ({ onSelect }) => {
   const [selectedInfo, setSelectedInfo] = useState(null);
+  const { canAccessChannel, showUpgradePrompt } = useAuth();
+
+  const handleChannelSelect = (channel) => {
+    if (!canAccessChannel(channel.number)) {
+      showUpgradePrompt(`Channel ${channel.number}`);
+      return;
+    }
+    onSelect(channel);
+  };
 
   return (
     <>
       <ScrollView style={styles.panel}>
         <Text style={styles.panelTitle}>SELECT SATELLITE CHANNEL</Text>
         <View style={styles.channelList}>
-          {CHANNELS.map((channel) => (
-            <View key={channel.id} style={styles.listItemWrapper}>
-              <TouchableOpacity
-                style={styles.channelListItem}
-                onPress={() => onSelect(channel)}
-              >
-                <View style={styles.channelListContent}>
-                  <Text style={styles.channelListTitle}>
-                    Channel {channel.number} - {channel.name} ({channel.wavelength})
-                  </Text>
-                  <Text style={styles.channelListDescription} numberOfLines={2}>{channel.useCase}</Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.infoButton}
-                onPress={() => setSelectedInfo({ type: 'channel', data: channel })}
-              >
-                <Ionicons name="information-circle-outline" size={24} color="#2196F3" />
-              </TouchableOpacity>
-            </View>
-          ))}
+          {CHANNELS.map((channel) => {
+            const isLocked = !canAccessChannel(channel.number);
+            return (
+              <View key={channel.id} style={styles.listItemWrapper}>
+                <TouchableOpacity
+                  style={[styles.channelListItem, isLocked && styles.lockedItem]}
+                  onPress={() => handleChannelSelect(channel)}
+                >
+                  <View style={styles.channelListContent}>
+                    <View style={styles.channelTitleRow}>
+                      <Text style={[styles.channelListTitle, isLocked && styles.lockedText]}>
+                        Channel {channel.number} - {channel.name} ({channel.wavelength})
+                      </Text>
+                      {isLocked && (
+                        <Ionicons name="lock-closed" size={16} color="#FF6B6B" style={styles.lockIcon} />
+                      )}
+                    </View>
+                    <Text style={[styles.channelListDescription, isLocked && styles.lockedText]} numberOfLines={2}>
+                      {channel.useCase}
+                    </Text>
+                    {isLocked && (
+                      <Text style={styles.proRequiredText}>PRO required</Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.infoButton}
+                  onPress={() => setSelectedInfo({ type: 'channel', data: channel })}
+                >
+                  <Ionicons name="information-circle-outline" size={24} color="#2196F3" />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -109,29 +133,51 @@ const ChannelPanel = ({ onSelect }) => {
 
 const RGBPanel = ({ onSelect }) => {
   const [selectedInfo, setSelectedInfo] = useState(null);
+  const { canAccessProduct, showUpgradePrompt } = useAuth();
+
+  const handleProductSelect = (product) => {
+    if (!canAccessProduct(product.id)) {
+      showUpgradePrompt(product.name);
+      return;
+    }
+    onSelect(product);
+  };
 
   return (
     <>
       <ScrollView style={styles.panel}>
         <Text style={styles.panelTitle}>SELECT RGB PRODUCT</Text>
         <View style={styles.rgbGrid}>
-          {RGB_PRODUCTS.map((product) => (
-            <View key={product.id} style={styles.listItemWrapper}>
-              <TouchableOpacity
-                style={styles.rgbButton}
-                onPress={() => onSelect(product)}
-              >
-                <Text style={styles.rgbName}>{product.name}</Text>
-                <Text style={styles.rgbDescription} numberOfLines={2}>{product.description}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.infoButton}
-                onPress={() => setSelectedInfo({ type: 'rgb', data: product })}
-              >
-                <Ionicons name="information-circle-outline" size={24} color="#2196F3" />
-              </TouchableOpacity>
-            </View>
-          ))}
+          {RGB_PRODUCTS.map((product) => {
+            const isLocked = !canAccessProduct(product.id);
+            return (
+              <View key={product.id} style={styles.listItemWrapper}>
+                <TouchableOpacity
+                  style={[styles.rgbButton, isLocked && styles.lockedItem]}
+                  onPress={() => handleProductSelect(product)}
+                >
+                  <View style={styles.rgbTitleRow}>
+                    <Text style={[styles.rgbName, isLocked && styles.lockedText]}>{product.name}</Text>
+                    {isLocked && (
+                      <Ionicons name="lock-closed" size={14} color="#FF6B6B" style={styles.lockIcon} />
+                    )}
+                  </View>
+                  <Text style={[styles.rgbDescription, isLocked && styles.lockedText]} numberOfLines={2}>
+                    {product.description}
+                  </Text>
+                  {isLocked && (
+                    <Text style={styles.proRequiredText}>PRO required</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.infoButton}
+                  onPress={() => setSelectedInfo({ type: 'rgb', data: product })}
+                >
+                  <Ionicons name="information-circle-outline" size={24} color="#2196F3" />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -502,6 +548,33 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 11,
     marginTop: 4,
+  },
+  rgbTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  channelTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lockedItem: {
+    backgroundColor: '#2a2a2a',
+    opacity: 0.7,
+  },
+  lockedText: {
+    color: '#666',
+  },
+  lockIcon: {
+    marginLeft: 8,
+  },
+  proRequiredText: {
+    color: '#FF6B6B',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 4,
+    textTransform: 'uppercase',
   },
   domainTypeRow: {
     flexDirection: 'row',
