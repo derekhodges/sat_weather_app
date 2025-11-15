@@ -19,7 +19,47 @@ import { getBaseMapImage } from '../utils/imageService';
 import { getRegionPercentPosition, BASE_MAP_BOUNDS } from '../utils/coordinateConverter';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MAP_ASPECT_RATIO = 1.6; // Approximate aspect ratio for satellite images
+
+// Categorize regions by size (width x height in degrees)
+// REGIONAL: ~20x10+ degrees, LOCAL: ~10x6 degrees
+const categorizeBySize = (regionId) => {
+  const bounds = ALL_REGIONS[regionId];
+  if (!bounds) return 'unknown';
+
+  const [westLon, eastLon, southLat, northLat] = bounds;
+  const width = Math.abs(eastLon - westLon);
+  const height = Math.abs(northLat - southLat);
+
+  // Hemisphere/very large views
+  if (width > 100 || height > 50) return 'hemisphere';
+
+  // CONUS-scale (full continental)
+  if (width > 50 || height > 25) return 'conus';
+
+  // Regional scale (~20-30 degrees wide, 15+ high)
+  if (width >= 20 && height >= 10) return 'regional';
+
+  // Local scale (~10x6 or smaller)
+  return 'local';
+};
+
+// Get color for category
+const getCategoryColor = (category) => {
+  switch (category) {
+    case 'regional':
+      return '#2196F3'; // Blue for regional
+    case 'local':
+      return '#FF5722'; // Orange for local
+    case 'offshore':
+      return '#00BCD4'; // Cyan for offshore
+    case 'international':
+      return '#9C27B0'; // Purple for international
+    case 'hemisphere':
+      return '#4CAF50'; // Green for hemisphere
+    default:
+      return '#FF9800'; // Default orange
+  }
+};
 
 export const DomainMapSelector = () => {
   const {
@@ -35,30 +75,33 @@ export const DomainMapSelector = () => {
   // Get the currently selected product (RGB or channel)
   const selectedProduct = productViewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
 
-  const [viewMode, setViewMode] = useState('menu'); // 'menu', 'map_conus', 'map_fulldisk'
+  const [viewMode, setViewMode] = useState('menu'); // 'menu', 'regional', 'local'
   const [baseMapUrl, setBaseMapUrl] = useState(null);
   const [isLoadingMap, setIsLoadingMap] = useState(false);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
-  const [selectedCategory, setSelectedCategory] = useState(null); // For filtering within map view
   const mapContainerRef = useRef(null);
 
-  // Determine satellite view type based on satellite and current view
-  const getSatelliteFilterType = (viewType) => {
-    return getSatelliteViewType(selectedSatellite, viewType);
-  };
+  // Get regions filtered by size category
+  const getRegionsByCategory = (category) => {
+    const filterType = getSatelliteViewType(selectedSatellite, 'conus');
+    const allRegionIds = REGION_FILTERS[filterType] || [];
 
-  // Get regions for the current view
-  const getAvailableRegions = (viewType) => {
-    const filterType = getSatelliteFilterType(viewType);
-    const regionIds = REGION_FILTERS[filterType] || [];
-    return regionIds;
+    return allRegionIds.filter((id) => {
+      const sizeCategory = categorizeBySize(id);
+      if (category === 'regional') {
+        return sizeCategory === 'regional';
+      } else if (category === 'local') {
+        return sizeCategory === 'local';
+      }
+      return false;
+    });
   };
 
   // Load the base map image
-  const loadBaseMap = async (viewType) => {
+  const loadBaseMap = async () => {
     setIsLoadingMap(true);
     try {
-      const result = await getBaseMapImage(viewType, selectedProduct);
+      const result = await getBaseMapImage('conus', selectedProduct);
       if (result) {
         setBaseMapUrl(result.url);
       }
@@ -69,15 +112,13 @@ export const DomainMapSelector = () => {
     }
   };
 
-  // When view mode changes, load appropriate map
+  // When view mode changes, load map if needed
   useEffect(() => {
-    if (viewMode === 'map_conus') {
-      loadBaseMap('conus');
-    } else if (viewMode === 'map_fulldisk') {
-      loadBaseMap('full_disk');
+    if (viewMode === 'regional' || viewMode === 'local') {
+      loadBaseMap();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode]); // Only re-load when view mode changes
+  }, [viewMode]);
 
   // Handle domain/region selection
   const handleRegionSelect = (regionId) => {
@@ -90,7 +131,6 @@ export const DomainMapSelector = () => {
       selectDomain(existingDomain);
       setShowDomainMap(false);
       setViewMode('menu');
-      setSelectedCategory(null);
       return;
     }
 
@@ -104,11 +144,15 @@ export const DomainMapSelector = () => {
     const [westLon, eastLon, southLat, northLat] = bounds;
     const displayName = REGION_DISPLAY_NAMES[regionId] || regionId;
 
+    // Determine domain type based on size
+    const sizeCategory = categorizeBySize(regionId);
+    const domainType = sizeCategory === 'regional' ? DOMAIN_TYPES.REGIONAL : DOMAIN_TYPES.LOCAL;
+
     // Create a new domain object for this region
     const newDomain = {
       id: regionId,
       name: displayName,
-      type: DOMAIN_TYPES.LOCAL, // Default to local for custom regions
+      type: domainType,
       codName: regionId,
       description: displayName,
       bounds: {
@@ -122,162 +166,6 @@ export const DomainMapSelector = () => {
 
     setShowDomainMap(false);
     setViewMode('menu');
-    setSelectedCategory(null);
-  };
-
-  // Categorize regions for easier navigation
-  const categorizeRegions = (regionIds) => {
-    const categories = {
-      states: [],
-      regions: [],
-      offshore: [],
-      international: [],
-      other: [],
-    };
-
-    regionIds.forEach((id) => {
-      // States and small areas
-      if (
-        [
-          'washington',
-          'oregon',
-          'nor_cal',
-          'so_cal',
-          'nevada',
-          'arizona',
-          'utah',
-          'idaho',
-          'wyoming',
-          'colorado',
-          'oklahoma',
-          'kansas',
-          'nebraska',
-          'minnesota',
-          'iowa',
-          'missouri',
-          'arkansas',
-          'wisconsin',
-          'illinois',
-          'michigan',
-          'indiana',
-          'tennessee',
-          'mississippi',
-          'pennsylvania',
-          'north_dakota',
-          'south_dakota',
-          'cal_oregon',
-          'north_baja',
-          'north_idaho',
-          'east_montana',
-          'north_new_mexico',
-          'south_new_mexico',
-          'west_texas',
-          'south_texas',
-          'east_texas',
-          'gulf_coast',
-          'south_alabama',
-          'north_florida',
-          'south_florida',
-          'ohio_valley',
-          'southern_appalachia',
-          'east_great_lakes',
-          'i95_corridor',
-          'east_carolina',
-          'north_new_england',
-          'south_new_england',
-        ].includes(id)
-      ) {
-        categories.states.push(id);
-      }
-      // Larger regional areas
-      else if (
-        [
-          'conus',
-          'conus_west',
-          'northwest',
-          'northeast',
-          'southwest',
-          'southeast',
-          'north_central',
-          'south_central',
-          'east_central',
-          'north_rockies',
-          'great_lakes',
-          'southern_rockies',
-        ].includes(id)
-      ) {
-        categories.regions.push(id);
-      }
-      // Offshore and marine
-      else if (
-        [
-          'northwest_offshore',
-          'cal_offshore',
-          'baja_offshore',
-          'gulf_america',
-          'se_coast',
-          'east_coast',
-          'east_pacific',
-          'atlantic',
-          'gulf_of_alaska',
-          'ec_pacific',
-        ].includes(id)
-      ) {
-        categories.offshore.push(id);
-      }
-      // International/Caribbean
-      else if (
-        [
-          'puerto_rico',
-          'bermuda',
-          'jamaica',
-          'bahamas',
-          'cancun',
-          'carribean',
-          'carribean_north',
-          'windward_islands',
-          'cape_verde',
-          'cape_verde_zoomed',
-          'windward_east',
-          'mexico_north',
-          'baja_south',
-          'south_america',
-          'andian_states',
-          'brazil',
-          'chili_argentina',
-          'british_columbia',
-          'alberta_saskatchewan',
-          'manitoba_ontario',
-          'quebec',
-          'newfound_labrador',
-          'nova_scotia',
-          'alaska',
-          'se_alaska',
-          'central_alaska',
-          'fairbanks',
-          'hawaii',
-          'hawaii_zoom',
-        ].includes(id)
-      ) {
-        categories.international.push(id);
-      }
-      // Hemisphere views
-      else if (
-        [
-          'north_hemisphere_w',
-          'north_hemisphere_e',
-          'south_hemisphere_w',
-          'south_hemisphere_e',
-          'se_pacific_large',
-        ].includes(id)
-      ) {
-        categories.other.push(id);
-      } else {
-        categories.other.push(id);
-      }
-    });
-
-    return categories;
   };
 
   // Calculate map container dimensions
@@ -286,79 +174,33 @@ export const DomainMapSelector = () => {
     setMapDimensions({ width, height });
   };
 
-  // Render category filter buttons
-  const renderCategoryFilters = (viewType) => {
-    const regionIds = getAvailableRegions(viewType);
-    const categories = categorizeRegions(regionIds);
-
-    const availableCategories = Object.entries(categories)
-      .filter(([, ids]) => ids.length > 0)
-      .map(([name]) => name);
-
-    return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-        <TouchableOpacity
-          style={[styles.categoryButton, selectedCategory === null && styles.categoryButtonActive]}
-          onPress={() => setSelectedCategory(null)}
-        >
-          <Text
-            style={[
-              styles.categoryButtonText,
-              selectedCategory === null && styles.categoryButtonTextActive,
-            ]}
-          >
-            All ({regionIds.length})
-          </Text>
-        </TouchableOpacity>
-        {availableCategories.map((category) => (
-          <TouchableOpacity
-            key={category}
-            style={[
-              styles.categoryButton,
-              selectedCategory === category && styles.categoryButtonActive,
-            ]}
-            onPress={() => setSelectedCategory(category)}
-          >
-            <Text
-              style={[
-                styles.categoryButtonText,
-                selectedCategory === category && styles.categoryButtonTextActive,
-              ]}
-            >
-              {category.charAt(0).toUpperCase() + category.slice(1)} ({categories[category].length})
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    );
-  };
-
   // Render map with region dots
-  const renderMapView = (viewType) => {
-    const filterType = getSatelliteFilterType(viewType);
-    const regionIds = getAvailableRegions(viewType);
-    // Use the base map bounds for the actual displayed image
-    // The filter type determines which regions to show, but the map bounds
-    // should match the actual satellite image being displayed
-    const mapBounds = BASE_MAP_BOUNDS[viewType] || BASE_MAP_BOUNDS[filterType] || BASE_MAP_BOUNDS.conus;
+  const renderMapView = (category) => {
+    const regionIds = getRegionsByCategory(category);
+    const mapBounds = BASE_MAP_BOUNDS.conus;
 
-    // Filter by category if selected
-    let displayRegionIds = regionIds;
-    if (selectedCategory) {
-      const categories = categorizeRegions(regionIds);
-      displayRegionIds = categories[selectedCategory] || [];
-    }
+    // Color for this category
+    const categoryColor = category === 'regional' ? '#2196F3' : '#FF5722';
 
     return (
       <View style={styles.mapContainer}>
-        {/* Category filters */}
-        {renderCategoryFilters(viewType)}
+        {/* Header info */}
+        <View style={styles.mapHeader}>
+          <Text style={styles.mapHeaderText}>
+            {category === 'regional' ? 'Regional Domains' : 'Local Domains'} ({regionIds.length}{' '}
+            available)
+          </Text>
+          <Text style={styles.mapHeaderSubtext}>
+            Satellite: {selectedSatellite?.name || 'GOES-19'} (
+            {selectedSatellite?.location || 'East'})
+          </Text>
+        </View>
 
         {/* Map background with dots */}
         <View style={styles.mapWrapper} onLayout={onMapContainerLayout} ref={mapContainerRef}>
           {isLoadingMap ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#2196F3" />
+              <ActivityIndicator size="large" color={categoryColor} />
               <Text style={styles.loadingText}>Loading satellite image...</Text>
             </View>
           ) : baseMapUrl ? (
@@ -370,26 +212,24 @@ export const DomainMapSelector = () => {
             />
           ) : (
             <View style={styles.mapPlaceholder}>
-              <Text style={styles.placeholderText}>
-                {viewType === 'full_disk' ? 'Full Disk View' : 'CONUS View'}
-              </Text>
+              <Text style={styles.placeholderText}>CONUS View</Text>
             </View>
           )}
 
-          {/* Region dots overlay */}
+          {/* Region dots overlay - constrained to image bounds */}
           <View style={styles.dotsOverlay}>
-            {displayRegionIds.map((regionId) => {
+            {regionIds.map((regionId) => {
               const position = getRegionPercentPosition(regionId, mapBounds);
 
-              // Skip if out of bounds
+              // Skip if out of bounds - constrain to image only
               if (!position.visible) return null;
 
-              // Skip if position is too far outside (with some padding)
+              // Strict bounds check - dots must be within the image
               if (
-                position.xPercent < -5 ||
-                position.xPercent > 105 ||
-                position.yPercent < -5 ||
-                position.yPercent > 105
+                position.xPercent < 0 ||
+                position.xPercent > 100 ||
+                position.yPercent < 0 ||
+                position.yPercent > 100
               ) {
                 return null;
               }
@@ -408,7 +248,7 @@ export const DomainMapSelector = () => {
                   ]}
                   onPress={() => handleRegionSelect(regionId)}
                 >
-                  <View style={styles.dot} />
+                  <View style={[styles.dot, { backgroundColor: categoryColor }]} />
                   <Text style={styles.dotLabel} numberOfLines={1}>
                     {displayName}
                   </Text>
@@ -420,20 +260,17 @@ export const DomainMapSelector = () => {
 
         {/* Instructions */}
         <View style={styles.mapInstructions}>
-          <Text style={styles.instructionsText}>
-            Tap a dot to select that region • {displayRegionIds.length} regions available
-          </Text>
-          <Text style={styles.satelliteInfo}>
-            Satellite: {selectedSatellite?.name || 'GOES-19'} (
-            {selectedSatellite?.location || 'East'})
-          </Text>
+          <Text style={styles.instructionsText}>Tap a dot to select that domain</Text>
         </View>
       </View>
     );
   };
 
-  // Main menu view
+  // Main menu view - direct access
   const renderMenuView = () => {
+    const regionalCount = getRegionsByCategory('regional').length;
+    const localCount = getRegionsByCategory('local').length;
+
     return (
       <View style={styles.menuContainer}>
         {/* Full Disk */}
@@ -441,53 +278,33 @@ export const DomainMapSelector = () => {
           style={styles.menuCard}
           onPress={() => handleRegionSelect('full_disk')}
         >
-          <Ionicons name="globe" size={32} color="#2196F3" />
+          <Ionicons name="globe" size={32} color="#4CAF50" />
           <Text style={styles.menuCardTitle}>Full Disk</Text>
           <Text style={styles.menuCardSubtitle}>Entire hemisphere view</Text>
         </TouchableOpacity>
 
-        {/* CONUS - Select on Map */}
-        <TouchableOpacity style={styles.menuCard} onPress={() => setViewMode('map_conus')}>
-          <Ionicons name="map" size={32} color="#4CAF50" />
-          <Text style={styles.menuCardTitle}>CONUS Regions</Text>
+        {/* CONUS */}
+        <TouchableOpacity style={styles.menuCard} onPress={() => handleRegionSelect('conus')}>
+          <Ionicons name="location" size={32} color="#FF9800" />
+          <Text style={styles.menuCardTitle}>CONUS</Text>
+          <Text style={styles.menuCardSubtitle}>Continental United States</Text>
+        </TouchableOpacity>
+
+        {/* Regional - Direct to map */}
+        <TouchableOpacity style={styles.menuCard} onPress={() => setViewMode('regional')}>
+          <Ionicons name="map" size={32} color="#2196F3" />
+          <Text style={styles.menuCardTitle}>Regional</Text>
           <Text style={styles.menuCardSubtitle}>
-            Select on map ({getAvailableRegions('conus').length} regions) →
+            Select on map ({regionalCount} regions) →
           </Text>
         </TouchableOpacity>
 
-        {/* Full Disk - Select on Map */}
-        <TouchableOpacity style={styles.menuCard} onPress={() => setViewMode('map_fulldisk')}>
-          <Ionicons name="earth" size={32} color="#FF9800" />
-          <Text style={styles.menuCardTitle}>Full Disk Regions</Text>
-          <Text style={styles.menuCardSubtitle}>
-            Select on map ({getAvailableRegions('full_disk').length} regions) →
-          </Text>
+        {/* Local - Direct to map */}
+        <TouchableOpacity style={styles.menuCard} onPress={() => setViewMode('local')}>
+          <Ionicons name="navigate" size={32} color="#FF5722" />
+          <Text style={styles.menuCardTitle}>Local</Text>
+          <Text style={styles.menuCardSubtitle}>Select on map ({localCount} areas) →</Text>
         </TouchableOpacity>
-
-        {/* Quick access to common domains */}
-        <View style={styles.quickAccessSection}>
-          <Text style={styles.quickAccessTitle}>Quick Access</Text>
-          <View style={styles.quickAccessButtons}>
-            <TouchableOpacity
-              style={styles.quickButton}
-              onPress={() => handleRegionSelect('conus')}
-            >
-              <Text style={styles.quickButtonText}>CONUS</Text>
-            </TouchableOpacity>
-            {Object.values(DOMAINS)
-              .filter((d) => d.type === DOMAIN_TYPES.LOCAL)
-              .slice(0, 3)
-              .map((domain) => (
-                <TouchableOpacity
-                  key={domain.id}
-                  style={styles.quickButton}
-                  onPress={() => selectDomain(domain)}
-                >
-                  <Text style={styles.quickButtonText}>{domain.name}</Text>
-                </TouchableOpacity>
-              ))}
-          </View>
-        </View>
       </View>
     );
   };
@@ -495,10 +312,10 @@ export const DomainMapSelector = () => {
   // Get title based on view mode
   const getTitle = () => {
     switch (viewMode) {
-      case 'map_conus':
-        return 'Select CONUS Region';
-      case 'map_fulldisk':
-        return 'Select Full Disk Region';
+      case 'regional':
+        return 'Select Regional Domain';
+      case 'local':
+        return 'Select Local Domain';
       default:
         return 'Select Domain';
     }
@@ -511,7 +328,6 @@ export const DomainMapSelector = () => {
       onRequestClose={() => {
         setShowDomainMap(false);
         setViewMode('menu');
-        setSelectedCategory(null);
       }}
     >
       <View style={styles.container}>
@@ -519,10 +335,7 @@ export const DomainMapSelector = () => {
         <View style={styles.header}>
           {viewMode !== 'menu' && (
             <TouchableOpacity
-              onPress={() => {
-                setViewMode('menu');
-                setSelectedCategory(null);
-              }}
+              onPress={() => setViewMode('menu')}
               style={styles.backButton}
             >
               <Ionicons name="arrow-back" size={28} color="#fff" />
@@ -532,7 +345,6 @@ export const DomainMapSelector = () => {
             onPress={() => {
               setShowDomainMap(false);
               setViewMode('menu');
-              setSelectedCategory(null);
             }}
             style={styles.closeButton}
           >
@@ -544,8 +356,8 @@ export const DomainMapSelector = () => {
 
         {/* Content */}
         {viewMode === 'menu' && renderMenuView()}
-        {viewMode === 'map_conus' && renderMapView('conus')}
-        {viewMode === 'map_fulldisk' && renderMapView('full_disk')}
+        {viewMode === 'regional' && renderMapView('regional')}
+        {viewMode === 'local' && renderMapView('local')}
       </View>
     </Modal>
   );
@@ -606,63 +418,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  quickAccessSection: {
-    marginTop: 16,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  quickAccessTitle: {
-    color: '#999',
-    fontSize: 14,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  quickAccessButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  quickButton: {
-    backgroundColor: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  quickButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
   mapContainer: {
     flex: 1,
   },
-  categoryScroll: {
-    maxHeight: 50,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  mapHeader: {
     backgroundColor: '#1a1a1a',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
   },
-  categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#333',
-    marginRight: 8,
-  },
-  categoryButtonActive: {
-    backgroundColor: '#2196F3',
-  },
-  categoryButtonText: {
-    color: '#ccc',
-    fontSize: 14,
-  },
-  categoryButtonTextActive: {
+  mapHeaderText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  mapHeaderSubtext: {
+    color: '#666',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
   },
   mapWrapper: {
     flex: 1,
@@ -713,7 +488,6 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#FF5722',
     borderWidth: 2,
     borderColor: '#fff',
     shadowColor: '#000',
@@ -744,11 +518,5 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 12,
     textAlign: 'center',
-  },
-  satelliteInfo: {
-    color: '#666',
-    fontSize: 10,
-    textAlign: 'center',
-    marginTop: 4,
   },
 });
