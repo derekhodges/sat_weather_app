@@ -18,7 +18,7 @@ import { getSatelliteViewType } from '../constants/satellites';
 import { getBaseMapImage } from '../utils/imageService';
 import { BASE_MAP_BOUNDS } from '../utils/coordinateConverter';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Colors for different regions - cycle through these
 const REGION_COLORS = [
@@ -82,7 +82,7 @@ export const DomainMapSelector = () => {
   const [baseMapUrl, setBaseMapUrl] = useState(null);
   const [isLoadingMap, setIsLoadingMap] = useState(false);
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0, x: 0, y: 0 });
-  const imageRef = useRef(null);
+  const scrollViewRef = useRef(null);
 
   // Get regions filtered by size category
   const getRegionsByCategory = (category) => {
@@ -116,84 +116,61 @@ export const DomainMapSelector = () => {
     }
   }, [viewMode]);
 
+  // Close modal and reset state atomically
+  const closeModal = () => {
+    setShowDomainMap(false);
+    // Reset view mode after a small delay to prevent visual glitch
+    setTimeout(() => setViewMode('menu'), 100);
+  };
+
   const handleRegionSelect = (regionId) => {
     const existingDomain = Object.values(DOMAINS).find(
       (d) => d.id === regionId || d.codName === regionId
     );
 
+    let domainToSelect;
+
     if (existingDomain) {
-      selectDomain(existingDomain);
-      setShowDomainMap(false);
-      setViewMode('menu');
-      return;
+      domainToSelect = existingDomain;
+    } else {
+      const bounds = ALL_REGIONS[regionId];
+      if (!bounds) {
+        console.error('Unknown region:', regionId);
+        return;
+      }
+
+      const [westLon, eastLon, southLat, northLat] = bounds;
+      const displayName = REGION_DISPLAY_NAMES[regionId] || regionId;
+      const sizeCategory = categorizeBySize(regionId);
+      const domainType = sizeCategory === 'regional' ? DOMAIN_TYPES.REGIONAL : DOMAIN_TYPES.LOCAL;
+
+      domainToSelect = {
+        id: regionId,
+        name: displayName,
+        type: domainType,
+        codName: regionId,
+        description: displayName,
+        bounds: {
+          minLat: southLat,
+          maxLat: northLat,
+          minLon: westLon,
+          maxLon: eastLon,
+        },
+      };
     }
 
-    const bounds = ALL_REGIONS[regionId];
-    if (!bounds) {
-      console.error('Unknown region:', regionId);
-      return;
-    }
-
-    const [westLon, eastLon, southLat, northLat] = bounds;
-    const displayName = REGION_DISPLAY_NAMES[regionId] || regionId;
-    const sizeCategory = categorizeBySize(regionId);
-    const domainType = sizeCategory === 'regional' ? DOMAIN_TYPES.REGIONAL : DOMAIN_TYPES.LOCAL;
-
-    const newDomain = {
-      id: regionId,
-      name: displayName,
-      type: domainType,
-      codName: regionId,
-      description: displayName,
-      bounds: {
-        minLat: southLat,
-        maxLat: northLat,
-        minLon: westLon,
-        maxLon: eastLon,
-      },
-    };
-    selectDomain(newDomain);
-    setShowDomainMap(false);
-    setViewMode('menu');
+    // Select domain and close modal atomically
+    selectDomain(domainToSelect);
+    closeModal();
   };
 
   // Handle image layout to get actual image dimensions
-  const onImageLoad = (event) => {
-    const { width, height } = event.nativeEvent.source;
-    // Calculate the actual rendered size while maintaining aspect ratio
-    if (imageRef.current) {
-      imageRef.current.measure((x, y, w, h, pageX, pageY) => {
-        // The image uses resizeMode="contain", so we need to calculate the actual image area
-        const containerAspect = w / h;
-        const imageAspect = width / height;
-
-        let actualWidth, actualHeight, offsetX, offsetY;
-
-        if (imageAspect > containerAspect) {
-          // Image is wider than container - full width, partial height
-          actualWidth = w;
-          actualHeight = w / imageAspect;
-          offsetX = 0;
-          offsetY = (h - actualHeight) / 2;
-        } else {
-          // Image is taller than container - full height, partial width
-          actualHeight = h;
-          actualWidth = h * imageAspect;
-          offsetX = (w - actualWidth) / 2;
-          offsetY = 0;
-        }
-
-        setImageLayout({
-          width: actualWidth,
-          height: actualHeight,
-          x: offsetX,
-          y: offsetY,
-        });
-      });
-    }
+  const onImageLayout = (event) => {
+    const { width, height } = event.nativeEvent.layout;
+    setImageLayout({ width, height, x: 0, y: 0 });
   };
 
-  // Render region dot with rectangle bounds
+  // Render region dot with rectangle bounds - NO TEXT LABELS
   const renderRegionMarker = (regionId, index, mapBounds) => {
     const regionBounds = ALL_REGIONS[regionId];
     if (!regionBounds) return null;
@@ -230,7 +207,6 @@ export const DomainMapSelector = () => {
 
     // Get color for this region
     const color = REGION_COLORS[index % REGION_COLORS.length];
-    const displayName = REGION_DISPLAY_NAMES[regionId] || regionId;
 
     return (
       <React.Fragment key={regionId}>
@@ -248,7 +224,7 @@ export const DomainMapSelector = () => {
           ]}
           pointerEvents="none"
         />
-        {/* Dot at center */}
+        {/* Dot at center - NO TEXT LABEL */}
         <TouchableOpacity
           style={[
             styles.regionDot,
@@ -258,85 +234,57 @@ export const DomainMapSelector = () => {
             },
           ]}
           onPress={() => handleRegionSelect(regionId)}
+          activeOpacity={0.7}
         >
           <View style={[styles.dot, { backgroundColor: color }]} />
-          <Text style={styles.dotLabel} numberOfLines={1}>
-            {displayName}
-          </Text>
         </TouchableOpacity>
       </React.Fragment>
     );
   };
 
-  // Render map with region dots
+  // Render map with region dots - DIRECT MAP VIEW, NO EXTRA UI
   const renderMapView = (category) => {
     const regionIds = getRegionsByCategory(category);
     const mapBounds = BASE_MAP_BOUNDS.conus;
 
     return (
       <View style={styles.mapContainer}>
-        <View style={styles.mapHeader}>
-          <Text style={styles.mapHeaderText}>
-            {category === 'regional' ? 'Regional Domains' : 'Local Domains'} ({regionIds.length})
-          </Text>
-        </View>
-
-        <View style={styles.mapWrapper}>
-          {isLoadingMap ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#2196F3" />
-              <Text style={styles.loadingText}>Loading satellite image...</Text>
-            </View>
-          ) : baseMapUrl ? (
-            <ScrollView
-              style={styles.scrollContainer}
-              contentContainerStyle={styles.scrollContent}
-              maximumZoomScale={4}
-              minimumZoomScale={1}
-              bouncesZoom={true}
-              showsHorizontalScrollIndicator={false}
-              showsVerticalScrollIndicator={false}
-              centerContent={true}
-            >
-              <View style={styles.imageContainer}>
-                <Image
-                  ref={imageRef}
-                  source={{ uri: baseMapUrl }}
-                  style={styles.mapImage}
-                  resizeMode="contain"
-                  onLoad={onImageLoad}
-                  onError={(e) => console.error('Image load error:', e.nativeEvent.error)}
-                />
-                {/* Overlay dots only on the image area */}
-                <View
-                  style={[
-                    styles.dotsOverlay,
-                    {
-                      left: imageLayout.x,
-                      top: imageLayout.y,
-                      width: imageLayout.width || '100%',
-                      height: imageLayout.height || '100%',
-                    },
-                  ]}
-                >
-                  {regionIds.map((regionId, index) =>
-                    renderRegionMarker(regionId, index, mapBounds)
-                  )}
-                </View>
+        {isLoadingMap ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2196F3" />
+          </View>
+        ) : baseMapUrl ? (
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.scrollContainer}
+            contentContainerStyle={styles.scrollContent}
+            maximumZoomScale={4}
+            minimumZoomScale={1}
+            bouncesZoom={true}
+            bounces={false}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+          >
+            <View style={styles.imageWrapper} onLayout={onImageLayout}>
+              <Image
+                source={{ uri: baseMapUrl }}
+                style={[styles.mapImage, { width: SCREEN_WIDTH, height: SCREEN_WIDTH * 0.75 }]}
+                resizeMode="contain"
+              />
+              {/* Overlay dots directly on the image */}
+              <View style={styles.dotsOverlay}>
+                {regionIds.map((regionId, index) =>
+                  renderRegionMarker(regionId, index, mapBounds)
+                )}
               </View>
-            </ScrollView>
-          ) : (
-            <View style={styles.mapPlaceholder}>
-              <Text style={styles.placeholderText}>CONUS View</Text>
             </View>
-          )}
-        </View>
-
-        <View style={styles.mapInstructions}>
-          <Text style={styles.instructionsText}>
-            Pinch to zoom • Drag to pan • Tap a dot to select
-          </Text>
-        </View>
+          </ScrollView>
+        ) : (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.errorText}>Failed to load map</Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -366,14 +314,14 @@ export const DomainMapSelector = () => {
           <Text style={styles.menuItemText}>CONUS</Text>
         </TouchableOpacity>
 
-        {/* Regional - Opens map */}
+        {/* Regional - Opens map directly */}
         <TouchableOpacity style={styles.menuItem} onPress={() => setViewMode('regional')}>
           <Ionicons name="map" size={24} color="#2196F3" />
           <Text style={styles.menuItemText}>Regional ({regionalCount})</Text>
           <Ionicons name="chevron-forward" size={20} color="#666" />
         </TouchableOpacity>
 
-        {/* Local - Opens map */}
+        {/* Local - Opens map directly */}
         <TouchableOpacity style={styles.menuItem} onPress={() => setViewMode('local')}>
           <Ionicons name="navigate" size={24} color="#E91E63" />
           <Text style={styles.menuItemText}>Local ({localCount})</Text>
@@ -383,7 +331,10 @@ export const DomainMapSelector = () => {
         {/* Meso1 - Direct select */}
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => selectDomain(DOMAINS.MESOSCALE_1)}
+          onPress={() => {
+            selectDomain(DOMAINS.MESOSCALE_1);
+            closeModal();
+          }}
         >
           <Ionicons name="scan" size={24} color="#9C27B0" />
           <Text style={styles.menuItemText}>Mesoscale 1</Text>
@@ -392,7 +343,10 @@ export const DomainMapSelector = () => {
         {/* Meso2 - Direct select */}
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => selectDomain(DOMAINS.MESOSCALE_2)}
+          onPress={() => {
+            selectDomain(DOMAINS.MESOSCALE_2);
+            closeModal();
+          }}
         >
           <Ionicons name="scan-outline" size={24} color="#673AB7" />
           <Text style={styles.menuItemText}>Mesoscale 2</Text>
@@ -401,46 +355,27 @@ export const DomainMapSelector = () => {
     );
   };
 
-  const getTitle = () => {
-    switch (viewMode) {
-      case 'regional':
-        return 'Select Regional Domain';
-      case 'local':
-        return 'Select Local Domain';
-      default:
-        return 'Select Domain';
-    }
-  };
-
   return (
     <Modal
       visible={showDomainMap}
       animationType="slide"
-      onRequestClose={() => {
-        setShowDomainMap(false);
-        setViewMode('menu');
-      }}
+      onRequestClose={closeModal}
     >
       <View style={styles.container}>
+        {/* Minimal header - just back/close buttons */}
         <View style={styles.header}>
           {viewMode !== 'menu' && (
             <TouchableOpacity onPress={() => setViewMode('menu')} style={styles.backButton}>
               <Ionicons name="arrow-back" size={28} color="#fff" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            onPress={() => {
-              setShowDomainMap(false);
-              setViewMode('menu');
-            }}
-            style={styles.closeButton}
-          >
+          <View style={styles.headerSpacer} />
+          <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
             <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.title}>{getTitle()}</Text>
-          <View style={{ width: 40 }} />
         </View>
 
+        {/* Content - menu or map */}
         {viewMode === 'menu' && renderMenuView()}
         {viewMode === 'regional' && renderMapView('regional')}
         {viewMode === 'local' && renderMapView('local')}
@@ -455,29 +390,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   header: {
-    height: 60,
-    backgroundColor: '#1a1a1a',
+    height: 50,
+    backgroundColor: '#000',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 8,
-    paddingTop: 10,
   },
   backButton: {
     padding: 8,
-    position: 'absolute',
-    left: 8,
-    zIndex: 10,
+  },
+  headerSpacer: {
+    flex: 1,
   },
   closeButton: {
     padding: 8,
-  },
-  title: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
   },
   menuContainer: {
     flex: 1,
@@ -503,79 +430,55 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
-  },
-  mapHeader: {
-    backgroundColor: '#1a1a1a',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  mapHeaderText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  mapWrapper: {
-    flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#000',
+    justifyContent: 'center',
   },
   scrollContainer: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-  },
-  imageContainer: {
-    flex: 1,
-    position: 'relative',
-    minHeight: '100%',
-  },
-  mapImage: {
-    width: '100%',
-    height: '100%',
-  },
-  mapPlaceholder: {
-    flex: 1,
-    backgroundColor: '#1a3a1a',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholderText: {
-    color: '#4CAF50',
-    fontSize: 18,
-    fontWeight: 'bold',
+  imageWrapper: {
+    position: 'relative',
+  },
+  mapImage: {
+    backgroundColor: '#000',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#000',
   },
-  loadingText: {
-    color: '#ccc',
-    marginTop: 16,
-    fontSize: 14,
+  errorText: {
+    color: '#ff4444',
+    fontSize: 16,
   },
   dotsOverlay: {
     position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   regionRect: {
     position: 'absolute',
     borderWidth: 2,
     backgroundColor: 'transparent',
-    opacity: 0.6,
+    opacity: 0.7,
   },
   regionDot: {
     position: 'absolute',
-    alignItems: 'center',
-    transform: [{ translateX: -12 }, { translateY: -12 }],
+    transform: [{ translateX: -10 }, { translateY: -10 }],
     zIndex: 10,
   },
   dot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: '#fff',
     shadowColor: '#000',
@@ -583,28 +486,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 4,
     elevation: 5,
-  },
-  dotLabel: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: 'bold',
-    marginTop: 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 3,
-    maxWidth: 80,
-    textAlign: 'center',
-  },
-  mapInstructions: {
-    backgroundColor: '#1a1a1a',
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-  },
-  instructionsText: {
-    color: '#ccc',
-    fontSize: 11,
-    textAlign: 'center',
   },
 });
