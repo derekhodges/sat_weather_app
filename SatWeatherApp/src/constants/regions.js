@@ -264,8 +264,8 @@ export const getRegionSize = (regionKey) => {
 
 /**
  * Categorize regions by size
- * Local: roughly 10x6 or smaller
- * Regional: roughly 20x10 or larger
+ * Local: roughly 10x6 or smaller (area <= 100)
+ * Regional: roughly 20x10 or larger (area >= 150)
  * Excludes 'conus' as it's a main domain
  */
 export const categorizeRegions = () => {
@@ -279,10 +279,10 @@ export const categorizeRegions = () => {
     const { width, height } = getRegionSize(regionKey);
     const area = width * height;
 
-    // Local: ~10x6 = 60 or smaller (area <= 70)
+    // Local: ~10x6 = 60, allow up to ~12x8 = 96, so area <= 100
     // Regional: ~20x10 = 200 or larger (area >= 150)
-    // In-between regions go to regional to avoid UI clutter
-    if (area <= 70) {
+    // Domains in-between (100-150) go to local since they're closer to local size
+    if (area <= 150) {
       local.push(regionKey);
     } else {
       regional.push(regionKey);

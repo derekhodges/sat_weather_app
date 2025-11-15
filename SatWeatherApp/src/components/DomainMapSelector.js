@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -44,6 +45,7 @@ export const DomainMapSelector = () => {
     selectedRGBProduct,
     selectedChannel,
     viewMode,
+    selectedSatellite,
   } = useApp();
 
   const [mapImageUrl, setMapImageUrl] = useState(null);
@@ -51,6 +53,7 @@ export const DomainMapSelector = () => {
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const [imageOffset, setImageOffset] = useState({ x: 0, y: 0 });
+  const [useGoesWest, setUseGoesWest] = useState(false); // Default to GOES East (current satellite)
 
   // Zoom/pan state
   const scale = useSharedValue(1);
@@ -60,12 +63,21 @@ export const DomainMapSelector = () => {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // Load CONUS map image when modal opens
+  // Initialize satellite selection based on current satellite when modal opens
+  useEffect(() => {
+    if (showDomainMap && domainMapMode) {
+      // Default to GOES West if current satellite is GOES-18, otherwise GOES East
+      const isWest = selectedSatellite?.id === 'goes18' || selectedSatellite?.id === 'goes-west';
+      setUseGoesWest(isWest);
+    }
+  }, [showDomainMap, domainMapMode, selectedSatellite]);
+
+  // Load CONUS map image when modal opens or satellite toggle changes
   useEffect(() => {
     if (showDomainMap && domainMapMode) {
       loadConusMapImage();
     }
-  }, [showDomainMap, domainMapMode, selectedRGBProduct, selectedChannel, viewMode]);
+  }, [showDomainMap, domainMapMode, selectedRGBProduct, selectedChannel, viewMode, useGoesWest]);
 
   // Reset zoom when modal closes
   useEffect(() => {
@@ -357,8 +369,10 @@ export const DomainMapSelector = () => {
                   }}
                 />
               )}
-              {/* Overlay dots on top of the map */}
-              <View style={styles.dotsOverlay}>{renderRegionDots()}</View>
+              {/* Overlay dots on top of the map - pointerEvents box-none allows gestures to pass through */}
+              <View style={styles.dotsOverlay} pointerEvents="box-none">
+                {renderRegionDots()}
+              </View>
             </Animated.View>
           </GestureDetector>
         )}
@@ -368,6 +382,13 @@ export const DomainMapSelector = () => {
           <TouchableOpacity style={styles.controlButton} onPress={resetZoom}>
             <Ionicons name="refresh" size={20} color="#fff" />
             <Text style={styles.controlButtonText}>Reset</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.controlButton, { marginTop: 8 }]}
+            onPress={() => setUseGoesWest(!useGoesWest)}
+          >
+            <Ionicons name="swap-horizontal" size={20} color="#fff" />
+            <Text style={styles.controlButtonText}>{useGoesWest ? 'West' : 'East'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -398,7 +419,7 @@ export const DomainMapSelector = () => {
         setDomainMapMode(null);
       }}
     >
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -416,7 +437,7 @@ export const DomainMapSelector = () => {
 
         {/* Content - directly show map */}
         {renderMapView()}
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
