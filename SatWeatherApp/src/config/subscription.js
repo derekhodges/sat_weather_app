@@ -29,8 +29,11 @@ export const TIER_FEATURES = {
       allProducts: false,
       allChannels: false,
 
-      // Overlays - Map only
-      mapOverlays: true, // States, counties, cities
+      // Domains
+      localDomains: false, // Local domains require Pro or higher
+
+      // Overlays - Boundaries only (counties, roads, cities, etc.)
+      boundaryOverlays: true, // States, counties, roads, cities, rivers, lat/lon
       lightningOverlays: false,
       nwsOverlays: false, // Warnings, watches
       radarOverlays: false,
@@ -70,12 +73,15 @@ export const TIER_FEATURES = {
       allProducts: true,
       allChannels: true,
 
-      // Overlays - Map + Lightning + NWS
-      mapOverlays: true,
+      // Domains
+      localDomains: true, // Local domains included in Pro
+
+      // Overlays - Boundaries + Lightning + NWS + SPC (no radar)
+      boundaryOverlays: true,
       lightningOverlays: true, // GLM Flash, GLM Groups
       nwsOverlays: true, // Warnings, watches, mesoscale discussions
-      radarOverlays: false, // Not in Pro
-      spcOverlays: false, // Not in Pro
+      radarOverlays: false, // Not in Pro - only Pro Plus
+      spcOverlays: true, // Convective Outlook, Tornado Probabilities
 
       // Drawing & Sharing
       drawingEnabled: true,
@@ -111,11 +117,14 @@ export const TIER_FEATURES = {
       allProducts: true,
       allChannels: true,
 
+      // Domains
+      localDomains: true, // Local domains included
+
       // Overlays - ALL
-      mapOverlays: true,
+      boundaryOverlays: true,
       lightningOverlays: true,
       nwsOverlays: true,
-      radarOverlays: true, // MRMS, Composite Radar
+      radarOverlays: true, // MRMS, Composite Radar - Pro Plus only
       spcOverlays: true, // Convective Outlook, Tornado Probabilities
 
       // Drawing & Sharing
@@ -227,9 +236,11 @@ export const isChannelAllowed = (tier, channelNumber) => {
 };
 
 /**
- * Check if an overlay category is allowed for a tier
+ * Check if an overlay is allowed for a tier
+ * @param {string} tier - The subscription tier
+ * @param {string} overlayId - The overlay ID (e.g., 'glm_flash', 'state_lines', 'mrms')
  */
-export const isOverlayAllowed = (tier, overlayType) => {
+export const isOverlayAllowed = (tier, overlayId) => {
   const features = getTierFeatures(tier).features;
 
   // If subscriptions are disabled, allow all
@@ -244,33 +255,66 @@ export const isOverlayAllowed = (tier, overlayType) => {
     return true;
   }
 
-  // Check overlay category
-  switch (overlayType) {
-    case 'map':
-    case 'states':
-    case 'counties':
+  // Check overlay by ID - map to the appropriate feature flag
+  switch (overlayId) {
+    // Boundary overlays - FREE tier and above
+    case 'state_lines':
+    case 'county_lines':
+    case 'nws_cwa':
+    case 'latlon':
+    case 'rivers':
+    case 'usint':
+    case 'ushw':
+    case 'usstrd':
     case 'cities':
-      return features.mapOverlays;
-    case 'lightning':
+      return features.boundaryOverlays;
+
+    // Lightning overlays - PRO tier and above
     case 'glm_flash':
     case 'glm_groups':
       return features.lightningOverlays;
-    case 'nws':
+
+    // NWS overlays - PRO tier and above
     case 'warnings':
     case 'watches':
-    case 'mesoscale':
+    case 'meso_disc':
       return features.nwsOverlays;
-    case 'radar':
-    case 'mrms':
-    case 'composite':
-      return features.radarOverlays;
-    case 'spc':
-    case 'convective':
-    case 'tornado':
+
+    // SPC overlays - PRO tier and above
+    case 'spc_outlook':
+    case 'spc_tornado':
       return features.spcOverlays;
+
+    // Radar overlays - PRO PLUS only
+    case 'mrms':
+    case 'composite_radar':
+      return features.radarOverlays;
+
     default:
+      // Unknown overlay - deny by default for safety
       return false;
   }
+};
+
+/**
+ * Check if local domains are allowed for a tier
+ */
+export const isLocalDomainAllowed = (tier) => {
+  const features = getTierFeatures(tier).features;
+
+  // If subscriptions are disabled, allow all
+  const subscriptionsEnabled = process.env.EXPO_PUBLIC_ENABLE_SUBSCRIPTIONS === 'true';
+  if (!subscriptionsEnabled) {
+    return true;
+  }
+
+  // If mock premium is enabled, allow all
+  const mockPremium = process.env.EXPO_PUBLIC_MOCK_PREMIUM === 'true';
+  if (mockPremium) {
+    return true;
+  }
+
+  return features.localDomains;
 };
 
 /**

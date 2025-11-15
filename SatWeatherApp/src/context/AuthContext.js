@@ -15,6 +15,7 @@ import {
   isProductAllowed,
   isChannelAllowed,
   isOverlayAllowed,
+  isLocalDomainAllowed,
   getMaxFrames,
   shouldShowAds,
   getTierFeatures,
@@ -250,6 +251,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * Check if user can access local domains
+   */
+  const canAccessLocalDomain = () => {
+    return isLocalDomainAllowed(effectiveTier);
+  };
+
+  /**
    * Get maximum frames allowed for animation
    */
   const getAnimationMaxFrames = () => {
@@ -329,6 +337,7 @@ export const AuthProvider = ({ children }) => {
     canAccessProduct,
     canAccessChannel,
     canAccessOverlay,
+    canAccessLocalDomain,
     getAnimationMaxFrames,
     shouldDisplayAds,
     getCurrentTierFeatures,

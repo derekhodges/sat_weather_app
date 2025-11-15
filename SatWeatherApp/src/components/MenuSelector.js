@@ -191,6 +191,17 @@ const RGBPanel = ({ onSelect }) => {
 };
 
 const DomainPanel = ({ onSelect, onShowMap, selectedSatellite, onSelectSatellite }) => {
+  const { canAccessLocalDomain, showUpgradePrompt } = useAuth();
+  const localDomainLocked = !canAccessLocalDomain();
+
+  const handleLocalDomainPress = () => {
+    if (localDomainLocked) {
+      showUpgradePrompt('Local Domains');
+      return;
+    }
+    onShowMap();
+  };
+
   return (
     <ScrollView style={styles.panel}>
       <Text style={styles.panelTitle}>SELECT DOMAIN</Text>
@@ -218,9 +229,20 @@ const DomainPanel = ({ onSelect, onShowMap, selectedSatellite, onSelectSatellite
           <Text style={styles.domainTypeName}>Regional</Text>
           <Text style={styles.domainTypeDesc}>Select on Map</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.domainTypeButton} onPress={onShowMap}>
-          <Text style={styles.domainTypeName}>Local</Text>
-          <Text style={styles.domainTypeDesc}>Select on Map</Text>
+        <TouchableOpacity
+          style={[styles.domainTypeButton, localDomainLocked && styles.lockedDomainButton]}
+          onPress={handleLocalDomainPress}
+        >
+          <View style={styles.domainButtonTitleRow}>
+            <Text style={[styles.domainTypeName, localDomainLocked && styles.lockedText]}>Local</Text>
+            {localDomainLocked && (
+              <Ionicons name="lock-closed" size={14} color="#FF6B6B" style={styles.lockIcon} />
+            )}
+          </View>
+          <Text style={[styles.domainTypeDesc, localDomainLocked && styles.lockedText]}>Select on Map</Text>
+          {localDomainLocked && (
+            <Text style={styles.proRequiredTextSmall}>PRO required</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -357,6 +379,7 @@ const DomainPanel = ({ onSelect, onShowMap, selectedSatellite, onSelectSatellite
 
 const OverlaysPanel = ({ overlayStates, onToggle }) => {
   const categories = Object.keys(OVERLAYS_BY_CATEGORY);
+  const { canAccessOverlay, showUpgradePrompt, subscriptionTier } = useAuth();
 
   // Safety check for overlayStates
   if (!overlayStates) {
@@ -366,6 +389,24 @@ const OverlaysPanel = ({ overlayStates, onToggle }) => {
       </ScrollView>
     );
   }
+
+  const handleOverlayToggle = (overlay) => {
+    if (!canAccessOverlay(overlay.id)) {
+      showUpgradePrompt(overlay.name);
+      return;
+    }
+    onToggle(overlay.id);
+  };
+
+  // Get required tier for display
+  const getRequiredTier = (overlayId) => {
+    // Radar overlays require PRO PLUS
+    if (overlayId === 'mrms' || overlayId === 'composite_radar') {
+      return 'PRO PLUS';
+    }
+    // Lightning, NWS, SPC require PRO
+    return 'PRO';
+  };
 
   return (
     <ScrollView style={styles.panel}>
@@ -377,25 +418,38 @@ const OverlaysPanel = ({ overlayStates, onToggle }) => {
           </Text>
           {OVERLAYS_BY_CATEGORY[category].map((overlay) => {
             const state = overlayStates[overlay.id];
+            const isLocked = !canAccessOverlay(overlay.id);
             return (
               <TouchableOpacity
                 key={overlay.id}
-                style={styles.overlayItem}
-                onPress={() => onToggle(overlay.id)}
+                style={[styles.overlayItem, isLocked && styles.lockedOverlayItem]}
+                onPress={() => handleOverlayToggle(overlay)}
               >
                 <View style={styles.overlayInfo}>
-                  <Text style={styles.overlayName}>{overlay.name}</Text>
-                  <Text style={styles.overlayDescription}>
+                  <View style={styles.overlayTitleRow}>
+                    <Text style={[styles.overlayName, isLocked && styles.lockedText]}>
+                      {overlay.name}
+                    </Text>
+                    {isLocked && (
+                      <Ionicons name="lock-closed" size={14} color="#FF6B6B" style={styles.lockIcon} />
+                    )}
+                  </View>
+                  <Text style={[styles.overlayDescription, isLocked && styles.lockedText]}>
                     {overlay.description}
                   </Text>
+                  {isLocked && (
+                    <Text style={styles.proRequiredText}>{getRequiredTier(overlay.id)} required</Text>
+                  )}
                 </View>
                 <View
                   style={[
                     styles.checkbox,
                     state?.enabled && styles.checkboxChecked,
+                    isLocked && styles.lockedCheckbox,
                   ]}
                 >
-                  {state?.enabled && <Text style={styles.checkmark}>✓</Text>}
+                  {state?.enabled && !isLocked && <Text style={styles.checkmark}>✓</Text>}
+                  {isLocked && <Ionicons name="lock-closed" size={12} color="#666" />}
                 </View>
               </TouchableOpacity>
             );
@@ -588,6 +642,14 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
   },
+  lockedDomainButton: {
+    backgroundColor: '#2a2a2a',
+    opacity: 0.7,
+  },
+  domainButtonTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   domainTypeName: {
     color: '#fff',
     fontSize: 13,
@@ -597,6 +659,13 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 10,
     marginTop: 2,
+  },
+  proRequiredTextSmall: {
+    color: '#FF6B6B',
+    fontSize: 9,
+    fontWeight: 'bold',
+    marginTop: 4,
+    textTransform: 'uppercase',
   },
   domainGrid: {
     flexDirection: 'row',
@@ -631,8 +700,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
+  lockedOverlayItem: {
+    opacity: 0.7,
+  },
   overlayInfo: {
     flex: 1,
+  },
+  overlayTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   overlayName: {
     color: '#fff',
@@ -655,6 +731,10 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: '#2196F3',
     borderColor: '#2196F3',
+  },
+  lockedCheckbox: {
+    backgroundColor: '#2a2a2a',
+    borderColor: '#444',
   },
   checkmark: {
     color: '#fff',

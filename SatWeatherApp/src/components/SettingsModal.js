@@ -76,8 +76,17 @@ export const SettingsModal = ({ visible, onClose }) => {
   const handleFrameCountChange = (value) => {
     setLocalFrameCount(value);
     const numValue = parseInt(value);
-    if (!isNaN(numValue) && numValue >= 5 && numValue <= 50) {
+    const maxAllowed = getAnimationMaxFrames();
+    if (!isNaN(numValue) && numValue >= 5 && numValue <= maxAllowed) {
       updateSettings({ frameCount: numValue });
+    } else if (!isNaN(numValue) && numValue > maxAllowed) {
+      // Silently cap to max allowed
+      setLocalFrameCount(maxAllowed.toString());
+      updateSettings({ frameCount: maxAllowed });
+      Alert.alert(
+        'Frame Limit',
+        `Your current plan allows up to ${maxAllowed} frames. Upgrade to increase this limit.`
+      );
     }
   };
 
@@ -164,7 +173,7 @@ export const SettingsModal = ({ visible, onClose }) => {
               <View style={styles.settingInfo}>
                 <Text style={styles.settingLabel}>Number of Frames</Text>
                 <Text style={styles.settingDescription}>
-                  Frames to load for animation (5-50)
+                  Frames to load for animation (5-{getAnimationMaxFrames()} max for your plan)
                 </Text>
               </View>
               <TextInput
