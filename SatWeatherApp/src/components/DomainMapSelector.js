@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PanGestureHandler, PinchGestureHandler, State } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  runOnJS,
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 import { DOMAINS } from '../constants/domains';
@@ -58,10 +56,6 @@ export const DomainMapSelector = () => {
   const savedScale = useSharedValue(1);
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
-
-  // Refs for gesture handlers
-  const panRef = useRef();
-  const pinchRef = useRef();
 
   // Load CONUS map image when entering regional/local view
   useEffect(() => {
@@ -191,25 +185,24 @@ export const DomainMapSelector = () => {
     setContainerDimensions({ width, height });
   };
 
-  // Gesture handlers for zoom/pan
-  const pinchHandler = useAnimatedGestureHandler({
-    onStart: () => {
+  // Gesture handlers for zoom/pan using new Gesture API
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
       savedScale.value = scale.value;
-    },
-    onActive: (event) => {
+    })
+    .onUpdate((event) => {
       scale.value = Math.max(1, Math.min(5, savedScale.value * event.scale));
-    },
-    onEnd: () => {
+    })
+    .onEnd(() => {
       savedScale.value = scale.value;
-    },
-  });
+    });
 
-  const panHandler = useAnimatedGestureHandler({
-    onStart: () => {
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
-    },
-    onActive: (event) => {
+    })
+    .onUpdate((event) => {
       const maxTranslateX = ((scale.value - 1) * SCREEN_WIDTH) / 2;
       const maxTranslateY = ((scale.value - 1) * MAP_CONTAINER_HEIGHT) / 2;
 
@@ -221,12 +214,14 @@ export const DomainMapSelector = () => {
         -maxTranslateY,
         Math.min(maxTranslateY, savedTranslateY.value + event.translationY)
       );
-    },
-    onEnd: () => {
+    })
+    .onEnd(() => {
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
-    },
-  });
+    });
+
+  // Combine gestures to run simultaneously
+  const composedGesture = Gesture.Simultaneous(panGesture, pinchGesture);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -341,38 +336,24 @@ export const DomainMapSelector = () => {
             <Text style={styles.loadingText}>Loading map...</Text>
           </View>
         ) : (
-          <PanGestureHandler
-            ref={panRef}
-            simultaneousHandlers={pinchRef}
-            onGestureEvent={panHandler}
-            minPointers={1}
-            maxPointers={2}
-          >
-            <Animated.View style={styles.gestureContainer}>
-              <PinchGestureHandler
-                ref={pinchRef}
-                simultaneousHandlers={panRef}
-                onGestureEvent={pinchHandler}
-              >
-                <Animated.View style={[styles.mapImageContainer, animatedStyle]}>
-                  {mapImageUrl && (
-                    <Image
-                      source={{ uri: mapImageUrl }}
-                      style={styles.mapImage}
-                      resizeMode="contain"
-                      onLoad={handleImageLoad}
-                      onError={(error) => {
-                        console.error('Failed to load map image:', error);
-                        setMapImageUrl(null);
-                      }}
-                    />
-                  )}
-                  {/* Overlay dots on top of the map */}
-                  <View style={styles.dotsOverlay}>{renderRegionDots()}</View>
-                </Animated.View>
-              </PinchGestureHandler>
+          <GestureDetector gesture={composedGesture}>
+            <Animated.View style={[styles.mapImageContainer, animatedStyle]}>
+              {mapImageUrl && (
+                <Image
+                  source={{ uri: mapImageUrl }}
+                  style={styles.mapImage}
+                  resizeMode="contain"
+                  onLoad={handleImageLoad}
+                  onError={(error) => {
+                    console.error('Failed to load map image:', error);
+                    setMapImageUrl(null);
+                  }}
+                />
+              )}
+              {/* Overlay dots on top of the map */}
+              <View style={styles.dotsOverlay}>{renderRegionDots()}</View>
             </Animated.View>
-          </PanGestureHandler>
+          </GestureDetector>
         )}
 
         {/* Map controls */}
@@ -571,9 +552,6 @@ const styles = StyleSheet.create({
   mapContainer: {
     flex: 1,
     backgroundColor: '#000',
-  },
-  gestureContainer: {
-    flex: 1,
   },
   mapImageContainer: {
     flex: 1,
