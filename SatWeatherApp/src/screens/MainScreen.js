@@ -6,6 +6,7 @@ import * as Sharing from 'expo-sharing';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { captureRef } from 'react-native-view-shot';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { SatelliteImageViewer } from '../components/SatelliteImageViewer';
 import { TopBar } from '../components/TopBar';
 import { MenuSelector } from '../components/MenuSelector';
@@ -73,6 +74,8 @@ export const MainScreen = () => {
     showSettingsModal,
     setShowSettingsModal,
   } = useApp();
+
+  const { getAnimationMaxFrames } = useAuth();
 
   const viewRef = useRef();
   const contentRef = useRef(); // Reference to content area (for screenshots without buttons)
@@ -144,10 +147,13 @@ export const MainScreen = () => {
         frameCache.clearForProduct(selectedDomain, product);
 
         // Generate validated timestamps (only frames that exist)
+        // Enforce subscription tier frame limit
+        const maxAllowedFrames = getAnimationMaxFrames();
+        const effectiveFrameCount = Math.min(settings.frameCount, maxAllowedFrames);
         const validFrames = await generateValidatedTimestampArray(
           selectedDomain,
           product,
-          settings.frameCount,
+          effectiveFrameCount,
           5
         );
 
@@ -285,10 +291,13 @@ export const MainScreen = () => {
           if (isMounted) setIsLoading(true);
 
           // Generate validated timestamps (only frames that exist)
+          // Enforce subscription tier frame limit
+          const maxAllowedFrames = getAnimationMaxFrames();
+          const effectiveFrameCount = Math.min(settings.frameCount, maxAllowedFrames);
           const validFrames = await generateValidatedTimestampArray(
             selectedDomain,
             product,
-            settings.frameCount,
+            effectiveFrameCount,
             5
           );
 
