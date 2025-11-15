@@ -27,7 +27,9 @@ import {
   generateRegionColor,
   getRegionSize,
 } from '../constants/regions';
-import { generateCODImageUrl, generateCurrentTimestamp } from '../utils/imageService';
+import { getLatestImageUrl } from '../utils/imageService';
+
+// Note: DOMAINS is used in loadConusMapImage
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAP_CONTAINER_HEIGHT = SCREEN_HEIGHT - 160; // Leave room for header and instructions
@@ -36,13 +38,14 @@ export const DomainMapSelector = () => {
   const {
     showDomainMap,
     setShowDomainMap,
+    domainMapMode,
+    setDomainMapMode,
     selectDomain,
     selectedRGBProduct,
     selectedChannel,
     viewMode,
   } = useApp();
 
-  const [selectorMode, setSelectorMode] = useState('menu'); // 'menu', 'regional', 'local'
   const [mapImageUrl, setMapImageUrl] = useState(null);
   const [isLoadingMap, setIsLoadingMap] = useState(false);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
@@ -57,24 +60,28 @@ export const DomainMapSelector = () => {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // Load CONUS map image when entering regional/local view
+  // Load CONUS map image when modal opens
   useEffect(() => {
-    if (selectorMode === 'regional' || selectorMode === 'local') {
+    if (showDomainMap && domainMapMode) {
       loadConusMapImage();
     }
-  }, [selectorMode, selectedRGBProduct, selectedChannel, viewMode]);
+  }, [showDomainMap, domainMapMode, selectedRGBProduct, selectedChannel, viewMode]);
 
-  // Reset zoom when changing modes
+  // Reset zoom when modal closes
   useEffect(() => {
-    if (selectorMode === 'menu') {
+    if (!showDomainMap) {
       scale.value = 1;
       translateX.value = 0;
       translateY.value = 0;
       savedScale.value = 1;
       savedTranslateX.value = 0;
       savedTranslateY.value = 0;
+      setMapImageUrl(null);
+      setMapDimensions({ width: 0, height: 0 });
+      setContainerDimensions({ width: 0, height: 0 });
+      setImageOffset({ x: 0, y: 0 });
     }
-  }, [selectorMode]);
+  }, [showDomainMap]);
 
   // Recalculate image offset when container or image dimensions change
   useEffect(() => {
@@ -106,11 +113,11 @@ export const DomainMapSelector = () => {
       // Create a CONUS domain object for URL generation
       const conusDomain = DOMAINS.CONUS;
       const currentProduct = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
-      const timestamp = generateCurrentTimestamp();
 
-      const url = generateCODImageUrl(conusDomain, currentProduct, timestamp);
-      if (url) {
-        setMapImageUrl(url);
+      // Get validated URL that actually exists
+      const result = await getLatestImageUrl(conusDomain, currentProduct, 12);
+      if (result && result.url) {
+        setMapImageUrl(result.url);
       }
     } catch (error) {
       console.error('Error loading CONUS map:', error);
@@ -122,7 +129,7 @@ export const DomainMapSelector = () => {
   const handleDomainSelect = (domain) => {
     selectDomain(domain);
     setShowDomainMap(false);
-    setSelectorMode('menu');
+    setDomainMapMode(null);
   };
 
   const handleRegionSelect = (regionKey) => {
@@ -243,7 +250,7 @@ export const DomainMapSelector = () => {
   };
 
   const renderRegionDots = () => {
-    const regions = selectorMode === 'local' ? CATEGORIZED_REGIONS.local : CATEGORIZED_REGIONS.regional;
+    const regions = domainMapMode === 'local' ? CATEGORIZED_REGIONS.local : CATEGORIZED_REGIONS.regional;
 
     // Calculate the actual rendered image size (accounting for resizeMode="contain")
     if (containerDimensions.width === 0 || mapDimensions.width === 0) {
@@ -369,7 +376,7 @@ export const DomainMapSelector = () => {
             Pinch to zoom, drag to pan. Tap a dot to select that region.
           </Text>
           <Text style={styles.instructionsSubtext}>
-            {selectorMode === 'local'
+            {domainMapMode === 'local'
               ? `${CATEGORIZED_REGIONS.local.length} local regions available`
               : `${CATEGORIZED_REGIONS.regional.length} regional areas available`}
           </Text>
@@ -378,101 +385,26 @@ export const DomainMapSelector = () => {
     );
   };
 
-  const renderMenuView = () => {
-    return (
-      <View style={styles.menuContainer}>
-        {/* Full Disk */}
-        <TouchableOpacity
-          style={styles.menuCard}
-          onPress={() => handleDomainSelect(DOMAINS.FULL_DISK)}
-        >
-          <Ionicons name="globe" size={32} color="#2196F3" />
-          <Text style={styles.menuCardTitle}>Full Disk</Text>
-          <Text style={styles.menuCardSubtitle}>Entire hemisphere view</Text>
-        </TouchableOpacity>
-
-        {/* CONUS */}
-        <TouchableOpacity
-          style={styles.menuCard}
-          onPress={() => handleDomainSelect(DOMAINS.CONUS)}
-        >
-          <Ionicons name="location" size={32} color="#2196F3" />
-          <Text style={styles.menuCardTitle}>CONUS</Text>
-          <Text style={styles.menuCardSubtitle}>Continental United States</Text>
-        </TouchableOpacity>
-
-        {/* Mesoscale 1 */}
-        <TouchableOpacity
-          style={styles.menuCard}
-          onPress={() => handleDomainSelect(DOMAINS.MESOSCALE_1)}
-        >
-          <Ionicons name="scan" size={32} color="#FF9800" />
-          <Text style={styles.menuCardTitle}>Mesoscale 1</Text>
-          <Text style={styles.menuCardSubtitle}>Dynamic mesoscale domain</Text>
-        </TouchableOpacity>
-
-        {/* Mesoscale 2 */}
-        <TouchableOpacity
-          style={styles.menuCard}
-          onPress={() => handleDomainSelect(DOMAINS.MESOSCALE_2)}
-        >
-          <Ionicons name="scan" size={32} color="#FF9800" />
-          <Text style={styles.menuCardTitle}>Mesoscale 2</Text>
-          <Text style={styles.menuCardSubtitle}>Dynamic mesoscale domain</Text>
-        </TouchableOpacity>
-
-        {/* Regional - Select on Map */}
-        <TouchableOpacity style={styles.menuCard} onPress={() => setSelectorMode('regional')}>
-          <Ionicons name="map" size={32} color="#4CAF50" />
-          <Text style={styles.menuCardTitle}>Regional</Text>
-          <Text style={styles.menuCardSubtitle}>Select on map</Text>
-        </TouchableOpacity>
-
-        {/* Local - Select on Map */}
-        <TouchableOpacity style={styles.menuCard} onPress={() => setSelectorMode('local')}>
-          <Ionicons name="navigate" size={32} color="#4CAF50" />
-          <Text style={styles.menuCardTitle}>Local</Text>
-          <Text style={styles.menuCardSubtitle}>Select on map</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
   const getTitle = () => {
-    switch (selectorMode) {
-      case 'regional':
-        return 'Select Regional Domain';
-      case 'local':
-        return 'Select Local Domain';
-      default:
-        return 'Select Domain';
-    }
+    return domainMapMode === 'local' ? 'Select Local Domain' : 'Select Regional Domain';
   };
 
   return (
     <Modal
-      visible={showDomainMap}
+      visible={showDomainMap && domainMapMode !== null}
       animationType="slide"
       onRequestClose={() => {
         setShowDomainMap(false);
-        setSelectorMode('menu');
+        setDomainMapMode(null);
       }}
     >
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          {selectorMode !== 'menu' && (
-            <TouchableOpacity
-              onPress={() => setSelectorMode('menu')}
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={28} color="#fff" />
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
             onPress={() => {
               setShowDomainMap(false);
-              setSelectorMode('menu');
+              setDomainMapMode(null);
             }}
             style={styles.closeButton}
           >
@@ -482,8 +414,8 @@ export const DomainMapSelector = () => {
           <View style={{ width: 40 }} />
         </View>
 
-        {/* Content */}
-        {selectorMode === 'menu' ? renderMenuView() : renderMapView()}
+        {/* Content - directly show map */}
+        {renderMapView()}
       </View>
     </Modal>
   );
@@ -503,12 +435,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 10,
   },
-  backButton: {
-    padding: 8,
-    position: 'absolute',
-    left: 8,
-    zIndex: 10,
-  },
   closeButton: {
     padding: 8,
   },
@@ -517,36 +443,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     flex: 1,
-    textAlign: 'center',
-  },
-  menuContainer: {
-    flex: 1,
-    padding: 16,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    alignContent: 'flex-start',
-  },
-  menuCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#333',
-    width: '48%',
-    marginBottom: 12,
-  },
-  menuCardTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 8,
-  },
-  menuCardSubtitle: {
-    color: '#999',
-    fontSize: 12,
-    marginTop: 4,
     textAlign: 'center',
   },
   mapContainer: {

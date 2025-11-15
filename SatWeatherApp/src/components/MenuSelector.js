@@ -26,6 +26,7 @@ export const MenuSelector = () => {
     toggleOverlay,
     overlayStates,
     setShowDomainMap,
+    setDomainMapMode,
     layoutOrientation,
     selectedSatellite,
     setSelectedSatellite,
@@ -41,7 +42,8 @@ export const MenuSelector = () => {
       {activeMenu === 'domain' && (
         <DomainPanel
           onSelect={selectDomain}
-          onShowMap={() => {
+          onShowMap={(mode) => {
+            setDomainMapMode(mode);
             setShowDomainMap(true);
             setActiveMenu(null);
           }}
@@ -199,7 +201,7 @@ const DomainPanel = ({ onSelect, onShowMap, selectedSatellite, onSelectSatellite
       showUpgradePrompt('Local Domains');
       return;
     }
-    onShowMap();
+    onShowMap('local');
   };
 
   return (
@@ -225,7 +227,7 @@ const DomainPanel = ({ onSelect, onShowMap, selectedSatellite, onSelectSatellite
       </View>
 
       <View style={styles.domainTypeRow}>
-        <TouchableOpacity style={styles.domainTypeButton} onPress={onShowMap}>
+        <TouchableOpacity style={styles.domainTypeButton} onPress={() => onShowMap('regional')}>
           <Text style={styles.domainTypeName}>Regional</Text>
           <Text style={styles.domainTypeDesc}>Select on Map</Text>
         </TouchableOpacity>
