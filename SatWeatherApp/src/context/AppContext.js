@@ -64,6 +64,7 @@ export const AppProvider = ({ children }) => {
   // UI state
   const [activeMenu, setActiveMenu] = useState(null); // 'channel', 'rgb', 'domain', 'overlays', 'settings'
   const [showDomainMap, setShowDomainMap] = useState(false);
+  const [domainMapMode, setDomainMapMode] = useState(null); // 'regional' or 'local'
   const [layoutOrientation, setLayoutOrientation] = useState('portrait'); // 'portrait' or 'landscape'
 
   // Favorites
@@ -412,6 +413,7 @@ export const AppProvider = ({ children }) => {
     showLocationMarker,
     activeMenu,
     showDomainMap,
+    domainMapMode,
     layoutOrientation,
     favorites,
     showFavoritesMenu,
@@ -445,6 +447,7 @@ export const AppProvider = ({ children }) => {
     toggleLocationMarker,
     setActiveMenu,
     setShowDomainMap,
+    setDomainMapMode,
     setViewMode,
     setShowFavoritesMenu,
     setShowSettingsModal,

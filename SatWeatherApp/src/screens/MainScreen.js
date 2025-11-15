@@ -125,10 +125,8 @@ export const MainScreen = () => {
   }, [layoutOrientation, toggleOrientation]);
 
   // Generate validated timestamps and prefetch frames
-  // Debounced to prevent excessive network requests when rapidly switching domains/products
   useEffect(() => {
     let isMounted = true;
-    let debounceTimer = null;
 
     const loadAndCacheFrames = async () => {
       const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
@@ -207,18 +205,11 @@ export const MainScreen = () => {
       }
     };
 
-    // Debounce by 300ms to avoid firing too many requests when rapidly switching
-    debounceTimer = setTimeout(() => {
-      if (isMounted) {
-        loadAndCacheFrames();
-      }
-    }, 300);
+    // Load frames immediately when domain/product changes
+    loadAndCacheFrames();
 
     return () => {
       isMounted = false;
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
     };
   }, [selectedDomain, selectedRGBProduct, selectedChannel, viewMode]);
 
