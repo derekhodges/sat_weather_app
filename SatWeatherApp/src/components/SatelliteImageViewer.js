@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import {
   View,
   Image,
@@ -82,14 +82,36 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // Get screen dimensions for bounds checking
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
+  // Get screen dimensions for bounds checking - update on orientation change
+  const [screenDimensions, setScreenDimensions] = useState({
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  });
+
+  // Listen for dimension changes (orientation changes)
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions({
+        width: window.width,
+        height: window.height,
+      });
+    });
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  const screenWidth = screenDimensions.width;
+  const screenHeight = screenDimensions.height;
 
   // For cover mode, we want the image to be larger so it can extend beyond the viewport
   // This allows panning to see all parts without cropping
   // forceContainMode overrides this for screenshots
-  const effectiveDisplayMode = forceContainMode ? 'contain' : settings.imageDisplayMode;
+  const effectiveDisplayMode = useMemo(
+    () => forceContainMode ? 'contain' : settings.imageDisplayMode,
+    [forceContainMode, settings.imageDisplayMode]
+  );
 
   // Helper function to constrain translation based on current scale
   const constrainTranslation = (x, y, currentScale) => {

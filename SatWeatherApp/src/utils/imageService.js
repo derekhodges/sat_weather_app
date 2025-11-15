@@ -262,8 +262,27 @@ export const getLatestImageUrl = async (domain, product, maxAttempts = 24) => {
 };
 
 /**
+ * Helper function to batch async operations to avoid overwhelming the network
+ * @param {Array} items - Items to process
+ * @param {Function} processItem - Async function to process each item
+ * @param {number} batchSize - Number of concurrent operations (default: 4)
+ */
+const processBatched = async (items, processItem, batchSize = 4) => {
+  const results = [];
+
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(processItem));
+    results.push(...batchResults);
+  }
+
+  return results;
+};
+
+/**
  * Generate validated timestamp array - only includes frames that actually exist
  * This prevents the app from breaking when recent frames haven't been plotted yet
+ * Uses batched requests to avoid overwhelming the network with 12+ parallel requests
  */
 export const generateValidatedTimestampArray = async (
   domain,
@@ -276,9 +295,10 @@ export const generateValidatedTimestampArray = async (
   // First generate all possible timestamps
   const possibleTimestamps = generateTimestampArray(count, intervalMinutes);
 
-  // Check each timestamp in parallel
-  const validationResults = await Promise.all(
-    possibleTimestamps.map(async (timestamp) => {
+  // Check each timestamp in batches of 4 to avoid network congestion
+  const validationResults = await processBatched(
+    possibleTimestamps,
+    async (timestamp) => {
       const url = generateCODImageUrl(domain, product, timestamp);
       if (!url) {
         return { timestamp, url: null, exists: false };
@@ -286,7 +306,8 @@ export const generateValidatedTimestampArray = async (
 
       const exists = await checkImageExists(url);
       return { timestamp, url, exists };
-    })
+    },
+    4 // Concurrent requests per batch
   );
 
   // Filter to only existing frames

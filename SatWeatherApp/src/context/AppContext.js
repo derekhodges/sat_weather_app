@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { LayoutAnimation, Platform, UIManager } from 'react-native';
+import { LayoutAnimation, Platform, UIManager, Alert } from 'react-native';
 import { DEFAULT_SATELLITE } from '../constants/satellites';
 import { DEFAULT_DOMAIN } from '../constants/domains';
 import { DEFAULT_RGB_PRODUCT } from '../constants/products';
@@ -193,8 +193,16 @@ export const AppProvider = ({ children }) => {
       const updatedSettings = { ...settings, ...newSettings };
       setSettings(updatedSettings);
       await AsyncStorage.setItem('settings', JSON.stringify(updatedSettings));
+      return true;
     } catch (error) {
       console.error('Error saving settings:', error);
+      // Notify user that settings failed to save
+      Alert.alert(
+        'Settings Error',
+        'Failed to save your settings. Your changes may not persist after closing the app. Please try again.',
+        [{ text: 'OK' }]
+      );
+      return false;
     }
   };
 
@@ -307,6 +315,11 @@ export const AppProvider = ({ children }) => {
       // Check if we already have 10 favorites
       if (favorites.length >= 10) {
         console.warn('Maximum of 10 favorites reached');
+        Alert.alert(
+          'Favorites Limit Reached',
+          'You can save a maximum of 10 favorites. Please remove an existing favorite before adding a new one.',
+          [{ text: 'OK' }]
+        );
         return false;
       }
 
