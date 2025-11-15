@@ -348,3 +348,63 @@ export const generateAWSImageUrl = (satellite, domain, product, timestamp) => {
   // s3://your-bucket/satellite/{satellite}/{domain}/{product}/{timestamp}.jpg
   throw new Error('AWS image fetching not yet implemented');
 };
+
+/**
+ * Get the latest available base map image for domain/region selection
+ * Uses the current product (e.g., geocolor) as the background map
+ *
+ * @param {string} viewType - 'conus' or 'full_disk'
+ * @param {object} product - The product object (with codName)
+ * @returns {Promise<{url: string, timestamp: string}|null>}
+ */
+export const getBaseMapImage = async (viewType, product) => {
+  // Create a domain object based on view type
+  const domainConfig = {
+    conus: {
+      type: 'conus',
+      codName: 'conus',
+    },
+    full_disk: {
+      type: 'full_disk',
+      codName: 'full_disk',
+    },
+  };
+
+  const domain = domainConfig[viewType];
+  if (!domain) {
+    console.error('Invalid view type for base map:', viewType);
+    return null;
+  }
+
+  return getLatestImageUrl(domain, product);
+};
+
+/**
+ * Generate a static base map URL for quick loading
+ * Uses the current timestamp without validation
+ *
+ * @param {string} viewType - 'conus' or 'full_disk'
+ * @param {object} product - The product object (with codName)
+ * @param {string} [timestamp] - Optional specific timestamp
+ * @returns {string|null} The image URL
+ */
+export const generateBaseMapUrl = (viewType, product, timestamp = null) => {
+  const domainConfig = {
+    conus: {
+      type: 'conus',
+      codName: 'conus',
+    },
+    full_disk: {
+      type: 'full_disk',
+      codName: 'full_disk',
+    },
+  };
+
+  const domain = domainConfig[viewType];
+  if (!domain) {
+    console.error('Invalid view type for base map:', viewType);
+    return null;
+  }
+
+  return generateCODImageUrl(domain, product, timestamp);
+};

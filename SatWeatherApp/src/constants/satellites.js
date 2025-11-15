@@ -43,3 +43,27 @@ export const CHANNELS = [
 ];
 
 export const DEFAULT_CHANNEL = CHANNELS.find(c => c.number === 13); // Default to Clean IR
+
+// Satellite view types for region filtering
+export const SATELLITE_VIEW_TYPES = {
+  CONUS_WEST: 'conus_west',
+  CONUS_EAST: 'conus_east',
+  FULL_DISK_WEST: 'full_disk_west',
+  FULL_DISK_EAST: 'full_disk_east',
+};
+
+/**
+ * Get the region filter type based on satellite location and view type
+ * @param {object} satellite - The satellite object (with location property)
+ * @param {string} viewType - 'conus' or 'full_disk'
+ * @returns {string} The filter type for REGION_FILTERS
+ */
+export const getSatelliteViewType = (satellite, viewType) => {
+  const isWest = satellite?.location === 'West';
+  const isFullDisk = viewType === 'full_disk';
+
+  if (isFullDisk) {
+    return isWest ? SATELLITE_VIEW_TYPES.FULL_DISK_WEST : SATELLITE_VIEW_TYPES.FULL_DISK_EAST;
+  }
+  return isWest ? SATELLITE_VIEW_TYPES.CONUS_WEST : SATELLITE_VIEW_TYPES.CONUS_EAST;
+};
