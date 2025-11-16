@@ -63,6 +63,7 @@ export const MainScreen = () => {
     isInspectorMode,
     setIsInspectorMode,
     setInspectorValue,
+    userLocation,
     setUserLocation,
     savedHomeLocation,
     setShowFavoritesMenu,
@@ -98,6 +99,43 @@ export const MainScreen = () => {
   const [isLocationLoading, setIsLocationLoading] = useState(false); // Prevent double location fetches
 
   const isLandscape = layoutOrientation === 'landscape';
+  const locationRefreshIntervalRef = useRef(null);
+
+  // Fetch user location once on mount and cache it (avoids delay when clicking location button)
+  useEffect(() => {
+    const fetchAndCacheLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('[LOCATION] Permission not granted, will request on first use');
+          return;
+        }
+
+        console.log('[LOCATION] Fetching initial location...');
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced, // Faster than High accuracy
+        });
+        setUserLocation(location.coords);
+        console.log(`[LOCATION] Cached initial location: ${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}`);
+      } catch (error) {
+        console.warn('[LOCATION] Failed to fetch initial location:', error.message);
+      }
+    };
+
+    fetchAndCacheLocation();
+
+    // Optional: Refresh location every 5 minutes in background
+    locationRefreshIntervalRef.current = setInterval(() => {
+      console.log('[LOCATION] Background refresh...');
+      fetchAndCacheLocation();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => {
+      if (locationRefreshIntervalRef.current) {
+        clearInterval(locationRefreshIntervalRef.current);
+      }
+    };
+  }, [setUserLocation]);
 
   // Listen for orientation changes with loading overlay to prevent jarring transitions
   useEffect(() => {
@@ -549,25 +587,24 @@ export const MainScreen = () => {
   }, [isInspectorMode, setIsInspectorMode, setInspectorValue]);
 
   const handleLocationPress = async () => {
-    console.log('[LOCATION BUTTON] Pressed, showLocationMarker:', showLocationMarker, 'isLoading:', isLocationLoading);
+    console.log('[LOCATION BUTTON] Pressed, showLocationMarker:', showLocationMarker, 'hasLocation:', !!userLocation);
 
-    // Prevent double-taps while loading
+    // If we already have a cached location, just toggle visibility instantly
+    if (userLocation) {
+      console.log('[LOCATION BUTTON] Using cached location, toggling visibility');
+      toggleLocationMarker();
+      return;
+    }
+
+    // No cached location yet - need to fetch it
     if (isLocationLoading) {
       console.log('[LOCATION BUTTON] Ignoring - already loading');
       return;
     }
 
-    // If location is already shown, just toggle it off
-    if (showLocationMarker) {
-      console.log('[LOCATION BUTTON] Toggling off');
-      toggleLocationMarker();
-      return;
-    }
-
-    // Otherwise, get location and show marker
     setIsLocationLoading(true);
     try {
-      console.log('[LOCATION BUTTON] Requesting permissions...');
+      console.log('[LOCATION BUTTON] No cached location, requesting permissions...');
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
@@ -578,23 +615,18 @@ export const MainScreen = () => {
       }
 
       console.log('[LOCATION BUTTON] Getting current position...');
-      const location = await Location.getCurrentPositionAsync({});
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
       console.log('[LOCATION BUTTON] Got location:', location.coords);
 
       setUserLocation(location.coords);
       toggleLocationMarker(); // Show the marker
 
       console.log(
-        '[LOCATION BUTTON] Location set and marker toggled:',
+        '[LOCATION BUTTON] Location cached and marker toggled:',
         `Lat: ${location.coords.latitude.toFixed(4)}, Lon: ${location.coords.longitude.toFixed(4)}`
       );
-
-      // Debug state
-      console.log('[LOCATION BUTTON] State check:', {
-        hasGeoData: !!currentGeoData,
-        hasImageSize: !!actualImageSize,
-        isImageReady: isImageReadyForOverlays,
-      });
     } catch (error) {
       console.error('Error getting location:', error);
       setError('Unable to get current location');
