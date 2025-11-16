@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -210,25 +210,27 @@ export const DomainMapSelector = () => {
 
   // Check if a tap hit a dot and handle selection
   const checkDotHit = useCallback((tapX, tapY) => {
-    // Transform tap coordinates back to unzoomed/unpanned space
-    // The tap is in screen space, but dots are in transformed space
-    // Reverse the transform: first undo scale, then undo translate
+    // The tap coordinates are in the GestureDetector view's coordinate system
+    // We need to map them to content space accounting for the current transform
+    // Transform: translateX, translateY, scale (applied in that order)
+
+    // If zoomed/panned, we need to find where in content space this tap lands
     const currentScale = scale.value;
     const currentTranslateX = translateX.value;
     const currentTranslateY = translateY.value;
 
-    // The center of the container is the transform origin
-    const containerCenterX = containerDimensions.width / 2;
-    const containerCenterY = containerDimensions.height / 2;
+    // The transform origin is at the center of the container
+    const centerX = containerDimensions.width / 2;
+    const centerY = containerDimensions.height / 2;
 
-    // Convert tap from screen space to content space
-    // 1. Offset by translation
-    // 2. Scale from center
-    const contentX = (tapX - containerCenterX - currentTranslateX) / currentScale + containerCenterX;
-    const contentY = (tapY - containerCenterY - currentTranslateY) / currentScale + containerCenterY;
+    // Reverse the transform: given screen tap, find content position
+    // Forward transform: contentPos -> (contentPos - center) * scale + center + translate = screenPos
+    // Reverse: screenPos -> (screenPos - translate - center) / scale + center = contentPos
+    const contentX = (tapX - currentTranslateX - centerX) / currentScale + centerX;
+    const contentY = (tapY - currentTranslateY - centerY) / currentScale + centerY;
 
-    // Check each dot position
-    const hitRadius = 20; // Tap tolerance in content space
+    // Check each dot position with a generous hit radius
+    const hitRadius = 25; // Larger tap tolerance for easier selection
     for (const dot of dotPositionsRef.current) {
       const dx = contentX - dot.x;
       const dy = contentY - dot.y;
@@ -253,6 +255,7 @@ export const DomainMapSelector = () => {
     });
 
   const panGesture = Gesture.Pan()
+    .minDistance(10) // Must move 10px before pan activates - allows taps to work
     .minPointers(1)
     .maxPointers(2)
     .onStart(() => {
@@ -279,12 +282,16 @@ export const DomainMapSelector = () => {
 
   // Tap gesture for selecting dots - only fires if pan/pinch don't consume the touch
   const tapGesture = Gesture.Tap()
+    .maxDuration(500) // Must tap within 500ms
     .onEnd((event) => {
       'worklet';
       runOnJS(checkDotHit)(event.x, event.y);
     });
 
-  // Race between pan/pinch and tap - pan/pinch take priority if movement detected
+  // Race: gestures compete, first to activate wins
+  // Pan activates on movement (after minDistance), tap activates on release
+  // So: quick tap (release before moving 10px) -> tap wins
+  // drag (move 10px before releasing) -> pan wins
   const composedGesture = Gesture.Race(
     Gesture.Simultaneous(panGesture, pinchGesture),
     tapGesture
@@ -480,25 +487,28 @@ export const DomainMapSelector = () => {
         setDomainMapMode(null);
       }}
     >
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => {
-              setShowDomainMap(false);
-              setDomainMapMode(null);
-            }}
-            style={styles.closeButton}
-          >
-            <Ionicons name="close" size={28} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.title}>{getTitle()}</Text>
-          <View style={{ width: 40 }} />
-        </View>
+      {/* GestureHandlerRootView needed inside Modal for gestures to work */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowDomainMap(false);
+                setDomainMapMode(null);
+              }}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.title}>{getTitle()}</Text>
+            <View style={{ width: 40 }} />
+          </View>
 
-        {/* Content - directly show map */}
-        {renderMapView()}
-      </SafeAreaView>
+          {/* Content - directly show map */}
+          {renderMapView()}
+        </SafeAreaView>
+      </GestureHandlerRootView>
     </Modal>
   );
 };
