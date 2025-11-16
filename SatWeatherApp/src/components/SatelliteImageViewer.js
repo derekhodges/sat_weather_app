@@ -168,12 +168,28 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     }
   };
 
-  // Pinch gesture for zoom - more responsive with faster spring config
+  // Pinch gesture for zoom - zooms toward the focal point (center of pinch)
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
-      const newScale = savedScale.value * event.scale;
-      // Limit scale during gesture
-      scale.value = Math.max(1, Math.min(5, newScale));
+      const newScale = Math.max(1, Math.min(5, savedScale.value * event.scale));
+
+      // Calculate zoom toward focal point
+      // The focal point is where the user's fingers are centered
+      const focalX = event.focalX;
+      const focalY = event.focalY;
+
+      // Calculate the scaling factor change
+      const scaleChange = newScale / scale.value;
+
+      // Adjust translation to keep focal point stationary
+      // Formula: newTranslate = focalPoint - scaleChange * (focalPoint - oldTranslate)
+      const newTranslateX = focalX - scaleChange * (focalX - translateX.value);
+      const newTranslateY = focalY - scaleChange * (focalY - translateY.value);
+
+      scale.value = newScale;
+      translateX.value = newTranslateX;
+      translateY.value = newTranslateY;
+
       // Update transform state in real-time (throttled)
       runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
     })
@@ -193,6 +209,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         translateY.value = withSpring(constrained.y, { damping: 20, stiffness: 300 });
         savedTranslateX.value = constrained.x;
         savedTranslateY.value = constrained.y;
+      } else {
+        savedTranslateX.value = translateX.value;
+        savedTranslateY.value = translateY.value;
       }
 
       // Report transform state to context for coordinate calculations
@@ -245,10 +264,55 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       }
     });
 
+  // Throttle for inspector drag updates (200ms = 5 updates per second)
+  const lastInspectorUpdateTime = useRef(0);
+  const throttledInspectorUpdate = (x, y) => {
+    const now = Date.now();
+    if (now - lastInspectorUpdateTime.current > 200) {
+      lastInspectorUpdateTime.current = now;
+      setCrosshairPosition({ x, y });
+    }
+  };
+
+  // Pan gesture for inspector mode - drag to move crosshair
+  // ONLY active when inspector mode is on
+  const inspectorPanGesture = Gesture.Pan()
+    .enabled(isInspectorMode)
+    .onUpdate((event) => {
+      if (isInspectorMode) {
+        'worklet';
+        // Use absolute position for crosshair
+        const screenX = event.absoluteX;
+        const screenY = event.absoluteY;
+
+        // Throttled update to avoid performance issues
+        runOnJS(throttledInspectorUpdate)(screenX, screenY);
+      }
+    })
+    .onEnd((event) => {
+      if (isInspectorMode) {
+        'worklet';
+        // Final update at exact end position
+        const screenX = event.absoluteX;
+        const screenY = event.absoluteY;
+
+        runOnJS(setCrosshairPosition)({
+          x: screenX,
+          y: screenY,
+        });
+      }
+    });
+
   // Combined gesture for pinch and pan (not tap - tap is separate)
   const zoomPanGesture = Gesture.Simultaneous(
     pinchGesture,
     panGesture
+  );
+
+  // Combined gesture for inspector (tap OR drag)
+  const inspectorGesture = Gesture.Race(
+    tapGesture,
+    inspectorPanGesture
   );
 
   // Handle URL changes - load into inactive slot and swap when ready
@@ -467,7 +531,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     : styles.image;
 
   return (
-    <GestureDetector gesture={tapGesture}>
+    <GestureDetector gesture={inspectorGesture}>
       <View ref={containerRef} style={styles.container} collapsable={false}>
         {/* Image-only view for pixel sampling - NO overlays inside this */}
         <View

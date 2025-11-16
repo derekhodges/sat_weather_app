@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, ActivityIndicator, AppState } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -100,10 +100,18 @@ export const MainScreen = () => {
 
   const isLandscape = layoutOrientation === 'landscape';
   const locationRefreshIntervalRef = useRef(null);
+  const appStateRef = useRef(AppState.currentState);
 
   // Fetch user location once on mount and cache it (avoids delay when clicking location button)
+  // CRITICAL FIX: Pause location refresh when app is backgrounded to prevent battery drain
   useEffect(() => {
     const fetchAndCacheLocation = async () => {
+      // Only refresh if app is active
+      if (appStateRef.current !== 'active') {
+        console.log('[LOCATION] Skipping refresh - app not active');
+        return;
+      }
+
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
@@ -122,18 +130,34 @@ export const MainScreen = () => {
       }
     };
 
+    // Handle app state changes to pause/resume location refresh
+    const handleAppStateChange = (nextAppState) => {
+      if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('[LOCATION] App became active, resuming location services');
+        fetchAndCacheLocation();
+      } else if (nextAppState.match(/inactive|background/)) {
+        console.log('[LOCATION] App going to background, pausing location services');
+      }
+      appStateRef.current = nextAppState;
+    };
+
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
     fetchAndCacheLocation();
 
-    // Optional: Refresh location every 5 minutes in background
+    // Optional: Refresh location every 5 minutes (only when app is active)
     locationRefreshIntervalRef.current = setInterval(() => {
-      console.log('[LOCATION] Background refresh...');
-      fetchAndCacheLocation();
+      if (appStateRef.current === 'active') {
+        console.log('[LOCATION] Background refresh...');
+        fetchAndCacheLocation();
+      }
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => {
       if (locationRefreshIntervalRef.current) {
         clearInterval(locationRefreshIntervalRef.current);
       }
+      appStateSubscription.remove();
     };
   }, [setUserLocation]);
 
@@ -310,7 +334,7 @@ export const MainScreen = () => {
     };
   }, [isAnimating, availableTimestamps.length, settings.animationSpeed]);
 
-  // Auto-refresh functionality
+  // Auto-refresh functionality with smart caching
   useEffect(() => {
     let isMounted = true;
 
@@ -328,20 +352,15 @@ export const MainScreen = () => {
       autoRefreshIntervalRef.current = setInterval(async () => {
         if (!isMounted) return; // Skip if component unmounted
 
-        console.log('Auto-refresh: Reloading frames for current selection...');
+        console.log('[AUTO-REFRESH] Checking for new data...');
         const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
 
         if (!product) {
-          console.warn('Auto-refresh skipped: No product selected');
+          console.warn('[AUTO-REFRESH] Skipped: No product selected');
           return;
         }
 
-        // Clear cache and reload frames for current domain/product
-        frameCache.clearForProduct(selectedDomain, product);
-
         try {
-          if (isMounted) setIsLoading(true);
-
           // Generate validated timestamps (only frames that exist)
           // Enforce subscription tier frame limit
           const maxAllowedFrames = getAnimationMaxFrames();
@@ -356,39 +375,54 @@ export const MainScreen = () => {
           if (!isMounted) return; // Check again after async operation
 
           if (validFrames.length === 0) {
-            console.error('Auto-refresh: No valid frames available');
-            if (isMounted) setIsLoading(false);
+            console.error('[AUTO-REFRESH] No valid frames available');
             return;
           }
 
-          // Prefetch all frames into cache
-          await frameCache.prefetchFrames(
-            validFrames.map(f => ({
-              url: f.url,
-              domain: selectedDomain,
-              product: product,
-              timestamp: f.timestamp,
-            }))
-          );
+          const newTimestamps = validFrames.map(f => f.timestamp);
+          const latestTimestamp = newTimestamps[newTimestamps.length - 1];
+
+          // Check if we already have the latest frame - if so, no new data
+          if (frameCache.hasLatestFrame(selectedDomain, product, latestTimestamp)) {
+            console.log('[AUTO-REFRESH] No new data available, skipping reload');
+            return;
+          }
+
+          console.log('[AUTO-REFRESH] New data detected, performing smart cache update...');
+
+          // Smart cache shift - only fetch what we don't have
+          const { toFetch, toRemove } = frameCache.shiftCache(selectedDomain, product, newTimestamps);
+
+          console.log(`[AUTO-REFRESH] Need to fetch ${toFetch.length} new frame(s), removed ${toRemove.length} old frame(s)`);
+
+          if (toFetch.length > 0) {
+            // Only prefetch the new frames we don't have
+            const framesToFetch = validFrames.filter(f => toFetch.includes(f.timestamp));
+            await frameCache.prefetchFrames(
+              framesToFetch.map(f => ({
+                url: f.url,
+                domain: selectedDomain,
+                product: product,
+                timestamp: f.timestamp,
+              }))
+            );
+          }
 
           if (!isMounted) return; // Check again after async operation
 
-          // Update available timestamps (only the validated ones)
-          const timestamps = validFrames.map(f => f.timestamp);
-          setAvailableTimestamps(timestamps);
-          setCurrentFrameIndex(timestamps.length - 1); // Move to latest
+          // Update available timestamps
+          setAvailableTimestamps(newTimestamps);
+          setCurrentFrameIndex(newTimestamps.length - 1); // Move to latest
 
-          console.log(`Auto-refresh: Loaded ${timestamps.length} valid frames`);
+          console.log(`[AUTO-REFRESH] Cache updated with ${newTimestamps.length} frames (fetched ${toFetch.length} new)`);
 
           // Load the latest frame
-          if (timestamps.length > 0) {
-            loadImageForTimestamp(timestamps[timestamps.length - 1]);
+          if (newTimestamps.length > 0) {
+            loadImageForTimestamp(newTimestamps[newTimestamps.length - 1]);
           }
         } catch (error) {
-          console.error('Error during auto-refresh:', error);
+          console.error('[AUTO-REFRESH] Error:', error);
           if (isMounted) setError('Auto-refresh failed. Will retry next interval.');
-        } finally {
-          if (isMounted) setIsLoading(false);
         }
       }, intervalMs);
     }

@@ -206,6 +206,71 @@ class FrameCache {
       keys: Array.from(this.cache.keys()),
     };
   }
+
+  /**
+   * Get all timestamps currently cached for a domain/product
+   * Useful for checking what's already cached before refresh
+   */
+  getCachedTimestamps(domain, product) {
+    const domainName = domain?.codName || domain;
+    const productName = product?.codName || product?.number?.toString() || product;
+    const prefix = `${domainName}_${productName}_`;
+
+    const timestamps = [];
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(prefix)) {
+        const timestamp = key.split('_').pop();
+        timestamps.push(timestamp);
+      }
+    }
+
+    // Sort chronologically
+    timestamps.sort();
+    return timestamps;
+  }
+
+  /**
+   * Shift cache by removing oldest frames and adding new ones
+   * This is more efficient than clearing and re-downloading everything
+   * Returns the number of new frames that need to be fetched
+   */
+  shiftCache(domain, product, newTimestamps) {
+    const cachedTimestamps = this.getCachedTimestamps(domain, product);
+
+    if (cachedTimestamps.length === 0) {
+      // No cache, need to fetch all
+      return { toFetch: newTimestamps, toRemove: [] };
+    }
+
+    // Find timestamps that are in cache but not in new list (old ones to remove)
+    const toRemove = cachedTimestamps.filter(ts => !newTimestamps.includes(ts));
+
+    // Find timestamps that are in new list but not in cache (new ones to fetch)
+    const toFetch = newTimestamps.filter(ts => !cachedTimestamps.includes(ts));
+
+    // Remove old timestamps from cache
+    const domainName = domain?.codName || domain;
+    const productName = product?.codName || product?.number?.toString() || product;
+
+    for (const timestamp of toRemove) {
+      const key = `${domainName}_${productName}_${timestamp}`;
+      this.cache.delete(key);
+    }
+
+    if (toRemove.length > 0) {
+      console.log(`[CACHE] Removed ${toRemove.length} old frame(s)`);
+    }
+
+    return { toFetch, toRemove };
+  }
+
+  /**
+   * Check if the latest cached timestamp matches the new latest timestamp
+   * Used to detect if new data is available
+   */
+  hasLatestFrame(domain, product, latestTimestamp) {
+    return this.has(domain, product, latestTimestamp);
+  }
 }
 
 // Export singleton instance

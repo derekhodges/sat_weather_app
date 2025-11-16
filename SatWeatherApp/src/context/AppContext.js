@@ -100,6 +100,7 @@ export const AppProvider = ({ children }) => {
     defaultViewMode: 'rgb', // 'rgb' or 'channel'
     defaultProduct: DEFAULT_RGB_PRODUCT, // can be RGB product or channel
     useLocalTime: false, // false = UTC, true = local time
+    channelDisplayMode: 'list', // 'list' or 'grid'
   });
 
   // Load saved preferences
@@ -188,6 +189,7 @@ export const AppProvider = ({ children }) => {
             defaultViewMode: 'rgb',
             defaultProduct: DEFAULT_RGB_PRODUCT,
             useLocalTime: false,
+            channelDisplayMode: 'list',
           };
           const mergedSettings = { ...defaultSettings, ...parsed };
           setSettings(mergedSettings);
@@ -251,6 +253,19 @@ export const AppProvider = ({ children }) => {
     setCurrentGeoData(null);
     setInspectorCoordinates(null);
     setInspectorDataValue(null);
+  };
+
+  // SECURITY: Clear all user location data (for privacy/logout)
+  const clearUserLocationData = async () => {
+    console.log('[PRIVACY] Clearing all user location data');
+    setUserLocation(null);
+    setSavedHomeLocation(null);
+    setShowLocationMarker(false);
+    try {
+      await AsyncStorage.removeItem('homeLocation');
+    } catch (error) {
+      console.error('Error clearing saved home location:', error);
+    }
   };
 
   const saveHomeLocation = async (location) => {
@@ -501,6 +516,7 @@ export const AppProvider = ({ children }) => {
     generateFavoriteName,
     updateSettings,
     setAsHome,
+    clearUserLocationData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
