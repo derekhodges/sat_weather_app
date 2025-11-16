@@ -28,6 +28,8 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     settings,
     hasLoadedOnce,
     setHasLoadedOnce,
+    isImageReadyForOverlays,
+    setIsImageReadyForOverlays,
     isInspectorMode,
     setCrosshairPosition,
     setImageContainerRef,
@@ -239,6 +241,10 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const handleImageALoad = () => {
     if (imageSlotA === currentImageUrl) {
       setHasLoadedOnce(true); // Mark that we've loaded an image
+      // Mark image as ready for overlays to render
+      if (!isImageReadyForOverlays) {
+        setIsImageReadyForOverlays(true);
+      }
       if (activeSlot === 'A') {
         // First load case - make visible instantly
         opacityA.value = 1;
@@ -278,6 +284,10 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const handleImageBLoad = () => {
     if (imageSlotB === currentImageUrl) {
       setHasLoadedOnce(true); // Mark that we've loaded an image
+      // Mark image as ready for overlays to render
+      if (!isImageReadyForOverlays) {
+        setIsImageReadyForOverlays(true);
+      }
       if (activeSlot === 'B') {
         // First load case (rare) - just make visible instantly
         opacityB.value = 1;
