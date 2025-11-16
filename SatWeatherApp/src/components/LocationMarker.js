@@ -81,27 +81,45 @@ export const LocationMarker = () => {
     const { scale = 1, translateX = 0, translateY = 0 } = currentImageTransform || {};
 
     // Convert image pixel coordinates to ABSOLUTE screen position
-    // accounting for current zoom/pan transform
+    // accounting for current zoom/pan transform AND letterboxing
 
-    // Step 1: Get pixel position relative to image center
+    // Step 1: Calculate the actual displayed size of the image (accounting for letterboxing)
+    // When using resizeMode="contain", the image is scaled to fit while maintaining aspect ratio
+    const imageAspect = actualImageSize.width / actualImageSize.height;
+    const screenAspect = screenWidth / screenHeight;
+
+    let displayedWidth, displayedHeight;
+
+    if (imageAspect > screenAspect) {
+      // Image is wider than screen (letterboxing on top/bottom)
+      displayedWidth = screenWidth;
+      displayedHeight = screenWidth / imageAspect;
+    } else {
+      // Image is taller than screen (letterboxing on sides)
+      displayedHeight = screenHeight;
+      displayedWidth = screenHeight * imageAspect;
+    }
+
+    // Step 2: Get pixel position relative to image center
     const imageCenterX = actualImageSize.width / 2;
     const imageCenterY = actualImageSize.height / 2;
     const relImageX = pixelCoords.x - imageCenterX;
     const relImageY = pixelCoords.y - imageCenterY;
 
-    // Step 2: Convert to screen space (map image proportions to screen)
-    const imageToScreenX = screenWidth / actualImageSize.width;
-    const imageToScreenY = screenHeight / actualImageSize.height;
-    const screenRelX = relImageX * imageToScreenX;
-    const screenRelY = relImageY * imageToScreenY;
+    // Step 3: Convert to screen space using the DISPLAYED size (not screen size)
+    const imageToDisplayX = displayedWidth / actualImageSize.width;
+    const imageToDisplayY = displayedHeight / actualImageSize.height;
+    const displayRelX = relImageX * imageToDisplayX;
+    const displayRelY = relImageY * imageToDisplayY;
 
-    // Step 3: Apply zoom/pan transform and add screen center offset
+    // Step 4: Apply zoom/pan transform and add screen center offset
     const screenCenterX = screenWidth / 2;
     const screenCenterY = screenHeight / 2;
-    const finalScreenX = screenRelX * scale + translateX + screenCenterX;
-    const finalScreenY = screenRelY * scale + translateY + screenCenterY;
+    const finalScreenX = displayRelX * scale + translateX + screenCenterX;
+    const finalScreenY = displayRelY * scale + translateY + screenCenterY;
 
     console.log(`[LOCATION] Marker at screen: (${finalScreenX.toFixed(1)}, ${finalScreenY.toFixed(1)}) (${formatCoordinates(userLat, userLon)})`);
+    console.log(`[LOCATION] Display size: ${displayedWidth.toFixed(0)}x${displayedHeight.toFixed(0)}, scale=${scale.toFixed(2)}`);
 
     return {
       screenX: finalScreenX,

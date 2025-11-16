@@ -86,28 +86,47 @@ export const CenterCrosshairInspector = () => {
     }
 
     // Convert screen crosshair position to image pixel position
-    // ACCOUNTING FOR ZOOM AND PAN TRANSFORMS
+    // ACCOUNTING FOR ZOOM AND PAN TRANSFORMS AND LETTERBOXING
     const { scale = 1, translateX = 0, translateY = 0 } = currentImageTransform || {};
 
-    // Step 1: Get crosshair position relative to screen center
-    const screenCenterX = screenWidth / 2;
-    const screenCenterY = screenHeight / 2;
-    const relX = crosshairX - screenCenterX;
-    const relY = crosshairY - screenCenterY;
+    // Step 1: Calculate the actual displayed size of the image (accounting for letterboxing)
+    // When using resizeMode="contain", the image is scaled to fit while maintaining aspect ratio
+    const imageAspect = actualImageSize.width / actualImageSize.height;
+    const screenAspect = screenWidth / screenHeight;
 
-    // Step 2: Apply inverse transform (undo translation and scale)
+    let displayedWidth, displayedHeight, offsetX, offsetY;
+
+    if (imageAspect > screenAspect) {
+      // Image is wider than screen (letterboxing on top/bottom)
+      displayedWidth = screenWidth;
+      displayedHeight = screenWidth / imageAspect;
+      offsetX = 0;
+      offsetY = (screenHeight - displayedHeight) / 2;
+    } else {
+      // Image is taller than screen (letterboxing on sides)
+      displayedHeight = screenHeight;
+      displayedWidth = screenHeight * imageAspect;
+      offsetX = (screenWidth - displayedWidth) / 2;
+      offsetY = 0;
+    }
+
+    // Step 2: Get crosshair position relative to the CENTER of the displayed image area
+    const displayCenterX = screenWidth / 2;
+    const displayCenterY = screenHeight / 2;
+    const relX = crosshairX - displayCenterX;
+    const relY = crosshairY - displayCenterY;
+
+    // Step 3: Apply inverse transform (undo pan and zoom)
     const transformedRelX = (relX - translateX) / scale;
     const transformedRelY = (relY - translateY) / scale;
 
-    // Step 3: Convert back to absolute screen position (as if not zoomed)
-    const untransformedScreenX = transformedRelX + screenCenterX;
-    const untransformedScreenY = transformedRelY + screenCenterY;
-
-    // Step 4: Map to image pixel coordinates
-    const imageX = (untransformedScreenX / screenWidth) * actualImageSize.width;
-    const imageY = (untransformedScreenY / screenHeight) * actualImageSize.height;
+    // Step 4: Convert from screen-relative to image-relative coordinates
+    // Map the transformed position to image pixel coordinates
+    const imageX = (transformedRelX / displayedWidth) * actualImageSize.width + actualImageSize.width / 2;
+    const imageY = (transformedRelY / displayedHeight) * actualImageSize.height + actualImageSize.height / 2;
 
     console.log(`[INSPECTOR] Transform: scale=${scale.toFixed(2)}, tx=${translateX.toFixed(1)}, ty=${translateY.toFixed(1)}`);
+    console.log(`[INSPECTOR] Display: ${displayedWidth.toFixed(0)}x${displayedHeight.toFixed(0)}, offset=(${offsetX.toFixed(0)}, ${offsetY.toFixed(0)})`);
     console.log(`[INSPECTOR] Screen (${crosshairX.toFixed(0)}, ${crosshairY.toFixed(0)}) -> Image (${imageX.toFixed(0)}, ${imageY.toFixed(0)})`);
 
     // Validate image coordinates are within bounds
