@@ -130,7 +130,14 @@ export const LocationMarker = () => {
 
   // Don't show if not enabled or no location
   if (!showLocationMarker || !userLocation) {
+    console.log(`[LOCATION] Not rendering: showMarker=${showLocationMarker}, hasUserLocation=${!!userLocation}`);
     return null;
+  }
+
+  // Log what we're about to render
+  console.log(`[LOCATION] Rendering marker: position=${JSON.stringify(markerPosition)}`);
+  if (markerPosition && !markerPosition.outOfBounds) {
+    console.log(`[LOCATION] Screen position: (${markerPosition.screenX?.toFixed(1)}, ${markerPosition.screenY?.toFixed(1)})`);
   }
 
   // Show out-of-bounds message if location is outside domain
@@ -146,13 +153,17 @@ export const LocationMarker = () => {
     );
   }
 
-  // If we have calculated position, use it; otherwise center on screen
-  const positionStyle = markerPosition
-    ? {
-        left: markerPosition.screenX - 30, // Center the 60x60 reticule
-        top: markerPosition.screenY - 30,
-      }
-    : {};
+  // Don't render if we couldn't calculate position (missing data)
+  if (!markerPosition || markerPosition.screenX === undefined) {
+    console.log('[LOCATION] Position not yet calculated, not rendering marker');
+    return null;
+  }
+
+  // Position the reticule at the calculated screen location
+  const positionStyle = {
+    left: markerPosition.screenX - 30, // Center the 60x60 reticule
+    top: markerPosition.screenY - 30,
+  };
 
   return (
     <View style={styles.container} pointerEvents="none">

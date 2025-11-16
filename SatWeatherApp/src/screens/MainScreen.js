@@ -232,6 +232,18 @@ export const MainScreen = () => {
     }
   }, [currentFrameIndex, availableTimestamps]);
 
+  // Re-evaluate geodata when actual image size becomes known (for dimension mismatch check)
+  useEffect(() => {
+    if (actualImageSize && availableTimestamps.length > 0 && currentFrameIndex >= 0) {
+      const timestamp = availableTimestamps[currentFrameIndex];
+      const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
+      if (timestamp && product) {
+        console.log(`[GEO] Re-evaluating geodata now that image size is known: ${actualImageSize.width}x${actualImageSize.height}`);
+        loadGeoDataForTimestamp(timestamp, product);
+      }
+    }
+  }, [actualImageSize]); // Only trigger when image size changes
+
   // Animation loop
   useEffect(() => {
     // Always clear any existing interval first to prevent multiple timers
@@ -432,9 +444,19 @@ export const MainScreen = () => {
       const domainId = selectedDomain?.id || selectedDomain?.name;
       const testData = loadTestGeoData(domainId);
 
-      if (testData && !testData.isFallback && actualImageSize) {
-        // Check if test data resolution matches actual image
+      if (testData && !testData.isFallback) {
+        // Check if test data resolution matches actual image (only if we know image size)
         const testResolution = testData.resolution;
+        console.log(`[GEO] Test data check: testRes=${JSON.stringify(testResolution)}, actualSize=${JSON.stringify(actualImageSize)}`);
+
+        if (!actualImageSize) {
+          console.log('[GEO] Image size not yet known, deferring test data validation');
+          // Load test data provisionally, will be re-evaluated when image size is known
+          setCurrentGeoData(testData);
+          console.log(`[GEO] Using TEST geodata provisionally for ${domainId} (pending size check)`);
+          return;
+        }
+
         const sizeMismatch = testResolution && (
           Math.abs(testResolution.width - actualImageSize.width) > 50 ||
           Math.abs(testResolution.height - actualImageSize.height) > 50
@@ -443,11 +465,11 @@ export const MainScreen = () => {
         if (sizeMismatch) {
           console.warn(`[GEO] TEST DATA MISMATCH: Test expects ${testResolution.width}x${testResolution.height}, actual image is ${actualImageSize.width}x${actualImageSize.height}`);
           console.warn('[GEO] Falling back to domain bounds for accurate positioning');
-          // Don't use test data if dimensions mismatch significantly
+          // Don't use test data if dimensions mismatch significantly - fall through to fetch from server
         } else {
           // Use test data for testing - this has real geostationary lat/lon grids
           setCurrentGeoData(testData);
-          console.log(`[GEO] Using TEST geodata for ${domainId}:`, {
+          console.log(`[GEO] Using TEST geodata for ${domainId} (size verified):`, {
             bounds: testData.bounds,
             projection: testData.projection,
             hasDataValues: !!testData.dataValues,
