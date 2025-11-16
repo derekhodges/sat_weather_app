@@ -30,6 +30,7 @@ export const CenterCrosshairInspector = () => {
     actualImageSize,
     setInspectorCoordinates,
     setInspectorDataValue,
+    currentImageTransform,
   } = useApp();
 
   const [centerValue, setCenterValue] = useState(null);
@@ -85,10 +86,39 @@ export const CenterCrosshairInspector = () => {
     }
 
     // Convert screen crosshair position to image pixel position
-    // This is a simplified version - ideally we'd account for zoom/pan transforms
-    // For now, assume crosshair is relative to the visible image area
-    const imageX = (crosshairX / screenWidth) * actualImageSize.width;
-    const imageY = (crosshairY / screenHeight) * actualImageSize.height;
+    // ACCOUNTING FOR ZOOM AND PAN TRANSFORMS
+    const { scale = 1, translateX = 0, translateY = 0 } = currentImageTransform || {};
+
+    // Step 1: Get crosshair position relative to screen center
+    const screenCenterX = screenWidth / 2;
+    const screenCenterY = screenHeight / 2;
+    const relX = crosshairX - screenCenterX;
+    const relY = crosshairY - screenCenterY;
+
+    // Step 2: Apply inverse transform (undo translation and scale)
+    const transformedRelX = (relX - translateX) / scale;
+    const transformedRelY = (relY - translateY) / scale;
+
+    // Step 3: Convert back to absolute screen position (as if not zoomed)
+    const untransformedScreenX = transformedRelX + screenCenterX;
+    const untransformedScreenY = transformedRelY + screenCenterY;
+
+    // Step 4: Map to image pixel coordinates
+    const imageX = (untransformedScreenX / screenWidth) * actualImageSize.width;
+    const imageY = (untransformedScreenY / screenHeight) * actualImageSize.height;
+
+    console.log(`[INSPECTOR] Transform: scale=${scale.toFixed(2)}, tx=${translateX.toFixed(1)}, ty=${translateY.toFixed(1)}`);
+    console.log(`[INSPECTOR] Screen (${crosshairX.toFixed(0)}, ${crosshairY.toFixed(0)}) -> Image (${imageX.toFixed(0)}, ${imageY.toFixed(0)})`);
+
+    // Validate image coordinates are within bounds
+    if (imageX < 0 || imageX >= actualImageSize.width || imageY < 0 || imageY >= actualImageSize.height) {
+      console.log(`[INSPECTOR] Crosshair outside image bounds`);
+      setCoordinates(null);
+      setInspectorCoordinates(null);
+      setDataValue(null);
+      setInspectorDataValue(null);
+      return;
+    }
 
     // Extract geo grids for geostationary projection
     const geoGrids = extractGeoGrids(currentGeoData);
@@ -132,7 +162,7 @@ export const CenterCrosshairInspector = () => {
       setCoordinates(null);
       setInspectorCoordinates(null);
     }
-  }, [isInspectorMode, crosshairX, crosshairY, currentGeoData, actualImageSize, screenWidth, screenHeight]);
+  }, [isInspectorMode, crosshairX, crosshairY, currentGeoData, actualImageSize, screenWidth, screenHeight, currentImageTransform]);
 
   // Sample when crosshair moves or image changes
   useEffect(() => {

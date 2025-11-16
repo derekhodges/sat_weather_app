@@ -64,6 +64,13 @@ export const AppProvider = ({ children }) => {
   const [inspectorCoordinates, setInspectorCoordinates] = useState(null); // {lat, lon} at crosshair position
   const [inspectorDataValue, setInspectorDataValue] = useState(null); // Data value at crosshair (brightness temp, etc.)
 
+  // Image transform state (zoom/pan) - needed for coordinate calculations
+  const [currentImageTransform, setCurrentImageTransform] = useState({
+    scale: 1,
+    translateX: 0,
+    translateY: 0,
+  });
+
   // Location
   const [userLocation, setUserLocation] = useState(null);
   const [savedHomeLocation, setSavedHomeLocation] = useState(null);
@@ -434,6 +441,7 @@ export const AppProvider = ({ children }) => {
     actualImageSize,
     inspectorCoordinates,
     inspectorDataValue,
+    currentImageTransform,
     userLocation,
     savedHomeLocation,
     showLocationMarker,
@@ -475,6 +483,7 @@ export const AppProvider = ({ children }) => {
     setActualImageSize,
     setInspectorCoordinates,
     setInspectorDataValue,
+    setCurrentImageTransform,
     clearGeoData,
     setUserLocation,
     saveHomeLocation,

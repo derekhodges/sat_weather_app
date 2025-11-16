@@ -39,6 +39,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     setCrosshairPosition,
     setImageContainerRef,
     actualImageSize,
+    setCurrentImageTransform,
   } = useApp();
 
   // Ref for the entire container (used for tap gestures)
@@ -144,6 +145,15 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     return { x: constrainedX, y: constrainedY };
   };
 
+  // Update transform state in context (for coordinate calculations)
+  const updateTransformState = (s, tx, ty) => {
+    setCurrentImageTransform({
+      scale: s,
+      translateX: tx,
+      translateY: ty,
+    });
+  };
+
   // Pinch gesture for zoom - more responsive with faster spring config
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
@@ -168,6 +178,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         savedTranslateX.value = constrained.x;
         savedTranslateY.value = constrained.y;
       }
+
+      // Report transform state to context for coordinate calculations
+      runOnJS(updateTransformState)(scale.value, translateX.value, translateY.value);
     });
 
   // Pan gesture for panning - more responsive with immediate feedback
@@ -187,6 +200,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       // Save final constrained position
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
+
+      // Report transform state to context for coordinate calculations
+      runOnJS(updateTransformState)(scale.value, translateX.value, translateY.value);
     });
 
   // Tap gesture for inspector mode - set crosshair position
@@ -370,6 +386,8 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     translateY.value = withTiming(0, { duration: 300 });
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
+    // Update transform state in context
+    updateTransformState(1, 0, 0);
   };
 
   // Reset zoom/pan instantly (for screenshots)
@@ -380,6 +398,8 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     translateY.value = 0;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
+    // Update transform state in context
+    updateTransformState(1, 0, 0);
   };
 
   // Expose reset functions via ref for parent component
