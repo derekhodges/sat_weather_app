@@ -18,9 +18,14 @@ import Animated, {
 import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
 import { BoundaryOverlay } from './BoundaryOverlay';
+import { VectorOverlay } from './VectorOverlay';
+import { GeoDataDebugInfo } from './GeoDataDebugInfo';
+
+// Enable/disable debug info overlay - set to true for testing
+const SHOW_GEODATA_DEBUG = false;
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
-  const { forceContainMode = false } = props;
+  const { forceContainMode = false, onImageLoad } = props;
   const {
     currentImageUrl,
     isLoading,
@@ -33,6 +38,8 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     isInspectorMode,
     setCrosshairPosition,
     setImageContainerRef,
+    actualImageSize,
+    setCurrentImageTransform,
   } = useApp();
 
   // Ref for the entire container (used for tap gestures)
@@ -138,12 +145,37 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     return { x: constrainedX, y: constrainedY };
   };
 
+  // Update transform state in context (for coordinate calculations)
+  const updateTransformState = (s, tx, ty) => {
+    setCurrentImageTransform({
+      scale: s,
+      translateX: tx,
+      translateY: ty,
+    });
+  };
+
+  // Throttle transform updates during gestures (16ms = ~60fps)
+  const lastUpdateTime = useRef(0);
+  const throttledUpdateTransform = (s, tx, ty) => {
+    const now = Date.now();
+    if (now - lastUpdateTime.current > 16) {
+      lastUpdateTime.current = now;
+      setCurrentImageTransform({
+        scale: s,
+        translateX: tx,
+        translateY: ty,
+      });
+    }
+  };
+
   // Pinch gesture for zoom - more responsive with faster spring config
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
       const newScale = savedScale.value * event.scale;
       // Limit scale during gesture
       scale.value = Math.max(1, Math.min(5, newScale));
+      // Update transform state in real-time (throttled)
+      runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
     })
     .onEnd(() => {
       // Limit scale and apply spring for smooth finish
@@ -162,6 +194,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         savedTranslateX.value = constrained.x;
         savedTranslateY.value = constrained.y;
       }
+
+      // Report transform state to context for coordinate calculations
+      runOnJS(updateTransformState)(scale.value, translateX.value, translateY.value);
     });
 
   // Pan gesture for panning - more responsive with immediate feedback
@@ -176,11 +211,16 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       const constrained = constrainTranslation(newX, newY, scale.value);
       translateX.value = constrained.x;
       translateY.value = constrained.y;
+      // Update transform state in real-time (throttled)
+      runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
     })
     .onEnd(() => {
       // Save final constrained position
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
+
+      // Report transform state to context for coordinate calculations
+      runOnJS(updateTransformState)(scale.value, translateX.value, translateY.value);
     });
 
   // Tap gesture for inspector mode - set crosshair position
@@ -238,12 +278,16 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   }, [currentImageUrl]);
 
   // Handle image load callbacks
-  const handleImageALoad = () => {
+  const handleImageALoad = (event) => {
     if (imageSlotA === currentImageUrl) {
       setHasLoadedOnce(true); // Mark that we've loaded an image
       // Mark image as ready for overlays to render
       if (!isImageReadyForOverlays) {
         setIsImageReadyForOverlays(true);
+      }
+      // Call the onImageLoad callback with image dimensions
+      if (onImageLoad && event?.nativeEvent?.source) {
+        onImageLoad(event);
       }
       if (activeSlot === 'A') {
         // First load case - make visible instantly
@@ -281,12 +325,16 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     }
   };
 
-  const handleImageBLoad = () => {
+  const handleImageBLoad = (event) => {
     if (imageSlotB === currentImageUrl) {
       setHasLoadedOnce(true); // Mark that we've loaded an image
       // Mark image as ready for overlays to render
       if (!isImageReadyForOverlays) {
         setIsImageReadyForOverlays(true);
+      }
+      // Call the onImageLoad callback with image dimensions
+      if (onImageLoad && event?.nativeEvent?.source) {
+        onImageLoad(event);
       }
       if (activeSlot === 'B') {
         // First load case (rare) - just make visible instantly
@@ -356,6 +404,8 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     translateY.value = withTiming(0, { duration: 300 });
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
+    // Update transform state in context
+    updateTransformState(1, 0, 0);
   };
 
   // Reset zoom/pan instantly (for screenshots)
@@ -366,6 +416,8 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     translateY.value = 0;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
+    // Update transform state in context
+    updateTransformState(1, 0, 0);
   };
 
   // Expose reset functions via ref for parent component
@@ -477,8 +529,20 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
           displayMode={effectiveDisplayMode}
         />
 
+        {/* Vector overlay for polygons (SPC outlooks, warnings, etc.) */}
+        <VectorOverlay
+          scale={scale}
+          translateX={translateX}
+          translateY={translateY}
+          displayMode={effectiveDisplayMode}
+          imageSize={actualImageSize}
+        />
+
         {/* Location marker overlay */}
         <LocationMarker />
+
+        {/* Debug info for geospatial data - shows projection, bounds, grid info */}
+        {SHOW_GEODATA_DEBUG && <GeoDataDebugInfo />}
       </View>
     </GestureDetector>
   );

@@ -1,0 +1,23 @@
+{
+  "bounds": {
+    "min_lat": 32.5,
+    "max_lat": 40.0,
+    "min_lon": -104.0,
+    "max_lon": -93.0
+  },
+  "projection": "geostationary",
+  "resolution": {
+    "width": 1800,
+    "height": 1080
+  },
+  "lat_grid": [
+    "REPLACE: 2D array of latitude values, one per pixel (or subsampled)",
+    "Rows = Y pixels (top to bottom), Columns = X pixels (left to right)",
+    "Example: [[40.0, 40.0, ...], [39.9, 39.9, ...], ...]"
+  ],
+  "lon_grid": [
+    "REPLACE: 2D array of longitude values, same structure as lat_grid",
+    "Western hemisphere = negative values",
+    "Example: [[-104.0, -103.9, ...], [-104.0, -103.9, ...], ...]"
+  ]
+}

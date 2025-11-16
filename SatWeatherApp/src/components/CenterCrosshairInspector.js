@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { analyzePixelColor } from '../utils/colorbarUtils';
 import { estimateColorFromCoordinates, samplePixelColor } from '../utils/pixelSampler';
+import { pixelToLatLon, formatCoordinates, getDataAtPixel, extractGeoGrids } from '../utils/projection';
 
 /**
  * CenterCrosshairInspector - RadarScope-style center crosshair
@@ -11,6 +12,8 @@ import { estimateColorFromCoordinates, samplePixelColor } from '../utils/pixelSa
  *
  * Now supports ACTUAL pixel sampling from the satellite image!
  * Falls back to estimation if sampling fails.
+ *
+ * Enhanced with geospatial coordinates and data value display.
  */
 export const CenterCrosshairInspector = () => {
   const {
@@ -23,9 +26,16 @@ export const CenterCrosshairInspector = () => {
     setCrosshairPosition,
     selectedDomain,
     imageContainerRef,
+    currentGeoData,
+    actualImageSize,
+    setInspectorCoordinates,
+    setInspectorDataValue,
+    currentImageTransform,
   } = useApp();
 
   const [centerValue, setCenterValue] = useState(null);
+  const [coordinates, setCoordinates] = useState(null);
+  const [dataValue, setDataValue] = useState(null);
 
   // Get screen dimensions
   const screenWidth = Dimensions.get('window').width;
@@ -57,6 +67,121 @@ export const CenterCrosshairInspector = () => {
   // Use crosshair position from context, or default to center
   const crosshairX = crosshairPosition?.x ?? screenWidth / 2;
   const crosshairY = crosshairPosition?.y ?? screenHeight / 2;
+
+  // Calculate geographic coordinates at crosshair position
+  useEffect(() => {
+    if (!isInspectorMode || !currentGeoData || !actualImageSize) {
+      setCoordinates(null);
+      setDataValue(null);
+      setInspectorCoordinates(null);
+      setInspectorDataValue(null);
+      return;
+    }
+
+    const { bounds, projection, dataValues, data_unit, data_name } = currentGeoData;
+
+    if (!bounds) {
+      setCoordinates(null);
+      return;
+    }
+
+    // Convert screen crosshair position to image pixel position
+    // ACCOUNTING FOR ZOOM AND PAN TRANSFORMS AND LETTERBOXING
+    const { scale = 1, translateX = 0, translateY = 0 } = currentImageTransform || {};
+
+    // Step 1: Calculate the actual displayed size of the image (accounting for letterboxing)
+    // When using resizeMode="contain", the image is scaled to fit while maintaining aspect ratio
+    const imageAspect = actualImageSize.width / actualImageSize.height;
+    const screenAspect = screenWidth / screenHeight;
+
+    let displayedWidth, displayedHeight, offsetX, offsetY;
+
+    if (imageAspect > screenAspect) {
+      // Image is wider than screen (letterboxing on top/bottom)
+      displayedWidth = screenWidth;
+      displayedHeight = screenWidth / imageAspect;
+      offsetX = 0;
+      offsetY = (screenHeight - displayedHeight) / 2;
+    } else {
+      // Image is taller than screen (letterboxing on sides)
+      displayedHeight = screenHeight;
+      displayedWidth = screenHeight * imageAspect;
+      offsetX = (screenWidth - displayedWidth) / 2;
+      offsetY = 0;
+    }
+
+    // Step 2: Get crosshair position relative to the CENTER of the displayed image area
+    const displayCenterX = screenWidth / 2;
+    const displayCenterY = screenHeight / 2;
+    const relX = crosshairX - displayCenterX;
+    const relY = crosshairY - displayCenterY;
+
+    // Step 3: Apply inverse transform (undo pan and zoom)
+    const transformedRelX = (relX - translateX) / scale;
+    const transformedRelY = (relY - translateY) / scale;
+
+    // Step 4: Convert from screen-relative to image-relative coordinates
+    // Map the transformed position to image pixel coordinates
+    const imageX = (transformedRelX / displayedWidth) * actualImageSize.width + actualImageSize.width / 2;
+    const imageY = (transformedRelY / displayedHeight) * actualImageSize.height + actualImageSize.height / 2;
+
+    console.log(`[INSPECTOR] Transform: scale=${scale.toFixed(2)}, tx=${translateX.toFixed(1)}, ty=${translateY.toFixed(1)}`);
+    console.log(`[INSPECTOR] Display: ${displayedWidth.toFixed(0)}x${displayedHeight.toFixed(0)}, offset=(${offsetX.toFixed(0)}, ${offsetY.toFixed(0)})`);
+    console.log(`[INSPECTOR] Screen (${crosshairX.toFixed(0)}, ${crosshairY.toFixed(0)}) -> Image (${imageX.toFixed(0)}, ${imageY.toFixed(0)})`);
+
+    // Validate image coordinates are within bounds
+    if (imageX < 0 || imageX >= actualImageSize.width || imageY < 0 || imageY >= actualImageSize.height) {
+      console.log(`[INSPECTOR] Crosshair outside image bounds`);
+      setCoordinates(null);
+      setInspectorCoordinates(null);
+      setDataValue(null);
+      setInspectorDataValue(null);
+      return;
+    }
+
+    // Extract geo grids for geostationary projection
+    const geoGrids = extractGeoGrids(currentGeoData);
+
+    // Convert pixel to lat/lon
+    const coords = pixelToLatLon(
+      imageX,
+      imageY,
+      bounds,
+      actualImageSize,
+      projection || 'plate_carree',
+      geoGrids
+    );
+
+    if (coords) {
+      setCoordinates(coords);
+      setInspectorCoordinates(coords);
+      console.log(`[INSPECTOR] Coordinates: ${formatCoordinates(coords.lat, coords.lon)}`);
+
+      // Get data value if available
+      if (dataValues && Array.isArray(dataValues)) {
+        const value = getDataAtPixel(dataValues, imageX, imageY, actualImageSize);
+        if (value !== null) {
+          const dataInfo = {
+            value,
+            unit: data_unit || '',
+            name: data_name || 'Value',
+          };
+          setDataValue(dataInfo);
+          setInspectorDataValue(dataInfo);
+          console.log(`[INSPECTOR] Data value: ${value} ${data_unit || ''}`);
+        } else {
+          setDataValue(null);
+          setInspectorDataValue(null);
+        }
+      } else {
+        setDataValue(null);
+        setInspectorDataValue(null);
+      }
+    } else {
+      setCoordinates(null);
+      setInspectorCoordinates(null);
+    }
+  }, [isInspectorMode, crosshairX, crosshairY, currentGeoData, actualImageSize, screenWidth, screenHeight, currentImageTransform]);
 
   // Sample when crosshair moves or image changes
   useEffect(() => {
@@ -159,17 +284,38 @@ export const CenterCrosshairInspector = () => {
       </View>
 
       {/* Fixed value display box in bottom right corner */}
-      {centerValue && (
+      {(centerValue || coordinates || dataValue) && (
         <View style={styles.valueBoxBottomRight}>
-          <View style={styles.valueBoxHeader}>
-            <View style={[styles.colorIndicator, { backgroundColor: centerValue.color }]} />
-            <View style={styles.valueTextContainer}>
-              <Text style={styles.valueLabel}>{centerValue.label}</Text>
-              {centerValue.description && (
-                <Text style={styles.valueDescription}>{centerValue.description}</Text>
-              )}
+          {/* Coordinates display */}
+          {coordinates && (
+            <View style={styles.coordinatesContainer}>
+              <Text style={styles.coordinatesLabel}>
+                {formatCoordinates(coordinates.lat, coordinates.lon)}
+              </Text>
             </View>
-          </View>
+          )}
+
+          {/* Data value display (brightness temp, etc.) */}
+          {dataValue && (
+            <View style={styles.dataValueContainer}>
+              <Text style={styles.dataValueLabel}>
+                {dataValue.name}: {dataValue.value.toFixed(1)} {dataValue.unit}
+              </Text>
+            </View>
+          )}
+
+          {/* Pixel color analysis */}
+          {centerValue && (
+            <View style={styles.valueBoxHeader}>
+              <View style={[styles.colorIndicator, { backgroundColor: centerValue.color }]} />
+              <View style={styles.valueTextContainer}>
+                <Text style={styles.valueLabel}>{centerValue.label}</Text>
+                {centerValue.description && (
+                  <Text style={styles.valueDescription}>{centerValue.description}</Text>
+                )}
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -297,6 +443,29 @@ const styles = StyleSheet.create({
   valueBoxHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+  },
+  coordinatesContainer: {
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    paddingBottom: 6,
+  },
+  coordinatesLabel: {
+    color: '#00ff00',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'monospace',
+  },
+  dataValueContainer: {
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    paddingBottom: 6,
+  },
+  dataValueLabel: {
+    color: '#ffcc00',
+    fontSize: 12,
+    fontWeight: '600',
   },
   colorIndicator: {
     width: 16,

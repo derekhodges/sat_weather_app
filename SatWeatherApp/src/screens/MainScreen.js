@@ -35,6 +35,7 @@ import {
   formatTimestamp,
 } from '../utils/imageService';
 import { frameCache } from '../utils/frameCache';
+import { fetchGeoData, createFallbackGeoData, loadTestGeoData, enableTestMode } from '../utils/geoDataService';
 
 export const MainScreen = () => {
   const {
@@ -62,6 +63,7 @@ export const MainScreen = () => {
     isInspectorMode,
     setIsInspectorMode,
     setInspectorValue,
+    userLocation,
     setUserLocation,
     savedHomeLocation,
     setShowFavoritesMenu,
@@ -74,6 +76,12 @@ export const MainScreen = () => {
     showLocationMarker,
     showSettingsModal,
     setShowSettingsModal,
+    setCurrentGeoData,
+    setActualImageSize,
+    clearGeoData,
+    currentGeoData,
+    actualImageSize,
+    isImageReadyForOverlays,
   } = useApp();
 
   const { getAnimationMaxFrames } = useAuth();
@@ -88,8 +96,46 @@ export const MainScreen = () => {
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
   const [isRotating, setIsRotating] = useState(false); // Track rotation state
+  const [isLocationLoading, setIsLocationLoading] = useState(false); // Prevent double location fetches
 
   const isLandscape = layoutOrientation === 'landscape';
+  const locationRefreshIntervalRef = useRef(null);
+
+  // Fetch user location once on mount and cache it (avoids delay when clicking location button)
+  useEffect(() => {
+    const fetchAndCacheLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('[LOCATION] Permission not granted, will request on first use');
+          return;
+        }
+
+        console.log('[LOCATION] Fetching initial location...');
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced, // Faster than High accuracy
+        });
+        setUserLocation(location.coords);
+        console.log(`[LOCATION] Cached initial location: ${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}`);
+      } catch (error) {
+        console.warn('[LOCATION] Failed to fetch initial location:', error.message);
+      }
+    };
+
+    fetchAndCacheLocation();
+
+    // Optional: Refresh location every 5 minutes in background
+    locationRefreshIntervalRef.current = setInterval(() => {
+      console.log('[LOCATION] Background refresh...');
+      fetchAndCacheLocation();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => {
+      if (locationRefreshIntervalRef.current) {
+        clearInterval(locationRefreshIntervalRef.current);
+      }
+    };
+  }, [setUserLocation]);
 
   // Listen for orientation changes with loading overlay to prevent jarring transitions
   useEffect(() => {
@@ -223,6 +269,18 @@ export const MainScreen = () => {
       loadImageForTimestamp(timestamp);
     }
   }, [currentFrameIndex, availableTimestamps]);
+
+  // Re-evaluate geodata when actual image size becomes known (for dimension mismatch check)
+  useEffect(() => {
+    if (actualImageSize && availableTimestamps.length > 0 && currentFrameIndex >= 0) {
+      const timestamp = availableTimestamps[currentFrameIndex];
+      const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
+      if (timestamp && product) {
+        console.log(`[GEO] Re-evaluating geodata now that image size is known: ${actualImageSize.width}x${actualImageSize.height}`);
+        loadGeoDataForTimestamp(timestamp, product);
+      }
+    }
+  }, [actualImageSize]); // Only trigger when image size changes
 
   // Animation loop
   useEffect(() => {
@@ -392,6 +450,9 @@ export const MainScreen = () => {
       // Use cached URL - no loading delay!
       setCurrentImageUrl(cachedUrl);
       setImageTimestamp(timestamp);
+
+      // Load geospatial data for this frame (non-blocking)
+      loadGeoDataForTimestamp(timestamp, product);
       return;
     }
 
@@ -407,7 +468,98 @@ export const MainScreen = () => {
 
     setCurrentImageUrl(url);
     setImageTimestamp(timestamp);
+
+    // Load geospatial data for this frame (non-blocking)
+    loadGeoDataForTimestamp(timestamp, product);
   };
+
+  // Load geospatial metadata for current frame
+  const loadGeoDataForTimestamp = async (timestamp, product) => {
+    try {
+      console.log(`[GEO] Loading geospatial data for ${timestamp}`);
+
+      // First, try to load test data from bundled samples (for testing geostationary projection)
+      const domainId = selectedDomain?.id || selectedDomain?.name;
+      const testData = loadTestGeoData(domainId);
+
+      if (testData && !testData.isFallback) {
+        // Check if test data resolution matches actual image (only if we know image size)
+        const testResolution = testData.resolution;
+        console.log(`[GEO] Test data check: testRes=${JSON.stringify(testResolution)}, actualSize=${JSON.stringify(actualImageSize)}`);
+
+        if (!actualImageSize) {
+          console.log('[GEO] Image size not yet known, deferring test data validation');
+          // Load test data provisionally, will be re-evaluated when image size is known
+          setCurrentGeoData(testData);
+          console.log(`[GEO] Using TEST geodata provisionally for ${domainId} (pending size check)`);
+          return;
+        }
+
+        const sizeMismatch = testResolution && (
+          Math.abs(testResolution.width - actualImageSize.width) > 50 ||
+          Math.abs(testResolution.height - actualImageSize.height) > 50
+        );
+
+        if (sizeMismatch) {
+          console.warn(`[GEO] TEST DATA MISMATCH: Test expects ${testResolution.width}x${testResolution.height}, actual image is ${actualImageSize.width}x${actualImageSize.height}`);
+          console.warn('[GEO] Falling back to domain bounds for accurate positioning');
+          // Don't use test data if dimensions mismatch significantly - fall through to fetch from server
+        } else {
+          // Use test data for testing - this has real geostationary lat/lon grids
+          setCurrentGeoData(testData);
+          console.log(`[GEO] Using TEST geodata for ${domainId} (size verified):`, {
+            bounds: testData.bounds,
+            projection: testData.projection,
+            hasDataValues: !!testData.dataValues,
+            hasLatLonGrid: !!(testData.lat_grid && testData.lon_grid),
+            gridSize: testData.lat_grid ? `${testData.lat_grid.length}x${testData.lat_grid[0]?.length}` : 'none',
+            testResolution: testResolution,
+            actualImageSize: actualImageSize,
+            isFallback: testData.isFallback,
+          });
+          return; // Successfully loaded test data
+        }
+      }
+
+      // Attempt to fetch geospatial metadata from server
+      const geoData = await fetchGeoData(selectedDomain, product, timestamp, {
+        timeout: 10000,
+        useCache: true,
+        fallbackToDomainBounds: true, // Use domain bounds if no metadata file
+      });
+
+      if (geoData) {
+        setCurrentGeoData(geoData);
+        console.log(`[GEO] Loaded geospatial data:`, {
+          bounds: geoData.bounds,
+          projection: geoData.projection,
+          hasDataValues: !!geoData.dataValues,
+          hasLatLonGrid: !!(geoData.lat_grid && geoData.lon_grid),
+          polygonCount: geoData.polygons?.length || 0,
+          isFallback: geoData.isFallback,
+        });
+      } else {
+        // Create fallback from domain bounds
+        const fallbackData = createFallbackGeoData(selectedDomain);
+        setCurrentGeoData(fallbackData);
+        console.log(`[GEO] Using fallback geospatial data from domain bounds`);
+      }
+    } catch (error) {
+      console.warn('[GEO] Error loading geospatial data:', error);
+      // Set fallback data on error
+      const fallbackData = createFallbackGeoData(selectedDomain);
+      setCurrentGeoData(fallbackData);
+    }
+  };
+
+  // Handle image load complete - capture actual image dimensions
+  const handleImageLoad = useCallback((event) => {
+    if (event?.nativeEvent?.source) {
+      const { width, height } = event.nativeEvent.source;
+      console.log(`[IMAGE] Loaded with dimensions: ${width}x${height}`);
+      setActualImageSize({ width, height });
+    }
+  }, [setActualImageSize]);
 
   const handleRefresh = useCallback(async () => {
     // Clear cache and reload
@@ -435,33 +587,51 @@ export const MainScreen = () => {
   }, [isInspectorMode, setIsInspectorMode, setInspectorValue]);
 
   const handleLocationPress = async () => {
-    // If location is already shown, just toggle it off
-    if (showLocationMarker) {
+    console.log('[LOCATION BUTTON] Pressed, showLocationMarker:', showLocationMarker, 'hasLocation:', !!userLocation);
+
+    // If we already have a cached location, just toggle visibility instantly
+    if (userLocation) {
+      console.log('[LOCATION BUTTON] Using cached location, toggling visibility');
       toggleLocationMarker();
       return;
     }
 
-    // Otherwise, get location and show marker
+    // No cached location yet - need to fetch it
+    if (isLocationLoading) {
+      console.log('[LOCATION BUTTON] Ignoring - already loading');
+      return;
+    }
+
+    setIsLocationLoading(true);
     try {
+      console.log('[LOCATION BUTTON] No cached location, requesting permissions...');
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
         console.warn('Location permission denied');
         setError('Location permission is required to use this feature.');
+        setIsLocationLoading(false);
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
+      console.log('[LOCATION BUTTON] Getting current position...');
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      console.log('[LOCATION BUTTON] Got location:', location.coords);
+
       setUserLocation(location.coords);
       toggleLocationMarker(); // Show the marker
 
       console.log(
-        'Location set:',
+        '[LOCATION BUTTON] Location cached and marker toggled:',
         `Lat: ${location.coords.latitude.toFixed(4)}, Lon: ${location.coords.longitude.toFixed(4)}`
       );
     } catch (error) {
       console.error('Error getting location:', error);
       setError('Unable to get current location');
+    } finally {
+      setIsLocationLoading(false);
     }
   };
 
@@ -812,6 +982,7 @@ export const MainScreen = () => {
                     <View style={styles.content}>
                       <SatelliteImageViewer
                         ref={satelliteImageViewerRef}
+                        onImageLoad={handleImageLoad}
                       />
                       <DrawingOverlay
                         externalColorPicker={showColorPickerFromButton}
@@ -923,6 +1094,7 @@ export const MainScreen = () => {
               <View style={styles.content}>
                 <SatelliteImageViewer
                   ref={satelliteImageViewerRef}
+                  onImageLoad={handleImageLoad}
                 />
                 <DrawingOverlay
                   externalColorPicker={showColorPickerFromButton}

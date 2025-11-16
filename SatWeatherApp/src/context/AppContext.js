@@ -57,6 +57,20 @@ export const AppProvider = ({ children }) => {
   const [crosshairPosition, setCrosshairPosition] = useState(null); // {x, y} coordinates for crosshair
   const [imageContainerRef, setImageContainerRef] = useState(null); // Ref to image container for pixel sampling
 
+  // Geospatial data
+  const [currentGeoData, setCurrentGeoData] = useState(null); // Current frame's geospatial metadata
+  const [showVectorOverlays, setShowVectorOverlays] = useState(true); // Toggle for vector overlays (SPC outlooks, warnings)
+  const [actualImageSize, setActualImageSize] = useState(null); // Actual loaded image dimensions {width, height}
+  const [inspectorCoordinates, setInspectorCoordinates] = useState(null); // {lat, lon} at crosshair position
+  const [inspectorDataValue, setInspectorDataValue] = useState(null); // Data value at crosshair (brightness temp, etc.)
+
+  // Image transform state (zoom/pan) - needed for coordinate calculations
+  const [currentImageTransform, setCurrentImageTransform] = useState({
+    scale: 1,
+    translateX: 0,
+    translateY: 0,
+  });
+
   // Location
   const [userLocation, setUserLocation] = useState(null);
   const [savedHomeLocation, setSavedHomeLocation] = useState(null);
@@ -227,6 +241,16 @@ export const AppProvider = ({ children }) => {
 
   const toggleLocationMarker = () => {
     setShowLocationMarker(prev => !prev);
+  };
+
+  const toggleVectorOverlays = () => {
+    setShowVectorOverlays(prev => !prev);
+  };
+
+  const clearGeoData = () => {
+    setCurrentGeoData(null);
+    setInspectorCoordinates(null);
+    setInspectorDataValue(null);
   };
 
   const saveHomeLocation = async (location) => {
@@ -412,6 +436,12 @@ export const AppProvider = ({ children }) => {
     inspectorValue,
     crosshairPosition,
     imageContainerRef,
+    currentGeoData,
+    showVectorOverlays,
+    actualImageSize,
+    inspectorCoordinates,
+    inspectorDataValue,
+    currentImageTransform,
     userLocation,
     savedHomeLocation,
     showLocationMarker,
@@ -447,6 +477,14 @@ export const AppProvider = ({ children }) => {
     setInspectorValue,
     setCrosshairPosition,
     setImageContainerRef,
+    setCurrentGeoData,
+    setShowVectorOverlays,
+    toggleVectorOverlays,
+    setActualImageSize,
+    setInspectorCoordinates,
+    setInspectorDataValue,
+    setCurrentImageTransform,
+    clearGeoData,
     setUserLocation,
     saveHomeLocation,
     toggleLocationMarker,
