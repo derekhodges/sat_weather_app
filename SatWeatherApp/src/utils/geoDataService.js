@@ -385,39 +385,50 @@ export const getRiskLevelStrokeWidth = (riskType) => {
 };
 
 /**
- * Load test geodata from local sample files
- * This bypasses network fetch and uses bundled sample data for testing
- * @param {string} domainId - Domain ID (conus, oklahoma, texas)
+ * Load geodata from bundled JSON files
+ * Place your geodata files in src/data/samples/ with naming: {domain}_geodata.json
+ * @param {string} domainId - Domain ID (conus, oklahoma, texas, etc.)
  * @returns {Object|null} Validated geodata or null
  */
 export const loadTestGeoData = (domainId) => {
-  // Import sample data based on domain
+  // Import geodata based on domain
   // Using require for static analysis compatibility
   try {
-    let sampleData = null;
+    let geoData = null;
 
-    if (domainId === 'conus' || domainId === 'CONUS') {
-      sampleData = require('../data/samples/conus_geodata.json');
-    } else if (domainId === 'oklahoma' || domainId === 'Oklahoma') {
-      sampleData = require('../data/samples/oklahoma_geodata.json');
+    // Normalize domain ID for matching
+    const normalizedId = domainId?.toLowerCase();
+
+    // Load geodata for this domain
+    // ADD MORE DOMAINS HERE as you create geodata files:
+    if (normalizedId === 'conus') {
+      geoData = require('../data/samples/conus_geodata.json');
+    } else if (normalizedId === 'oklahoma') {
+      geoData = require('../data/samples/oklahoma_geodata.json');
     }
+    // Example for adding more domains:
+    // else if (normalizedId === 'texas') {
+    //   geoData = require('../data/samples/texas_geodata.json');
+    // }
+    // else if (normalizedId === 'greatplains') {
+    //   geoData = require('../data/samples/greatplains_geodata.json');
+    // }
 
-    if (sampleData) {
-      console.log(`[TEST] Loaded sample geodata for ${domainId}`);
-      const validated = validateGeoData(sampleData, null);
+    if (geoData) {
+      console.log(`[GEODATA] Loaded geodata for ${domainId}`);
+      const validated = validateGeoData(geoData, null);
       validated.isFallback = false;
       validated.metadata = {
         ...validated.metadata,
-        testMode: true,
         loadedAt: new Date().toISOString(),
       };
       return validated;
     }
 
-    console.log(`[TEST] No sample data available for ${domainId}`);
+    console.log(`[GEODATA] No geodata file for ${domainId}, using domain bounds`);
     return null;
   } catch (error) {
-    console.warn(`[TEST] Error loading sample data for ${domainId}:`, error.message);
+    console.warn(`[GEODATA] Error loading geodata for ${domainId}:`, error.message);
     return null;
   }
 };
