@@ -15,7 +15,21 @@ export const LocationMarker = () => {
 
   // Calculate marker position based on geospatial data
   const markerPosition = useMemo(() => {
-    if (!userLocation || !currentGeoData || !actualImageSize || !isImageReadyForOverlays) {
+    // Debug logging for missing dependencies
+    if (!userLocation) {
+      console.log('[LOCATION] No user location set');
+      return null;
+    }
+    if (!currentGeoData) {
+      console.log('[LOCATION] No geo data loaded');
+      return null;
+    }
+    if (!actualImageSize) {
+      console.log('[LOCATION] No image size available');
+      return null;
+    }
+    if (!isImageReadyForOverlays) {
+      console.log('[LOCATION] Image not ready for overlays');
       return null;
     }
 

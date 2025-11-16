@@ -78,6 +78,9 @@ export const MainScreen = () => {
     setCurrentGeoData,
     setActualImageSize,
     clearGeoData,
+    currentGeoData,
+    actualImageSize,
+    isImageReadyForOverlays,
   } = useApp();
 
   const { getAnimationMaxFrames } = useAuth();
@@ -508,14 +511,18 @@ export const MainScreen = () => {
   }, [isInspectorMode, setIsInspectorMode, setInspectorValue]);
 
   const handleLocationPress = async () => {
+    console.log('[LOCATION BUTTON] Pressed, showLocationMarker:', showLocationMarker);
+
     // If location is already shown, just toggle it off
     if (showLocationMarker) {
+      console.log('[LOCATION BUTTON] Toggling off');
       toggleLocationMarker();
       return;
     }
 
     // Otherwise, get location and show marker
     try {
+      console.log('[LOCATION BUTTON] Requesting permissions...');
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
@@ -524,14 +531,24 @@ export const MainScreen = () => {
         return;
       }
 
+      console.log('[LOCATION BUTTON] Getting current position...');
       const location = await Location.getCurrentPositionAsync({});
+      console.log('[LOCATION BUTTON] Got location:', location.coords);
+
       setUserLocation(location.coords);
       toggleLocationMarker(); // Show the marker
 
       console.log(
-        'Location set:',
+        '[LOCATION BUTTON] Location set and marker toggled:',
         `Lat: ${location.coords.latitude.toFixed(4)}, Lon: ${location.coords.longitude.toFixed(4)}`
       );
+
+      // Debug state
+      console.log('[LOCATION BUTTON] State check:', {
+        hasGeoData: !!currentGeoData,
+        hasImageSize: !!actualImageSize,
+        isImageReady: isImageReadyForOverlays,
+      });
     } catch (error) {
       console.error('Error getting location:', error);
       setError('Unable to get current location');

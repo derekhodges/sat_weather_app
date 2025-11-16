@@ -154,12 +154,28 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     });
   };
 
+  // Throttle transform updates during gestures (16ms = ~60fps)
+  const lastUpdateTime = useRef(0);
+  const throttledUpdateTransform = (s, tx, ty) => {
+    const now = Date.now();
+    if (now - lastUpdateTime.current > 16) {
+      lastUpdateTime.current = now;
+      setCurrentImageTransform({
+        scale: s,
+        translateX: tx,
+        translateY: ty,
+      });
+    }
+  };
+
   // Pinch gesture for zoom - more responsive with faster spring config
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
       const newScale = savedScale.value * event.scale;
       // Limit scale during gesture
       scale.value = Math.max(1, Math.min(5, newScale));
+      // Update transform state in real-time (throttled)
+      runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
     })
     .onEnd(() => {
       // Limit scale and apply spring for smooth finish
@@ -195,6 +211,8 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       const constrained = constrainTranslation(newX, newY, scale.value);
       translateX.value = constrained.x;
       translateY.value = constrained.y;
+      // Update transform state in real-time (throttled)
+      runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
     })
     .onEnd(() => {
       // Save final constrained position
