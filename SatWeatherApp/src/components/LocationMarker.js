@@ -10,6 +10,7 @@ export const LocationMarker = () => {
     currentGeoData,
     actualImageSize,
     isImageReadyForOverlays,
+    currentImageTransform,
   } = useApp();
 
   // Calculate marker position based on geospatial data
@@ -58,22 +59,42 @@ export const LocationMarker = () => {
       return null;
     }
 
-    // Convert image pixel coordinates to screen percentage
-    // This gives us position relative to the image container
+    // Get screen dimensions
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
 
-    const xPercent = (pixelCoords.x / actualImageSize.width) * 100;
-    const yPercent = (pixelCoords.y / actualImageSize.height) * 100;
+    // Get current transform (zoom/pan)
+    const { scale = 1, translateX = 0, translateY = 0 } = currentImageTransform || {};
 
-    console.log(`[LOCATION] Marker at: ${xPercent.toFixed(1)}%, ${yPercent.toFixed(1)}% (${formatCoordinates(userLat, userLon)})`);
+    // Convert image pixel coordinates to ABSOLUTE screen position
+    // accounting for current zoom/pan transform
+
+    // Step 1: Get pixel position relative to image center
+    const imageCenterX = actualImageSize.width / 2;
+    const imageCenterY = actualImageSize.height / 2;
+    const relImageX = pixelCoords.x - imageCenterX;
+    const relImageY = pixelCoords.y - imageCenterY;
+
+    // Step 2: Convert to screen space (map image proportions to screen)
+    const imageToScreenX = screenWidth / actualImageSize.width;
+    const imageToScreenY = screenHeight / actualImageSize.height;
+    const screenRelX = relImageX * imageToScreenX;
+    const screenRelY = relImageY * imageToScreenY;
+
+    // Step 3: Apply zoom/pan transform and add screen center offset
+    const screenCenterX = screenWidth / 2;
+    const screenCenterY = screenHeight / 2;
+    const finalScreenX = screenRelX * scale + translateX + screenCenterX;
+    const finalScreenY = screenRelY * scale + translateY + screenCenterY;
+
+    console.log(`[LOCATION] Marker at screen: (${finalScreenX.toFixed(1)}, ${finalScreenY.toFixed(1)}) (${formatCoordinates(userLat, userLon)})`);
 
     return {
-      xPercent,
-      yPercent,
+      screenX: finalScreenX,
+      screenY: finalScreenY,
       outOfBounds: false,
     };
-  }, [userLocation, currentGeoData, actualImageSize, isImageReadyForOverlays]);
+  }, [userLocation, currentGeoData, actualImageSize, isImageReadyForOverlays, currentImageTransform]);
 
   // Don't show if not enabled or no location
   if (!showLocationMarker || !userLocation) {
@@ -96,9 +117,8 @@ export const LocationMarker = () => {
   // If we have calculated position, use it; otherwise center on screen
   const positionStyle = markerPosition
     ? {
-        left: `${markerPosition.xPercent}%`,
-        top: `${markerPosition.yPercent}%`,
-        transform: [{ translateX: -30 }, { translateY: -30 }], // Center the 60x60 reticule
+        left: markerPosition.screenX - 30, // Center the 60x60 reticule
+        top: markerPosition.screenY - 30,
       }
     : {};
 
