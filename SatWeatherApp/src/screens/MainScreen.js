@@ -35,7 +35,7 @@ import {
   formatTimestamp,
 } from '../utils/imageService';
 import { frameCache } from '../utils/frameCache';
-import { fetchGeoData, createFallbackGeoData } from '../utils/geoDataService';
+import { fetchGeoData, createFallbackGeoData, loadTestGeoData, enableTestMode } from '../utils/geoDataService';
 
 export const MainScreen = () => {
   const {
@@ -424,7 +424,25 @@ export const MainScreen = () => {
     try {
       console.log(`[GEO] Loading geospatial data for ${timestamp}`);
 
-      // Attempt to fetch geospatial metadata
+      // First, try to load test data from bundled samples (for testing geostationary projection)
+      const domainId = selectedDomain?.id || selectedDomain?.name;
+      const testData = loadTestGeoData(domainId);
+
+      if (testData && !testData.isFallback) {
+        // Use test data for testing - this has real geostationary lat/lon grids
+        setCurrentGeoData(testData);
+        console.log(`[GEO] Using TEST geodata for ${domainId}:`, {
+          bounds: testData.bounds,
+          projection: testData.projection,
+          hasDataValues: !!testData.dataValues,
+          hasLatLonGrid: !!(testData.lat_grid && testData.lon_grid),
+          gridSize: testData.lat_grid ? `${testData.lat_grid.length}x${testData.lat_grid[0]?.length}` : 'none',
+          isFallback: testData.isFallback,
+        });
+        return; // Successfully loaded test data
+      }
+
+      // Attempt to fetch geospatial metadata from server
       const geoData = await fetchGeoData(selectedDomain, product, timestamp, {
         timeout: 10000,
         useCache: true,
@@ -437,6 +455,7 @@ export const MainScreen = () => {
           bounds: geoData.bounds,
           projection: geoData.projection,
           hasDataValues: !!geoData.dataValues,
+          hasLatLonGrid: !!(geoData.lat_grid && geoData.lon_grid),
           polygonCount: geoData.polygons?.length || 0,
           isFallback: geoData.isFallback,
         });

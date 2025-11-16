@@ -200,9 +200,14 @@ const validateGeoData = (geoData, domain) => {
     projection: 'plate_carree',
     resolution: null,
     dataValues: null,
+    data_unit: '',
+    data_name: '',
     polygons: [],
     timestamp: null,
     isFallback: false,
+    lat_grid: null,
+    lon_grid: null,
+    metadata: {},
   };
 
   // Validate bounds
@@ -217,12 +222,15 @@ const validateGeoData = (geoData, domain) => {
     validated.bounds = { ...domain.bounds };
   }
 
-  // Validate projection
+  // Validate projection - now includes geostationary
   if (geoData.projection) {
     const proj = geoData.projection.toLowerCase();
-    validated.projection = ['mercator', 'plate_carree', 'equirectangular'].includes(proj)
-      ? (proj === 'equirectangular' ? 'plate_carree' : proj)
-      : 'plate_carree';
+    const validProjections = ['mercator', 'plate_carree', 'equirectangular', 'geostationary'];
+    if (validProjections.includes(proj)) {
+      validated.projection = proj === 'equirectangular' ? 'plate_carree' : proj;
+    } else {
+      validated.projection = 'plate_carree';
+    }
   }
 
   // Validate resolution
@@ -241,6 +249,18 @@ const validateGeoData = (geoData, domain) => {
     }
   }
 
+  // Validate data unit and name
+  validated.data_unit = geoData.data_unit || '';
+  validated.data_name = geoData.data_name || '';
+
+  // Validate lat/lon grids for geostationary projection
+  if (geoData.lat_grid && Array.isArray(geoData.lat_grid) && Array.isArray(geoData.lat_grid[0])) {
+    validated.lat_grid = geoData.lat_grid;
+  }
+  if (geoData.lon_grid && Array.isArray(geoData.lon_grid) && Array.isArray(geoData.lon_grid[0])) {
+    validated.lon_grid = geoData.lon_grid;
+  }
+
   // Validate polygons
   if (Array.isArray(geoData.polygons)) {
     validated.polygons = geoData.polygons.map(polygon => ({
@@ -252,6 +272,11 @@ const validateGeoData = (geoData, domain) => {
 
   // Timestamp
   validated.timestamp = geoData.timestamp || null;
+
+  // Metadata
+  if (geoData.metadata && typeof geoData.metadata === 'object') {
+    validated.metadata = geoData.metadata;
+  }
 
   return validated;
 };
@@ -358,3 +383,60 @@ export const getRiskLevelStrokeWidth = (riskType) => {
 
   return widths[riskType?.toUpperCase()] || 2;
 };
+
+/**
+ * Load test geodata from local sample files
+ * This bypasses network fetch and uses bundled sample data for testing
+ * @param {string} domainId - Domain ID (conus, oklahoma, texas)
+ * @returns {Object|null} Validated geodata or null
+ */
+export const loadTestGeoData = (domainId) => {
+  // Import sample data based on domain
+  // Using require for static analysis compatibility
+  try {
+    let sampleData = null;
+
+    if (domainId === 'conus' || domainId === 'CONUS') {
+      sampleData = require('../data/samples/conus_geodata.json');
+    } else if (domainId === 'oklahoma' || domainId === 'Oklahoma') {
+      sampleData = require('../data/samples/oklahoma_geodata.json');
+    }
+
+    if (sampleData) {
+      console.log(`[TEST] Loaded sample geodata for ${domainId}`);
+      const validated = validateGeoData(sampleData, null);
+      validated.isFallback = false;
+      validated.metadata = {
+        ...validated.metadata,
+        testMode: true,
+        loadedAt: new Date().toISOString(),
+      };
+      return validated;
+    }
+
+    console.log(`[TEST] No sample data available for ${domainId}`);
+    return null;
+  } catch (error) {
+    console.warn(`[TEST] Error loading sample data for ${domainId}:`, error.message);
+    return null;
+  }
+};
+
+/**
+ * Check if test mode is enabled
+ * Can be controlled via AppContext or environment
+ * @returns {boolean}
+ */
+let testModeEnabled = false;
+
+export const enableTestMode = () => {
+  testModeEnabled = true;
+  console.log('[TEST] Test mode enabled - using local sample data');
+};
+
+export const disableTestMode = () => {
+  testModeEnabled = false;
+  console.log('[TEST] Test mode disabled');
+};
+
+export const isTestModeEnabled = () => testModeEnabled;

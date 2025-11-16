@@ -19,6 +19,10 @@ import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
 import { BoundaryOverlay } from './BoundaryOverlay';
 import { VectorOverlay } from './VectorOverlay';
+import { GeoDataDebugInfo } from './GeoDataDebugInfo';
+
+// Enable/disable debug info overlay - set to true for testing
+const SHOW_GEODATA_DEBUG = __DEV__ || true;
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { forceContainMode = false, onImageLoad } = props;
@@ -498,6 +502,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
 
         {/* Location marker overlay */}
         <LocationMarker />
+
+        {/* Debug info for geospatial data - shows projection, bounds, grid info */}
+        {SHOW_GEODATA_DEBUG && <GeoDataDebugInfo />}
       </View>
     </GestureDetector>
   );
