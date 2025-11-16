@@ -35,6 +35,7 @@ import {
   formatTimestamp,
 } from '../utils/imageService';
 import { frameCache } from '../utils/frameCache';
+import { fetchGeoData, createFallbackGeoData } from '../utils/geoDataService';
 
 export const MainScreen = () => {
   const {
@@ -74,6 +75,9 @@ export const MainScreen = () => {
     showLocationMarker,
     showSettingsModal,
     setShowSettingsModal,
+    setCurrentGeoData,
+    setActualImageSize,
+    clearGeoData,
   } = useApp();
 
   const { getAnimationMaxFrames } = useAuth();
@@ -392,6 +396,9 @@ export const MainScreen = () => {
       // Use cached URL - no loading delay!
       setCurrentImageUrl(cachedUrl);
       setImageTimestamp(timestamp);
+
+      // Load geospatial data for this frame (non-blocking)
+      loadGeoDataForTimestamp(timestamp, product);
       return;
     }
 
@@ -407,7 +414,54 @@ export const MainScreen = () => {
 
     setCurrentImageUrl(url);
     setImageTimestamp(timestamp);
+
+    // Load geospatial data for this frame (non-blocking)
+    loadGeoDataForTimestamp(timestamp, product);
   };
+
+  // Load geospatial metadata for current frame
+  const loadGeoDataForTimestamp = async (timestamp, product) => {
+    try {
+      console.log(`[GEO] Loading geospatial data for ${timestamp}`);
+
+      // Attempt to fetch geospatial metadata
+      const geoData = await fetchGeoData(selectedDomain, product, timestamp, {
+        timeout: 10000,
+        useCache: true,
+        fallbackToDomainBounds: true, // Use domain bounds if no metadata file
+      });
+
+      if (geoData) {
+        setCurrentGeoData(geoData);
+        console.log(`[GEO] Loaded geospatial data:`, {
+          bounds: geoData.bounds,
+          projection: geoData.projection,
+          hasDataValues: !!geoData.dataValues,
+          polygonCount: geoData.polygons?.length || 0,
+          isFallback: geoData.isFallback,
+        });
+      } else {
+        // Create fallback from domain bounds
+        const fallbackData = createFallbackGeoData(selectedDomain);
+        setCurrentGeoData(fallbackData);
+        console.log(`[GEO] Using fallback geospatial data from domain bounds`);
+      }
+    } catch (error) {
+      console.warn('[GEO] Error loading geospatial data:', error);
+      // Set fallback data on error
+      const fallbackData = createFallbackGeoData(selectedDomain);
+      setCurrentGeoData(fallbackData);
+    }
+  };
+
+  // Handle image load complete - capture actual image dimensions
+  const handleImageLoad = useCallback((event) => {
+    if (event?.nativeEvent?.source) {
+      const { width, height } = event.nativeEvent.source;
+      console.log(`[IMAGE] Loaded with dimensions: ${width}x${height}`);
+      setActualImageSize({ width, height });
+    }
+  }, [setActualImageSize]);
 
   const handleRefresh = useCallback(async () => {
     // Clear cache and reload
@@ -812,6 +866,7 @@ export const MainScreen = () => {
                     <View style={styles.content}>
                       <SatelliteImageViewer
                         ref={satelliteImageViewerRef}
+                        onImageLoad={handleImageLoad}
                       />
                       <DrawingOverlay
                         externalColorPicker={showColorPickerFromButton}
@@ -923,6 +978,7 @@ export const MainScreen = () => {
               <View style={styles.content}>
                 <SatelliteImageViewer
                   ref={satelliteImageViewerRef}
+                  onImageLoad={handleImageLoad}
                 />
                 <DrawingOverlay
                   externalColorPicker={showColorPickerFromButton}

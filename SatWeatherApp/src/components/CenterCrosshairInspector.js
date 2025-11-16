@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { analyzePixelColor } from '../utils/colorbarUtils';
 import { estimateColorFromCoordinates, samplePixelColor } from '../utils/pixelSampler';
+import { pixelToLatLon, formatCoordinates, getDataAtPixel } from '../utils/projection';
 
 /**
  * CenterCrosshairInspector - RadarScope-style center crosshair
@@ -11,6 +12,8 @@ import { estimateColorFromCoordinates, samplePixelColor } from '../utils/pixelSa
  *
  * Now supports ACTUAL pixel sampling from the satellite image!
  * Falls back to estimation if sampling fails.
+ *
+ * Enhanced with geospatial coordinates and data value display.
  */
 export const CenterCrosshairInspector = () => {
   const {
@@ -23,9 +26,15 @@ export const CenterCrosshairInspector = () => {
     setCrosshairPosition,
     selectedDomain,
     imageContainerRef,
+    currentGeoData,
+    actualImageSize,
+    setInspectorCoordinates,
+    setInspectorDataValue,
   } = useApp();
 
   const [centerValue, setCenterValue] = useState(null);
+  const [coordinates, setCoordinates] = useState(null);
+  const [dataValue, setDataValue] = useState(null);
 
   // Get screen dimensions
   const screenWidth = Dimensions.get('window').width;
@@ -57,6 +66,69 @@ export const CenterCrosshairInspector = () => {
   // Use crosshair position from context, or default to center
   const crosshairX = crosshairPosition?.x ?? screenWidth / 2;
   const crosshairY = crosshairPosition?.y ?? screenHeight / 2;
+
+  // Calculate geographic coordinates at crosshair position
+  useEffect(() => {
+    if (!isInspectorMode || !currentGeoData || !actualImageSize) {
+      setCoordinates(null);
+      setDataValue(null);
+      setInspectorCoordinates(null);
+      setInspectorDataValue(null);
+      return;
+    }
+
+    const { bounds, projection, dataValues, data_unit, data_name } = currentGeoData;
+
+    if (!bounds) {
+      setCoordinates(null);
+      return;
+    }
+
+    // Convert screen crosshair position to image pixel position
+    // This is a simplified version - ideally we'd account for zoom/pan transforms
+    // For now, assume crosshair is relative to the visible image area
+    const imageX = (crosshairX / screenWidth) * actualImageSize.width;
+    const imageY = (crosshairY / screenHeight) * actualImageSize.height;
+
+    // Convert pixel to lat/lon
+    const coords = pixelToLatLon(
+      imageX,
+      imageY,
+      bounds,
+      actualImageSize,
+      projection || 'plate_carree'
+    );
+
+    if (coords) {
+      setCoordinates(coords);
+      setInspectorCoordinates(coords);
+      console.log(`[INSPECTOR] Coordinates: ${formatCoordinates(coords.lat, coords.lon)}`);
+
+      // Get data value if available
+      if (dataValues && Array.isArray(dataValues)) {
+        const value = getDataAtPixel(dataValues, imageX, imageY, actualImageSize);
+        if (value !== null) {
+          const dataInfo = {
+            value,
+            unit: data_unit || '',
+            name: data_name || 'Value',
+          };
+          setDataValue(dataInfo);
+          setInspectorDataValue(dataInfo);
+          console.log(`[INSPECTOR] Data value: ${value} ${data_unit || ''}`);
+        } else {
+          setDataValue(null);
+          setInspectorDataValue(null);
+        }
+      } else {
+        setDataValue(null);
+        setInspectorDataValue(null);
+      }
+    } else {
+      setCoordinates(null);
+      setInspectorCoordinates(null);
+    }
+  }, [isInspectorMode, crosshairX, crosshairY, currentGeoData, actualImageSize, screenWidth, screenHeight]);
 
   // Sample when crosshair moves or image changes
   useEffect(() => {
@@ -159,17 +231,38 @@ export const CenterCrosshairInspector = () => {
       </View>
 
       {/* Fixed value display box in bottom right corner */}
-      {centerValue && (
+      {(centerValue || coordinates || dataValue) && (
         <View style={styles.valueBoxBottomRight}>
-          <View style={styles.valueBoxHeader}>
-            <View style={[styles.colorIndicator, { backgroundColor: centerValue.color }]} />
-            <View style={styles.valueTextContainer}>
-              <Text style={styles.valueLabel}>{centerValue.label}</Text>
-              {centerValue.description && (
-                <Text style={styles.valueDescription}>{centerValue.description}</Text>
-              )}
+          {/* Coordinates display */}
+          {coordinates && (
+            <View style={styles.coordinatesContainer}>
+              <Text style={styles.coordinatesLabel}>
+                {formatCoordinates(coordinates.lat, coordinates.lon)}
+              </Text>
             </View>
-          </View>
+          )}
+
+          {/* Data value display (brightness temp, etc.) */}
+          {dataValue && (
+            <View style={styles.dataValueContainer}>
+              <Text style={styles.dataValueLabel}>
+                {dataValue.name}: {dataValue.value.toFixed(1)} {dataValue.unit}
+              </Text>
+            </View>
+          )}
+
+          {/* Pixel color analysis */}
+          {centerValue && (
+            <View style={styles.valueBoxHeader}>
+              <View style={[styles.colorIndicator, { backgroundColor: centerValue.color }]} />
+              <View style={styles.valueTextContainer}>
+                <Text style={styles.valueLabel}>{centerValue.label}</Text>
+                {centerValue.description && (
+                  <Text style={styles.valueDescription}>{centerValue.description}</Text>
+                )}
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -297,6 +390,29 @@ const styles = StyleSheet.create({
   valueBoxHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+  },
+  coordinatesContainer: {
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    paddingBottom: 6,
+  },
+  coordinatesLabel: {
+    color: '#00ff00',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'monospace',
+  },
+  dataValueContainer: {
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    paddingBottom: 6,
+  },
+  dataValueLabel: {
+    color: '#ffcc00',
+    fontSize: 12,
+    fontWeight: '600',
   },
   colorIndicator: {
     width: 16,

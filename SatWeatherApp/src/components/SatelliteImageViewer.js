@@ -18,9 +18,10 @@ import Animated, {
 import { useApp } from '../context/AppContext';
 import { LocationMarker } from './LocationMarker';
 import { BoundaryOverlay } from './BoundaryOverlay';
+import { VectorOverlay } from './VectorOverlay';
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
-  const { forceContainMode = false } = props;
+  const { forceContainMode = false, onImageLoad } = props;
   const {
     currentImageUrl,
     isLoading,
@@ -33,6 +34,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     isInspectorMode,
     setCrosshairPosition,
     setImageContainerRef,
+    actualImageSize,
   } = useApp();
 
   // Ref for the entire container (used for tap gestures)
@@ -238,12 +240,16 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   }, [currentImageUrl]);
 
   // Handle image load callbacks
-  const handleImageALoad = () => {
+  const handleImageALoad = (event) => {
     if (imageSlotA === currentImageUrl) {
       setHasLoadedOnce(true); // Mark that we've loaded an image
       // Mark image as ready for overlays to render
       if (!isImageReadyForOverlays) {
         setIsImageReadyForOverlays(true);
+      }
+      // Call the onImageLoad callback with image dimensions
+      if (onImageLoad && event?.nativeEvent?.source) {
+        onImageLoad(event);
       }
       if (activeSlot === 'A') {
         // First load case - make visible instantly
@@ -281,12 +287,16 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     }
   };
 
-  const handleImageBLoad = () => {
+  const handleImageBLoad = (event) => {
     if (imageSlotB === currentImageUrl) {
       setHasLoadedOnce(true); // Mark that we've loaded an image
       // Mark image as ready for overlays to render
       if (!isImageReadyForOverlays) {
         setIsImageReadyForOverlays(true);
+      }
+      // Call the onImageLoad callback with image dimensions
+      if (onImageLoad && event?.nativeEvent?.source) {
+        onImageLoad(event);
       }
       if (activeSlot === 'B') {
         // First load case (rare) - just make visible instantly
@@ -475,6 +485,15 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
           translateX={translateX}
           translateY={translateY}
           displayMode={effectiveDisplayMode}
+        />
+
+        {/* Vector overlay for polygons (SPC outlooks, warnings, etc.) */}
+        <VectorOverlay
+          scale={scale}
+          translateX={translateX}
+          translateY={translateY}
+          displayMode={effectiveDisplayMode}
+          imageSize={actualImageSize}
         />
 
         {/* Location marker overlay */}
