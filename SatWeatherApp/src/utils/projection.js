@@ -1,6 +1,6 @@
 /**
  * Projection Utilities - Convert between geographic coordinates and pixel coordinates
- * Supports Mercator and Plate Carree (equirectangular) projections
+ * Supports Mercator, Plate Carree (equirectangular), and Geostationary projections
  */
 
 /**
@@ -9,10 +9,11 @@
  * @param {number} lon - Longitude in degrees
  * @param {Object} bounds - Geographic bounds {minLat, maxLat, minLon, maxLon}
  * @param {Object} imageSize - Image dimensions {width, height}
- * @param {string} projection - Projection type ('mercator' or 'plate_carree')
+ * @param {string} projection - Projection type ('mercator', 'plate_carree', or 'geostationary')
+ * @param {Object} geoGrids - For geostationary: {lat_grid, lon_grid} 2D arrays
  * @returns {Object} Pixel coordinates {x, y}
  */
-export const latLonToPixel = (lat, lon, bounds, imageSize, projection = 'plate_carree') => {
+export const latLonToPixel = (lat, lon, bounds, imageSize, projection = 'plate_carree', geoGrids = null) => {
   if (!bounds || !imageSize) {
     console.warn('latLonToPixel: Missing bounds or imageSize');
     return null;
@@ -20,6 +21,11 @@ export const latLonToPixel = (lat, lon, bounds, imageSize, projection = 'plate_c
 
   const { minLat, maxLat, minLon, maxLon } = bounds;
   const { width, height } = imageSize;
+
+  if (projection === 'geostationary' && geoGrids) {
+    // Geostationary projection - search grid for closest lat/lon match
+    return latLonToPixelGeostationary(lat, lon, geoGrids, imageSize);
+  }
 
   // Calculate x coordinate (longitude to pixel) - same for both projections
   const lonRange = maxLon - minLon;
@@ -56,10 +62,11 @@ export const latLonToPixel = (lat, lon, bounds, imageSize, projection = 'plate_c
  * @param {number} y - Y pixel coordinate
  * @param {Object} bounds - Geographic bounds {minLat, maxLat, minLon, maxLon}
  * @param {Object} imageSize - Image dimensions {width, height}
- * @param {string} projection - Projection type ('mercator' or 'plate_carree')
+ * @param {string} projection - Projection type ('mercator', 'plate_carree', or 'geostationary')
+ * @param {Object} geoGrids - For geostationary: {lat_grid, lon_grid} 2D arrays
  * @returns {Object} Geographic coordinates {lat, lon}
  */
-export const pixelToLatLon = (x, y, bounds, imageSize, projection = 'plate_carree') => {
+export const pixelToLatLon = (x, y, bounds, imageSize, projection = 'plate_carree', geoGrids = null) => {
   if (!bounds || !imageSize) {
     console.warn('pixelToLatLon: Missing bounds or imageSize');
     return null;
@@ -67,6 +74,11 @@ export const pixelToLatLon = (x, y, bounds, imageSize, projection = 'plate_carre
 
   const { minLat, maxLat, minLon, maxLon } = bounds;
   const { width, height } = imageSize;
+
+  if (projection === 'geostationary' && geoGrids) {
+    // Geostationary projection - look up from grid
+    return pixelToLatLonGeostationary(x, y, geoGrids, imageSize);
+  }
 
   // Calculate longitude (pixel to longitude) - same for both projections
   const lonRange = maxLon - minLon;
@@ -256,4 +268,150 @@ export const formatLongitude = (lon, decimals = 2) => {
  */
 export const formatCoordinates = (lat, lon, decimals = 2) => {
   return `${formatLatitude(lat, decimals)}, ${formatLongitude(lon, decimals)}`;
+};
+
+/**
+ * Convert pixel coordinates to lat/lon using geostationary grid lookup
+ * @param {number} x - X pixel coordinate
+ * @param {number} y - Y pixel coordinate
+ * @param {Object} geoGrids - {lat_grid, lon_grid} 2D arrays
+ * @param {Object} imageSize - Image dimensions {width, height}
+ * @returns {Object} Geographic coordinates {lat, lon}
+ */
+export const pixelToLatLonGeostationary = (x, y, geoGrids, imageSize) => {
+  if (!geoGrids || !geoGrids.lat_grid || !geoGrids.lon_grid) {
+    console.warn('pixelToLatLonGeostationary: Missing lat/lon grids');
+    return null;
+  }
+
+  const { lat_grid, lon_grid } = geoGrids;
+  const { width, height } = imageSize;
+
+  const gridRows = lat_grid.length;
+  const gridCols = lat_grid[0]?.length || 0;
+
+  if (gridRows === 0 || gridCols === 0) {
+    return null;
+  }
+
+  // Map pixel coordinates to grid indices (with interpolation)
+  const gridX = (x / width) * (gridCols - 1);
+  const gridY = (y / height) * (gridRows - 1);
+
+  // Get integer indices for bilinear interpolation
+  const x0 = Math.floor(gridX);
+  const y0 = Math.floor(gridY);
+  const x1 = Math.min(x0 + 1, gridCols - 1);
+  const y1 = Math.min(y0 + 1, gridRows - 1);
+
+  // Calculate interpolation weights
+  const wx = gridX - x0;
+  const wy = gridY - y0;
+
+  // Bounds check
+  if (y0 < 0 || y0 >= gridRows || x0 < 0 || x0 >= gridCols) {
+    return null;
+  }
+
+  // Bilinear interpolation for lat
+  const lat00 = lat_grid[y0][x0];
+  const lat01 = lat_grid[y0][x1];
+  const lat10 = lat_grid[y1][x0];
+  const lat11 = lat_grid[y1][x1];
+
+  const lat = (1 - wx) * (1 - wy) * lat00 +
+              wx * (1 - wy) * lat01 +
+              (1 - wx) * wy * lat10 +
+              wx * wy * lat11;
+
+  // Bilinear interpolation for lon
+  const lon00 = lon_grid[y0][x0];
+  const lon01 = lon_grid[y0][x1];
+  const lon10 = lon_grid[y1][x0];
+  const lon11 = lon_grid[y1][x1];
+
+  const lon = (1 - wx) * (1 - wy) * lon00 +
+              wx * (1 - wy) * lon01 +
+              (1 - wx) * wy * lon10 +
+              wx * wy * lon11;
+
+  return { lat, lon };
+};
+
+/**
+ * Convert lat/lon to pixel coordinates using geostationary grid search
+ * Uses nearest-neighbor search in the grid
+ * @param {number} targetLat - Target latitude
+ * @param {number} targetLon - Target longitude
+ * @param {Object} geoGrids - {lat_grid, lon_grid} 2D arrays
+ * @param {Object} imageSize - Image dimensions {width, height}
+ * @returns {Object} Pixel coordinates {x, y}
+ */
+export const latLonToPixelGeostationary = (targetLat, targetLon, geoGrids, imageSize) => {
+  if (!geoGrids || !geoGrids.lat_grid || !geoGrids.lon_grid) {
+    console.warn('latLonToPixelGeostationary: Missing lat/lon grids');
+    return null;
+  }
+
+  const { lat_grid, lon_grid } = geoGrids;
+  const { width, height } = imageSize;
+
+  const gridRows = lat_grid.length;
+  const gridCols = lat_grid[0]?.length || 0;
+
+  if (gridRows === 0 || gridCols === 0) {
+    return null;
+  }
+
+  // Find the grid cell containing or closest to the target lat/lon
+  // This is a simple search - could be optimized with spatial indexing
+  let minDist = Infinity;
+  let bestRow = 0;
+  let bestCol = 0;
+
+  // Sample every few points for speed (grid is already reduced)
+  const step = 1; // Check every point since grid is already sampled
+
+  for (let row = 0; row < gridRows; row += step) {
+    for (let col = 0; col < gridCols; col += step) {
+      const gridLat = lat_grid[row][col];
+      const gridLon = lon_grid[row][col];
+
+      // Calculate distance (simple Euclidean in lat/lon space)
+      const dist = Math.sqrt(
+        Math.pow(gridLat - targetLat, 2) +
+        Math.pow(gridLon - targetLon, 2)
+      );
+
+      if (dist < minDist) {
+        minDist = dist;
+        bestRow = row;
+        bestCol = col;
+      }
+    }
+  }
+
+  // Convert grid indices back to pixel coordinates
+  const x = (bestCol / (gridCols - 1)) * width;
+  const y = (bestRow / (gridRows - 1)) * height;
+
+  return { x, y };
+};
+
+/**
+ * Create geo grids object from geoData
+ * @param {Object} geoData - Full geospatial data object
+ * @returns {Object|null} Geo grids {lat_grid, lon_grid} or null
+ */
+export const extractGeoGrids = (geoData) => {
+  if (!geoData) return null;
+
+  if (geoData.lat_grid && geoData.lon_grid) {
+    return {
+      lat_grid: geoData.lat_grid,
+      lon_grid: geoData.lon_grid,
+    };
+  }
+
+  return null;
 };

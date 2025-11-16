@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { analyzePixelColor } from '../utils/colorbarUtils';
 import { estimateColorFromCoordinates, samplePixelColor } from '../utils/pixelSampler';
-import { pixelToLatLon, formatCoordinates, getDataAtPixel } from '../utils/projection';
+import { pixelToLatLon, formatCoordinates, getDataAtPixel, extractGeoGrids } from '../utils/projection';
 
 /**
  * CenterCrosshairInspector - RadarScope-style center crosshair
@@ -90,13 +90,17 @@ export const CenterCrosshairInspector = () => {
     const imageX = (crosshairX / screenWidth) * actualImageSize.width;
     const imageY = (crosshairY / screenHeight) * actualImageSize.height;
 
+    // Extract geo grids for geostationary projection
+    const geoGrids = extractGeoGrids(currentGeoData);
+
     // Convert pixel to lat/lon
     const coords = pixelToLatLon(
       imageX,
       imageY,
       bounds,
       actualImageSize,
-      projection || 'plate_carree'
+      projection || 'plate_carree',
+      geoGrids
     );
 
     if (coords) {

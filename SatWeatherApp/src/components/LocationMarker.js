@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Dimensions, Text } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { latLonToPixel, isPointInBounds, formatCoordinates } from '../utils/projection';
+import { latLonToPixel, isPointInBounds, formatCoordinates, extractGeoGrids } from '../utils/projection';
 
 export const LocationMarker = () => {
   const {
@@ -36,13 +36,17 @@ export const LocationMarker = () => {
       return { outOfBounds: true };
     }
 
+    // Extract geo grids for geostationary projection
+    const geoGrids = extractGeoGrids(currentGeoData);
+
     // Convert lat/lon to pixel coordinates within the image
     const pixelCoords = latLonToPixel(
       userLocation.coords.latitude,
       userLocation.coords.longitude,
       bounds,
       actualImageSize,
-      projection || 'plate_carree'
+      projection || 'plate_carree',
+      geoGrids
     );
 
     if (!pixelCoords) {
