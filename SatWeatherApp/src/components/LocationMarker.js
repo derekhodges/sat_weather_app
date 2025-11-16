@@ -24,12 +24,17 @@ export const LocationMarker = () => {
       return null;
     }
 
+    // userLocation is the coords object directly (has latitude, longitude properties)
+    const userLat = userLocation.latitude;
+    const userLon = userLocation.longitude;
+
+    if (userLat === undefined || userLon === undefined) {
+      console.warn('[LOCATION] Invalid user location:', userLocation);
+      return null;
+    }
+
     // Check if user location is within domain bounds
-    const isInBounds = isPointInBounds(
-      userLocation.coords.latitude,
-      userLocation.coords.longitude,
-      bounds
-    );
+    const isInBounds = isPointInBounds(userLat, userLon, bounds);
 
     if (!isInBounds) {
       console.log('[LOCATION] User location is outside domain bounds');
@@ -41,8 +46,8 @@ export const LocationMarker = () => {
 
     // Convert lat/lon to pixel coordinates within the image
     const pixelCoords = latLonToPixel(
-      userLocation.coords.latitude,
-      userLocation.coords.longitude,
+      userLat,
+      userLon,
       bounds,
       actualImageSize,
       projection || 'plate_carree',
@@ -61,7 +66,7 @@ export const LocationMarker = () => {
     const xPercent = (pixelCoords.x / actualImageSize.width) * 100;
     const yPercent = (pixelCoords.y / actualImageSize.height) * 100;
 
-    console.log(`[LOCATION] Marker at: ${xPercent.toFixed(1)}%, ${yPercent.toFixed(1)}% (${formatCoordinates(userLocation.coords.latitude, userLocation.coords.longitude)})`);
+    console.log(`[LOCATION] Marker at: ${xPercent.toFixed(1)}%, ${yPercent.toFixed(1)}% (${formatCoordinates(userLat, userLon)})`);
 
     return {
       xPercent,
