@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
-  Pressable,
   Dimensions,
   Image,
   ActivityIndicator,
@@ -17,6 +16,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  runOnJS,
 } from 'react-native-reanimated';
 import { useApp } from '../context/AppContext';
 import { DOMAINS } from '../constants/domains';
@@ -55,6 +55,9 @@ export const DomainMapSelector = () => {
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const [imageOffset, setImageOffset] = useState({ x: 0, y: 0 });
   const [useGoesWest, setUseGoesWest] = useState(false); // Default to GOES East (current satellite)
+
+  // Store computed dot positions for hit testing
+  const dotPositionsRef = useRef([]);
 
   // Zoom/pan state
   const scale = useSharedValue(1);
@@ -145,7 +148,7 @@ export const DomainMapSelector = () => {
     setDomainMapMode(null);
   };
 
-  const handleRegionSelect = (regionKey) => {
+  const handleRegionSelect = useCallback((regionKey) => {
     // Create a domain object for the selected region
     const regionBounds = ALL_REGIONS[regionKey];
     const { width, height } = getRegionSize(regionKey);
@@ -169,7 +172,7 @@ export const DomainMapSelector = () => {
     };
 
     handleDomainSelect(domain);
-  };
+  }, [handleDomainSelect]);
 
   const handleImageLoad = (event) => {
     const { width: sourceWidth, height: sourceHeight } = event.nativeEvent.source;
@@ -205,6 +208,38 @@ export const DomainMapSelector = () => {
     setContainerDimensions({ width, height });
   };
 
+  // Check if a tap hit a dot and handle selection
+  const checkDotHit = useCallback((tapX, tapY) => {
+    // Transform tap coordinates back to unzoomed/unpanned space
+    // The tap is in screen space, but dots are in transformed space
+    // Reverse the transform: first undo scale, then undo translate
+    const currentScale = scale.value;
+    const currentTranslateX = translateX.value;
+    const currentTranslateY = translateY.value;
+
+    // The center of the container is the transform origin
+    const containerCenterX = containerDimensions.width / 2;
+    const containerCenterY = containerDimensions.height / 2;
+
+    // Convert tap from screen space to content space
+    // 1. Offset by translation
+    // 2. Scale from center
+    const contentX = (tapX - containerCenterX - currentTranslateX) / currentScale + containerCenterX;
+    const contentY = (tapY - containerCenterY - currentTranslateY) / currentScale + containerCenterY;
+
+    // Check each dot position
+    const hitRadius = 20; // Tap tolerance in content space
+    for (const dot of dotPositionsRef.current) {
+      const dx = contentX - dot.x;
+      const dy = contentY - dot.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance <= hitRadius) {
+        handleRegionSelect(dot.regionKey);
+        return;
+      }
+    }
+  }, [containerDimensions, handleRegionSelect, scale, translateX, translateY]);
+
   // Gesture handlers for zoom/pan using new Gesture API
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
@@ -218,7 +253,8 @@ export const DomainMapSelector = () => {
     });
 
   const panGesture = Gesture.Pan()
-    .minDistance(10) // Require some movement to start panning (allows taps to work)
+    .minPointers(1)
+    .maxPointers(2)
     .onStart(() => {
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
@@ -241,8 +277,18 @@ export const DomainMapSelector = () => {
       savedTranslateY.value = translateY.value;
     });
 
-  // Combine gestures to run simultaneously
-  const composedGesture = Gesture.Simultaneous(panGesture, pinchGesture);
+  // Tap gesture for selecting dots - only fires if pan/pinch don't consume the touch
+  const tapGesture = Gesture.Tap()
+    .onEnd((event) => {
+      'worklet';
+      runOnJS(checkDotHit)(event.x, event.y);
+    });
+
+  // Race between pan/pinch and tap - pan/pinch take priority if movement detected
+  const composedGesture = Gesture.Race(
+    Gesture.Simultaneous(panGesture, pinchGesture),
+    tapGesture
+  );
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -268,6 +314,7 @@ export const DomainMapSelector = () => {
 
     // Calculate the actual rendered image size (accounting for resizeMode="contain")
     if (containerDimensions.width === 0 || mapDimensions.width === 0) {
+      dotPositionsRef.current = [];
       return null; // Wait for dimensions to be calculated
     }
 
@@ -286,7 +333,10 @@ export const DomainMapSelector = () => {
       renderedWidth = containerDimensions.height * imageAspect;
     }
 
-    return regions.map((regionKey) => {
+    // Build dot positions for hit testing
+    const newDotPositions = [];
+
+    const dots = regions.map((regionKey) => {
       const center = getRegionCenter(regionKey);
       if (!center) return null;
 
@@ -310,10 +360,17 @@ export const DomainMapSelector = () => {
         return null;
       }
 
+      // Store position for hit testing
+      newDotPositions.push({
+        regionKey,
+        x: adjustedX,
+        y: adjustedY,
+      });
+
       const color = generateRegionColor(regionKey);
 
       return (
-        <Pressable
+        <View
           key={regionKey}
           style={[
             styles.regionDotContainer,
@@ -322,34 +379,32 @@ export const DomainMapSelector = () => {
               top: adjustedY - 12,
             },
           ]}
-          onPress={() => handleRegionSelect(regionKey)}
-          hitSlop={0}
         >
-          {({ pressed }) => (
-            <>
-              {/* Show coverage rectangle as border */}
-              {rect && (
-                <View
-                  style={[
-                    styles.coverageRect,
-                    {
-                      left: rect.left - position.x + 12,
-                      top: rect.top - position.y + 12,
-                      width: rect.width,
-                      height: rect.height,
-                      borderColor: color,
-                    },
-                  ]}
-                  pointerEvents="none"
-                />
-              )}
-              {/* Center dot */}
-              <View style={[styles.regionDot, { backgroundColor: color, opacity: pressed ? 0.7 : 1 }]} />
-            </>
+          {/* Show coverage rectangle as border */}
+          {rect && (
+            <View
+              style={[
+                styles.coverageRect,
+                {
+                  left: rect.left - position.x + 12,
+                  top: rect.top - position.y + 12,
+                  width: rect.width,
+                  height: rect.height,
+                  borderColor: color,
+                },
+              ]}
+            />
           )}
-        </Pressable>
+          {/* Center dot */}
+          <View style={[styles.regionDot, { backgroundColor: color }]} />
+        </View>
       );
     });
+
+    // Update dot positions ref for hit testing
+    dotPositionsRef.current = newDotPositions;
+
+    return dots;
   };
 
   const renderMapView = () => {
@@ -375,8 +430,8 @@ export const DomainMapSelector = () => {
                   }}
                 />
               )}
-              {/* Overlay dots on top of the map - pointerEvents box-none allows gestures to pass through */}
-              <View style={styles.dotsOverlay} pointerEvents="box-none">
+              {/* Overlay dots on top of the map - pointerEvents none ensures gestures work everywhere */}
+              <View style={styles.dotsOverlay} pointerEvents="none">
                 {renderRegionDots()}
               </View>
             </Animated.View>

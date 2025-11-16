@@ -16,11 +16,6 @@ import { DOMAIN_TYPES } from '../constants/domains';
 export const BoundaryOverlay = ({ scale, translateX, translateY, displayMode }) => {
   const { selectedDomain, overlayStates, isImageReadyForOverlays } = useApp();
 
-  // Don't render overlays until the image is ready - prevents misalignment
-  if (!selectedDomain || !isImageReadyForOverlays) {
-    return null;
-  }
-
   // Map of overlay IDs to their filename patterns and base URLs
   const overlayConfig = {
     state_lines: { filename: 'map', baseUrl: 'weather.cod.edu', ext: 'png' },
@@ -39,10 +34,6 @@ export const BoundaryOverlay = ({ scale, translateX, translateY, displayMode }) 
     overlayId => overlayStates?.[overlayId]?.enabled === true
   );
 
-  if (enabledOverlays.length === 0 || !overlayStates) {
-    return null;
-  }
-
   // Determine the wrapper style based on display mode (match satellite image)
   const imageWrapperStyle = displayMode === 'cover'
     ? [styles.overlayContainer, styles.overlayContainerCover]
@@ -50,6 +41,8 @@ export const BoundaryOverlay = ({ scale, translateX, translateY, displayMode }) 
 
   // Generate the boundary image URL based on domain type and overlay type
   const getBoundaryUrl = (overlayId) => {
+    if (!selectedDomain) return null;
+
     const domainType = selectedDomain.type;
     const codName = selectedDomain.codName;
     const config = overlayConfig[overlayId];
@@ -94,6 +87,7 @@ export const BoundaryOverlay = ({ scale, translateX, translateY, displayMode }) 
   };
 
   // Apply the same transform as the satellite image so boundaries stay aligned
+  // MUST call this hook unconditionally to maintain hook order
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -103,6 +97,12 @@ export const BoundaryOverlay = ({ scale, translateX, translateY, displayMode }) 
       ],
     };
   });
+
+  // Don't render overlays until the image is ready - prevents misalignment
+  // This check must come AFTER all hooks are called
+  if (!selectedDomain || !isImageReadyForOverlays || enabledOverlays.length === 0 || !overlayStates) {
+    return null;
+  }
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
