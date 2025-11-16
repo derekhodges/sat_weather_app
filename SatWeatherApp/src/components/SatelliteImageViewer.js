@@ -22,7 +22,7 @@ import { VectorOverlay } from './VectorOverlay';
 import { GeoDataDebugInfo } from './GeoDataDebugInfo';
 
 // Enable/disable debug info overlay - set to true for testing
-const SHOW_GEODATA_DEBUG = __DEV__ || true;
+const SHOW_GEODATA_DEBUG = false;
 
 export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { forceContainMode = false, onImageLoad } = props;
