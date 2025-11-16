@@ -95,6 +95,7 @@ export const MainScreen = () => {
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
   const [isRotating, setIsRotating] = useState(false); // Track rotation state
+  const [isLocationLoading, setIsLocationLoading] = useState(false); // Prevent double location fetches
 
   const isLandscape = layoutOrientation === 'landscape';
 
@@ -431,18 +432,33 @@ export const MainScreen = () => {
       const domainId = selectedDomain?.id || selectedDomain?.name;
       const testData = loadTestGeoData(domainId);
 
-      if (testData && !testData.isFallback) {
-        // Use test data for testing - this has real geostationary lat/lon grids
-        setCurrentGeoData(testData);
-        console.log(`[GEO] Using TEST geodata for ${domainId}:`, {
-          bounds: testData.bounds,
-          projection: testData.projection,
-          hasDataValues: !!testData.dataValues,
-          hasLatLonGrid: !!(testData.lat_grid && testData.lon_grid),
-          gridSize: testData.lat_grid ? `${testData.lat_grid.length}x${testData.lat_grid[0]?.length}` : 'none',
-          isFallback: testData.isFallback,
-        });
-        return; // Successfully loaded test data
+      if (testData && !testData.isFallback && actualImageSize) {
+        // Check if test data resolution matches actual image
+        const testResolution = testData.resolution;
+        const sizeMismatch = testResolution && (
+          Math.abs(testResolution.width - actualImageSize.width) > 50 ||
+          Math.abs(testResolution.height - actualImageSize.height) > 50
+        );
+
+        if (sizeMismatch) {
+          console.warn(`[GEO] TEST DATA MISMATCH: Test expects ${testResolution.width}x${testResolution.height}, actual image is ${actualImageSize.width}x${actualImageSize.height}`);
+          console.warn('[GEO] Falling back to domain bounds for accurate positioning');
+          // Don't use test data if dimensions mismatch significantly
+        } else {
+          // Use test data for testing - this has real geostationary lat/lon grids
+          setCurrentGeoData(testData);
+          console.log(`[GEO] Using TEST geodata for ${domainId}:`, {
+            bounds: testData.bounds,
+            projection: testData.projection,
+            hasDataValues: !!testData.dataValues,
+            hasLatLonGrid: !!(testData.lat_grid && testData.lon_grid),
+            gridSize: testData.lat_grid ? `${testData.lat_grid.length}x${testData.lat_grid[0]?.length}` : 'none',
+            testResolution: testResolution,
+            actualImageSize: actualImageSize,
+            isFallback: testData.isFallback,
+          });
+          return; // Successfully loaded test data
+        }
       }
 
       // Attempt to fetch geospatial metadata from server
@@ -511,7 +527,13 @@ export const MainScreen = () => {
   }, [isInspectorMode, setIsInspectorMode, setInspectorValue]);
 
   const handleLocationPress = async () => {
-    console.log('[LOCATION BUTTON] Pressed, showLocationMarker:', showLocationMarker);
+    console.log('[LOCATION BUTTON] Pressed, showLocationMarker:', showLocationMarker, 'isLoading:', isLocationLoading);
+
+    // Prevent double-taps while loading
+    if (isLocationLoading) {
+      console.log('[LOCATION BUTTON] Ignoring - already loading');
+      return;
+    }
 
     // If location is already shown, just toggle it off
     if (showLocationMarker) {
@@ -521,6 +543,7 @@ export const MainScreen = () => {
     }
 
     // Otherwise, get location and show marker
+    setIsLocationLoading(true);
     try {
       console.log('[LOCATION BUTTON] Requesting permissions...');
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -528,6 +551,7 @@ export const MainScreen = () => {
       if (status !== 'granted') {
         console.warn('Location permission denied');
         setError('Location permission is required to use this feature.');
+        setIsLocationLoading(false);
         return;
       }
 
@@ -552,6 +576,8 @@ export const MainScreen = () => {
     } catch (error) {
       console.error('Error getting location:', error);
       setError('Unable to get current location');
+    } finally {
+      setIsLocationLoading(false);
     }
   };
 
