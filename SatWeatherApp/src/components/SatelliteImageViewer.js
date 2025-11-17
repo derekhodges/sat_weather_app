@@ -206,18 +206,21 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       const focalRelX = focalX - centerX;
       const focalRelY = focalY - centerY;
 
-      // Calculate the scaling factor change
-      const scaleChange = newScale / scale.value;
+      // Calculate the scaling factor from SAVED values (gesture start), not incremental
+      // This avoids numerical drift from repeated incremental calculations
+      const scaleRatio = newScale / savedScale.value;
 
       // Adjust translation to keep focal point stationary on screen
-      // CORRECT FORMULA: The existing translation must also be scaled!
-      // To keep a point P fixed on screen during zoom:
-      // - P's position in image coords: imageP = (P - translate) / scale
-      // - After zoom, P must be at same screen position: P = imageP * newScale + newTranslate
-      // - Solving: newTranslate = P - imageP * newScale = P - (P - translate) * (newScale/scale)
-      // - This simplifies to: newTranslate = translate * scaleChange + P * (1 - scaleChange)
-      const newTranslateX = translateX.value * scaleChange + focalRelX * (1 - scaleChange);
-      const newTranslateY = translateY.value * scaleChange + focalRelY * (1 - scaleChange);
+      // CORRECT FORMULA: Derived from the transform equation:
+      // ScreenPos = scale * (contentPos + translate)
+      //
+      // To keep focal point F_rel at same position after scaling:
+      // newScale * (contentPos + newTranslate) = savedScale * (contentPos + savedTranslate)
+      //
+      // Solving for newTranslate (relative to SAVED state):
+      // newTranslate = savedTranslate + focalRel * (1 - scaleRatio) / newScale
+      const newTranslateX = savedTranslateX.value + focalRelX * (1 - scaleRatio) / newScale;
+      const newTranslateY = savedTranslateY.value + focalRelY * (1 - scaleRatio) / newScale;
 
       scale.value = newScale;
       translateX.value = newTranslateX;
@@ -347,6 +350,13 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const inspectorGesture = Gesture.Race(
     tapGesture,
     inspectorPanGesture
+  );
+
+  // Combined gesture for all interactions - inspector OR zoom/pan
+  // Using Race ensures only one type of interaction happens at a time
+  const combinedGesture = Gesture.Race(
+    inspectorGesture,
+    zoomPanGesture
   );
 
   // Handle URL changes - load into inactive slot and swap when ready
@@ -565,7 +575,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     : styles.image;
 
   return (
-    <GestureDetector gesture={inspectorGesture}>
+    <GestureDetector gesture={combinedGesture}>
       <View ref={containerRef} style={styles.container} collapsable={false}>
         {/* Image-only view for pixel sampling - NO overlays inside this */}
         <View
@@ -573,49 +583,47 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
           style={StyleSheet.absoluteFill}
           collapsable={false}
         >
-          <GestureDetector gesture={zoomPanGesture}>
-            <Animated.View style={[styles.imageContainer, animatedStyle]}>
-              {/* Image Slot A */}
-              {imageSlotA && (
-              <Animated.View style={[imageWrapperStyle, animatedStyleA]}>
-                <Image
-                  source={{ uri: imageSlotA }}
-                  style={imageStyle}
-                  resizeMode="contain"
-                  fadeDuration={0}
-                  onLoad={handleImageALoad}
-                  onError={(error) => {
-                    console.warn('Image A load error:', error.nativeEvent?.error || 'Unknown error');
-                  }}
-                />
-              </Animated.View>
-            )}
+          <Animated.View style={[styles.imageContainer, animatedStyle]}>
+            {/* Image Slot A */}
+            {imageSlotA && (
+            <Animated.View style={[imageWrapperStyle, animatedStyleA]}>
+              <Image
+                source={{ uri: imageSlotA }}
+                style={imageStyle}
+                resizeMode="contain"
+                fadeDuration={0}
+                onLoad={handleImageALoad}
+                onError={(error) => {
+                  console.warn('Image A load error:', error.nativeEvent?.error || 'Unknown error');
+                }}
+              />
+            </Animated.View>
+          )}
 
-            {/* Image Slot B */}
-            {imageSlotB && (
-              <Animated.View style={[imageWrapperStyle, animatedStyleB]}>
-                <Image
-                  source={{ uri: imageSlotB }}
-                  style={imageStyle}
-                  resizeMode="contain"
-                  fadeDuration={0}
-                  onLoad={handleImageBLoad}
-                  onError={(error) => {
-                    console.warn('Image B load error:', error.nativeEvent?.error || 'Unknown error');
-                  }}
-                />
-              </Animated.View>
-            )}
+          {/* Image Slot B */}
+          {imageSlotB && (
+            <Animated.View style={[imageWrapperStyle, animatedStyleB]}>
+              <Image
+                source={{ uri: imageSlotB }}
+                style={imageStyle}
+                resizeMode="contain"
+                fadeDuration={0}
+                onLoad={handleImageBLoad}
+                onError={(error) => {
+                  console.warn('Image B load error:', error.nativeEvent?.error || 'Unknown error');
+                }}
+              />
+            </Animated.View>
+          )}
 
-            {/* Loading overlay for first load */}
-            {showLoadingOverlay && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color="#fff" />
-                <Text style={styles.loadingText}>Loading satellite data...</Text>
-              </View>
-            )}
-          </Animated.View>
-        </GestureDetector>
+          {/* Loading overlay for first load */}
+          {showLoadingOverlay && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.loadingText}>Loading satellite data...</Text>
+            </View>
+          )}
+        </Animated.View>
         </View>
 
         {/* Overlays rendered OUTSIDE the pixel sampling ref */}
