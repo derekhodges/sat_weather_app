@@ -381,8 +381,10 @@ export const MainScreen = () => {
           const isOnLastFrame = prev >= availableTimestamps.length - 1;
           const nextIndex = isOnLastFrame ? 0 : prev + 1;
 
-          // Determine delay: use end dwell if we're transitioning from last frame to first
-          const delay = isOnLastFrame ? endDwellDurationRef.current : animationSpeedRef.current;
+          // Determine delay: use end dwell if we just moved TO the last frame (newest)
+          // This makes the animation pause on the newest frame before looping
+          const isNowShowingLastFrame = nextIndex === availableTimestamps.length - 1;
+          const delay = isNowShowingLastFrame ? endDwellDurationRef.current : animationSpeedRef.current;
 
           // Schedule next frame
           animationIntervalRef.current = setTimeout(scheduleNextFrame, delay);
