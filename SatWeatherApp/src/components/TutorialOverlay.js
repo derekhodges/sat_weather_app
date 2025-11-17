@@ -29,88 +29,115 @@ const TUTORIAL_STEPS = [
     icon: '🛰️',
   },
   {
+    id: 'satellite',
+    title: 'Select Your Satellite',
+    description:
+      'Tap the satellite name at the top (e.g., GOES-East) to switch between GOES-East, GOES-West, and other satellites. Each covers different parts of the world.',
+    icon: '📡',
+  },
+  {
     id: 'products',
     title: 'RGB Products & Channels',
     description:
-      'Tap RGB to view composite images (like Geocolor), or CHANNEL to see individual satellite bands. Different views help identify clouds, fires, fog, and more.',
+      'Tap RGB to view composite images (like Geocolor), or CHNL to see individual satellite bands. Different views help identify clouds, fires, fog, and more.',
     icon: '🌈',
-    highlight: 'rgb_button',
   },
   {
     id: 'domains',
     title: 'View Different Regions',
     description:
-      'Tap DOMAIN to switch between Full Disk (entire hemisphere), Continental US, or Regional/Local views. Pro users can access high-resolution local domains.',
+      'Tap DOMAIN to switch between Full Disk (entire hemisphere), CONUS, or regional views. Pro users can access high-resolution mesoscale domains.',
     icon: '🌍',
-    highlight: 'domain_button',
   },
   {
     id: 'overlays',
     title: 'Add Weather Overlays',
     description:
-      'Tap OVERLAYS to add state/county boundaries, cities, roads, and weather data like NWS warnings, lightning, and radar (Pro features).',
-    icon: '📍',
-    highlight: 'overlays_button',
+      'Tap OVLY to add boundaries and weather data. Pro users get state/county lines, cities, roads, and NWS warnings. Pro Plus adds MRMS radar products.',
+    icon: '🗺️',
   },
   {
     id: 'animation',
     title: 'Animate Images',
     description:
-      'Use the timeline slider to scrub through recent images. Press the play button to animate and see weather patterns move over time.',
+      'Use the timeline slider to scrub through recent images. Tap ▶️ to animate and watch weather patterns evolve over time.',
     icon: '▶️',
-    highlight: 'play_button',
   },
   {
     id: 'zoom_pan',
     title: 'Zoom & Pan',
     description:
-      'Pinch to zoom into details. Drag to pan around. Double-tap to reset the view. The reset button (↺) also resets zoom and position.',
+      'Pinch to zoom into details. Drag to pan around. Tap the ⊕ button to reset zoom to fit the full image on screen.',
     icon: '🔍',
+  },
+  {
+    id: 'refresh',
+    title: 'Refresh Data',
+    description:
+      'Tap the ↻ button to refresh and load the latest satellite images. Use this to get the most current data.',
+    icon: '↻',
   },
   {
     id: 'location',
     title: 'Find Your Location',
     description:
-      'Tap the location button (📍) to show your current position on the satellite image. Great for tracking weather near you.',
-    icon: '📍',
-    highlight: 'location_button',
+      'Tap the ⊕ crosshair button to show your current position on the satellite image. Great for tracking weather near you.',
+    icon: '⊕',
+  },
+  {
+    id: 'inspector',
+    title: 'Inspect Pixel Values',
+    description:
+      'Tap the ? button to enter inspector mode. Tap anywhere on the image to see coordinates and data values at that point.',
+    icon: '❓',
+  },
+  {
+    id: 'favorites',
+    title: 'Save Favorites',
+    description:
+      'Tap the ☆ button to save your current view (satellite, domain, product) as a favorite for quick access later.',
+    icon: '⭐',
   },
   {
     id: 'drawing',
     title: 'Draw & Annotate',
     description:
-      'Tap the pencil button to draw on the image. Long-press to change colors. Useful for marking storm features or sharing observations.',
+      'Tap the ✏️ pencil button to draw on the image. Long-press to change colors. Mark storm features or highlight observations.',
     icon: '✏️',
-    highlight: 'draw_button',
+  },
+  {
+    id: 'orientation',
+    title: 'Flip Orientation',
+    description:
+      'Tap the 📱 phone flip button to switch between portrait and landscape modes. Landscape gives you more image viewing area.',
+    icon: '🔄',
   },
   {
     id: 'sharing',
     title: 'Share & Save',
     description:
-      'Tap the share button to save screenshots or create animated GIFs of the satellite loop. Share your finds with friends!',
+      'Tap the share button to save screenshots or create animated GIFs. Share your weather observations with others!',
     icon: '📤',
-    highlight: 'share_button',
   },
   {
     id: 'settings',
-    title: 'Customize Your Experience',
+    title: 'Customize Settings',
     description:
-      'Access Settings from the menu (☰) to adjust animation speed, frame count, display preferences, and manage your subscription.',
+      'Tap ☰ then Settings to adjust animation speed, frame count, auto-refresh, and manage your subscription.',
     icon: '⚙️',
-    highlight: 'menu_button',
   },
   {
     id: 'subscription',
-    title: 'Unlock More Features',
+    title: 'Subscription Tiers',
     description:
-      'Free users get Geocolor and Channel 13 with basic overlays. Upgrade to Pro for all products, channels, and advanced overlays. Pro Plus adds radar and more!',
-    icon: '⭐',
+      'Free: Geocolor + Channel 13. Pro: All RGB products, all channels, weather overlays. Pro Plus: Everything plus MRMS radar products!',
+    icon: '💎',
   },
   {
     id: 'complete',
     title: "You're Ready!",
     description:
-      'Start exploring satellite imagery! You can access this tutorial anytime from Settings. Enjoy tracking weather from space!',
+      'Start exploring! Access this tutorial anytime from Settings → Help & Support. Enjoy tracking weather from space!',
     icon: '🚀',
   },
 ];
