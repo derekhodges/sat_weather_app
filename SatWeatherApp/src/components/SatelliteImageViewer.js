@@ -91,6 +91,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
+  // Track if pinch gesture is active (to prevent pan from overriding pinch calculations)
+  const isPinchActive = useSharedValue(false);
+
   // Get screen dimensions for bounds checking - update on orientation change
   const [screenDimensions, setScreenDimensions] = useState({
     width: Dimensions.get('window').width,
@@ -188,6 +191,10 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
 
   // Pinch gesture for zoom - zooms toward the focal point (center of pinch)
   const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      'worklet';
+      isPinchActive.value = true;
+    })
     .onUpdate((event) => {
       'worklet';
       const newScale = Math.max(1, Math.min(5, savedScale.value * event.scale));
@@ -198,7 +205,6 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       const focalY = event.focalY;
 
       // Convert focal point to be relative to screen center
-      // This is necessary because the image transform origin is at center
       const centerX = screenWidthShared.value / 2;
       const centerY = screenHeightShared.value / 2;
 
@@ -206,26 +212,11 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       const focalRelX = focalX - centerX;
       const focalRelY = focalY - centerY;
 
-      // Calculate the scaling factor from SAVED values (gesture start), not incremental
-      // This avoids numerical drift from repeated incremental calculations
+      // Calculate the scaling factor from SAVED values (gesture start)
       const scaleRatio = newScale / savedScale.value;
 
-      // Adjust translation to keep focal point stationary on screen
-      // CORRECT FORMULA: In React Native, transforms are applied RIGHT-TO-LEFT
-      // So [translateX, translateY, scale] means: scale FIRST, then translate
-      // Therefore: screenPos = scale * contentPos + translate
-      //
-      // To keep focal point F at same screen position after scaling:
-      // F = savedScale * C + savedTranslate  (before)
-      // F = newScale * C + newTranslate      (after)
-      // where C is the content position we want to keep fixed
-      //
-      // Solving: C = (F - savedTranslate) / savedScale
-      // newTranslate = F - newScale * C
-      //              = F - newScale * (F - savedTranslate) / savedScale
-      //              = F - (newScale/savedScale) * (F - savedTranslate)
-      //              = F - scaleRatio * F + scaleRatio * savedTranslate
-      //              = F * (1 - scaleRatio) + savedTranslate * scaleRatio
+      // Adjust translation to keep focal point stationary
+      // Formula: newTranslate = focalRel * (1 - scaleRatio) + savedTranslate * scaleRatio
       const newTranslateX = focalRelX * (1 - scaleRatio) + savedTranslateX.value * scaleRatio;
       const newTranslateY = focalRelY * (1 - scaleRatio) + savedTranslateY.value * scaleRatio;
 
@@ -233,11 +224,13 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       translateX.value = newTranslateX;
       translateY.value = newTranslateY;
 
-      // Update transform state in real-time (throttled)
-      runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
+      // DON'T update transform state during gesture - only on end
+      // This prevents React re-renders during the gesture which causes glitches
     })
     .onEnd(() => {
       'worklet';
+      isPinchActive.value = false;
+
       // Limit scale and apply spring for smooth finish
       if (scale.value < 1) {
         scale.value = withSpring(1, { damping: 20, stiffness: 300 });
@@ -267,6 +260,12 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const panGesture = Gesture.Pan()
     .enabled(!isInspectorMode)
     .onUpdate((event) => {
+      'worklet';
+      // Skip pan updates while pinch is active to prevent fighting
+      if (isPinchActive.value) {
+        return;
+      }
+
       const newX = savedTranslateX.value + event.translationX;
       const newY = savedTranslateY.value + event.translationY;
 
@@ -274,10 +273,11 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       const constrained = constrainTranslation(newX, newY, scale.value);
       translateX.value = constrained.x;
       translateY.value = constrained.y;
-      // Update transform state in real-time (throttled)
-      runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
+      // DON'T update transform state during gesture - only on end
+      // This prevents React re-renders during the gesture which causes glitches
     })
     .onEnd(() => {
+      'worklet';
       // Save final constrained position
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
