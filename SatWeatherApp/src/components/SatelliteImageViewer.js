@@ -200,17 +200,11 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       'worklet';
       isPinchActive.value = true;
 
-      // CRITICAL: event.focalX/Y are in LOCAL view coordinates (the transformed space)
-      // We need to convert them to SCREEN coordinates to use in our calculation
-      // The view transform is: screenPos = localPos * scale + translate
-      // So: screenFocalX = event.focalX * savedScale + savedTranslateX + screenCenter
-      const centerX = screenWidthShared.value / 2;
-      const centerY = screenHeightShared.value / 2;
-
-      // Convert local focal point to screen-relative coordinates
-      // Note: event.focalX/Y are relative to the view center (which is at screen center)
-      initialFocalScreenX.value = event.focalX * savedScale.value + savedTranslateX.value;
-      initialFocalScreenY.value = event.focalY * savedScale.value + savedTranslateY.value;
+      // event.focalX/Y are in the gesture view's coordinate system (top-left origin)
+      // Convert to be relative to view CENTER (which is the transform origin)
+      // The view fills the screen, so its center is at (width/2, height/2)
+      initialFocalScreenX.value = event.focalX - screenWidthShared.value / 2;
+      initialFocalScreenY.value = event.focalY - screenHeightShared.value / 2;
     })
     .onUpdate((event) => {
       'worklet';
@@ -219,15 +213,21 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       // Calculate the scaling factor from SAVED values (gesture start)
       const scaleRatio = newScale / savedScale.value;
 
-      // Use the INITIAL focal point in screen coordinates (captured at gesture start)
-      // This ensures we zoom toward where the user's fingers STARTED, not where they drift to
-      const focalScreenX = initialFocalScreenX.value;
-      const focalScreenY = initialFocalScreenY.value;
+      // Use the INITIAL focal point relative to view center
+      const focalRelX = initialFocalScreenX.value;
+      const focalRelY = initialFocalScreenY.value;
 
-      // Adjust translation to keep that screen point stationary
-      // Formula: newTranslate = screenPos * (1 - scaleRatio) + savedTranslate * scaleRatio
-      const newTranslateX = focalScreenX * (1 - scaleRatio) + savedTranslateX.value * scaleRatio;
-      const newTranslateY = focalScreenY * (1 - scaleRatio) + savedTranslateY.value * scaleRatio;
+      // The content point under the focal is at:
+      // contentPoint = (focalRel - savedTranslate) / savedScale
+      //
+      // After zoom, we want that content point to stay at the same screen position:
+      // focalRel = contentPoint * newScale + newTranslate
+      //
+      // Solving: newTranslate = focalRel - contentPoint * newScale
+      //        = focalRel - (focalRel - savedTranslate) * (newScale/savedScale)
+      //        = focalRel * (1 - scaleRatio) + savedTranslate * scaleRatio
+      const newTranslateX = focalRelX * (1 - scaleRatio) + savedTranslateX.value * scaleRatio;
+      const newTranslateY = focalRelY * (1 - scaleRatio) + savedTranslateY.value * scaleRatio;
 
       scale.value = newScale;
       translateX.value = newTranslateX;
