@@ -610,6 +610,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
               {imageSlotA && (
               <Animated.View style={[imageWrapperStyle, animatedStyleA]}>
                 <Image
+                  key={`A-${imageSlotA}-${imageTimestamp || 'initial'}`}
                   source={{ uri: imageSlotA }}
                   style={imageStyle}
                   resizeMode="contain"
@@ -626,6 +627,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
             {imageSlotB && (
               <Animated.View style={[imageWrapperStyle, animatedStyleB]}>
                 <Image
+                  key={`B-${imageSlotB}-${imageTimestamp || 'initial'}`}
                   source={{ uri: imageSlotB }}
                   style={imageStyle}
                   resizeMode="contain"
