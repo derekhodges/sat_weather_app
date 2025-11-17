@@ -27,6 +27,7 @@ import {
   saveGifToLibrary,
   shareGif,
 } from '../utils/shareUtils';
+import { startCacheCleanup, stopCacheCleanup } from '../utils/geoDataService';
 import {
   getLatestImageUrl,
   generateTimestampArray,
@@ -101,6 +102,14 @@ export const MainScreen = () => {
   const isLandscape = layoutOrientation === 'landscape';
   const locationRefreshIntervalRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
+
+  // Start cache cleanup timers on mount
+  useEffect(() => {
+    startCacheCleanup();
+    return () => {
+      stopCacheCleanup();
+    };
+  }, []);
 
   // Fetch user location once on mount and cache it (avoids delay when clicking location button)
   // CRITICAL FIX: Pause location refresh when app is backgrounded to prevent battery drain

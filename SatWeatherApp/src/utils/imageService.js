@@ -15,6 +15,37 @@ const TIMESTAMP_PATTERN = /^\d{8}\.\d{6}$/;
 // SECURITY: Regex pattern for valid domain/product names (alphanumeric, underscore, hyphen only)
 const SAFE_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
+// Request deduplication to prevent duplicate network calls
+import { requestDeduplicator } from './requestDeduplicator';
+
+/**
+ * Retry with exponential backoff
+ * @param {Function} fn - Async function to retry
+ * @param {number} maxRetries - Maximum number of retries (default: 3)
+ * @param {number} baseDelay - Base delay in ms (default: 1000)
+ * @returns {Promise} Result of the function
+ */
+const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < maxRetries) {
+        // Exponential backoff: 1s, 2s, 4s, 8s...
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.log(`[RETRY] Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError;
+};
+
 /**
  * Validate timestamp format for security
  * @param {string} timestamp - Timestamp string to validate
@@ -287,19 +318,21 @@ export const formatTimestamp = (timestamp, useLocalTime = false) => {
 };
 
 /**
- * Check if image URL is valid (exists)
+ * Check if image URL is valid (exists) with deduplication and retry
  */
 export const checkImageExists = async (url) => {
-  try {
-    const response = await fetchWithTimeout(url, { method: 'HEAD' }, 10000);
-    return response.ok;
-  } catch (error) {
-    // Log timeout errors vs network errors for debugging
-    if (error.message === 'Request timeout') {
-      console.warn('Image check timeout for:', url);
+  return requestDeduplicator.dedupe(`check:${url}`, async () => {
+    try {
+      const response = await fetchWithTimeout(url, { method: 'HEAD' }, 10000);
+      return response.ok;
+    } catch (error) {
+      // Log timeout errors vs network errors for debugging
+      if (error.message === 'Request timeout') {
+        console.warn('Image check timeout for:', url);
+      }
+      return false;
     }
-    return false;
-  }
+  });
 };
 
 /**
