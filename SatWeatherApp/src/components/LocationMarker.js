@@ -15,21 +15,8 @@ export const LocationMarker = () => {
 
   // Calculate marker position based on geospatial data
   const markerPosition = useMemo(() => {
-    // Debug logging for missing dependencies
-    if (!userLocation) {
-      console.log('[LOCATION] No user location set');
-      return null;
-    }
-    if (!currentGeoData) {
-      console.log('[LOCATION] No geo data loaded');
-      return null;
-    }
-    if (!actualImageSize) {
-      console.log('[LOCATION] No image size available');
-      return null;
-    }
-    if (!isImageReadyForOverlays) {
-      console.log('[LOCATION] Image not ready for overlays');
+    // Return early if missing dependencies (no logging for normal cases)
+    if (!userLocation || !currentGeoData || !actualImageSize || !isImageReadyForOverlays) {
       return null;
     }
 
@@ -52,7 +39,6 @@ export const LocationMarker = () => {
     const isInBounds = isPointInBounds(userLat, userLon, bounds);
 
     if (!isInBounds) {
-      console.log('[LOCATION] User location is outside domain bounds');
       return { outOfBounds: true };
     }
 
@@ -118,9 +104,6 @@ export const LocationMarker = () => {
     const finalScreenX = displayRelX * scale + translateX + screenCenterX;
     const finalScreenY = displayRelY * scale + translateY + screenCenterY;
 
-    console.log(`[LOCATION] Marker at screen: (${finalScreenX.toFixed(1)}, ${finalScreenY.toFixed(1)}) (${formatCoordinates(userLat, userLon)})`);
-    console.log(`[LOCATION] Display size: ${displayedWidth.toFixed(0)}x${displayedHeight.toFixed(0)}, scale=${scale.toFixed(2)}`);
-
     return {
       screenX: finalScreenX,
       screenY: finalScreenY,
@@ -130,14 +113,7 @@ export const LocationMarker = () => {
 
   // Don't show if not enabled or no location
   if (!showLocationMarker || !userLocation) {
-    console.log(`[LOCATION] Not rendering: showMarker=${showLocationMarker}, hasUserLocation=${!!userLocation}`);
     return null;
-  }
-
-  // Log what we're about to render
-  console.log(`[LOCATION] Rendering marker: position=${JSON.stringify(markerPosition)}`);
-  if (markerPosition && !markerPosition.outOfBounds) {
-    console.log(`[LOCATION] Screen position: (${markerPosition.screenX?.toFixed(1)}, ${markerPosition.screenY?.toFixed(1)})`);
   }
 
   // Show out-of-bounds message if location is outside domain
@@ -155,7 +131,6 @@ export const LocationMarker = () => {
 
   // Don't render if we couldn't calculate position (missing data)
   if (!markerPosition || markerPosition.screenX === undefined) {
-    console.log('[LOCATION] Position not yet calculated, not rendering marker');
     return null;
   }
 

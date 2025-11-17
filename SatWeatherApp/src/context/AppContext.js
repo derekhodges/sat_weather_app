@@ -87,6 +87,7 @@ export const AppProvider = ({ children }) => {
   const [favorites, setFavorites] = useState([]);
   const [showFavoritesMenu, setShowFavoritesMenu] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   // Settings
   const [settings, setSettings] = useState({
@@ -299,7 +300,28 @@ export const AppProvider = ({ children }) => {
   };
 
   const addDrawing = (drawing) => {
-    setDrawings(prev => [...prev, drawing]);
+    // Limit drawing points to prevent memory issues (max 10,000 points per drawing)
+    const MAX_POINTS_PER_DRAWING = 10000;
+    const MAX_DRAWINGS = 100;
+
+    let limitedDrawing = drawing;
+    if (drawing.path && drawing.path.length > MAX_POINTS_PER_DRAWING) {
+      console.warn(`[DRAWING] Truncating drawing from ${drawing.path.length} to ${MAX_POINTS_PER_DRAWING} points`);
+      limitedDrawing = {
+        ...drawing,
+        path: drawing.path.slice(-MAX_POINTS_PER_DRAWING), // Keep most recent points
+      };
+    }
+
+    setDrawings(prev => {
+      const newDrawings = [...prev, limitedDrawing];
+      // Remove oldest drawings if we exceed the limit
+      if (newDrawings.length > MAX_DRAWINGS) {
+        console.warn(`[DRAWING] Removing ${newDrawings.length - MAX_DRAWINGS} oldest drawing(s) to stay within limit`);
+        return newDrawings.slice(-MAX_DRAWINGS);
+      }
+      return newDrawings;
+    });
   };
 
   const clearDrawings = () => {
@@ -520,6 +542,8 @@ export const AppProvider = ({ children }) => {
     setViewMode,
     setShowFavoritesMenu,
     setShowSettingsModal,
+    setShowSubscriptionModal,
+    showSubscriptionModal,
     toggleOrientation,
     addToFavorites,
     removeFavorite,

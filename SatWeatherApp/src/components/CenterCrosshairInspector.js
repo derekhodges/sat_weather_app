@@ -304,15 +304,15 @@ export const CenterCrosshairInspector = () => {
             </View>
           )}
 
-          {/* Pixel color analysis */}
-          {centerValue && (
+          {/* Pixel color analysis - only show if we have useful interpretation */}
+          {centerValue && centerValue.description &&
+           !centerValue.description.includes('No interpretation available') &&
+           !centerValue.description.includes('Color not in interpretation table') && (
             <View style={styles.valueBoxHeader}>
               <View style={[styles.colorIndicator, { backgroundColor: centerValue.color }]} />
               <View style={styles.valueTextContainer}>
                 <Text style={styles.valueLabel}>{centerValue.label}</Text>
-                {centerValue.description && (
-                  <Text style={styles.valueDescription}>{centerValue.description}</Text>
-                )}
+                <Text style={styles.valueDescription}>{centerValue.description}</Text>
               </View>
             </View>
           )}

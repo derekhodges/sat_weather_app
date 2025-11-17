@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, ActivityIndicator, AppState } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, ActivityIndicator, AppState, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -19,6 +19,9 @@ import { CenterCrosshairInspector } from '../components/CenterCrosshairInspector
 import { FavoritesMenu } from '../components/FavoritesMenu';
 import ShareMenu from '../components/ShareMenu';
 import { SettingsModal } from '../components/SettingsModal';
+import AdBanner from '../components/AdBanner';
+import SubscriptionScreen from './SubscriptionScreen';
+import TutorialOverlay, { shouldShowTutorial } from '../components/TutorialOverlay';
 import {
   captureScreenshot,
   saveScreenshotToLibrary,
@@ -77,6 +80,8 @@ export const MainScreen = () => {
     showLocationMarker,
     showSettingsModal,
     setShowSettingsModal,
+    showSubscriptionModal,
+    setShowSubscriptionModal,
     setCurrentGeoData,
     setActualImageSize,
     clearGeoData,
@@ -92,12 +97,22 @@ export const MainScreen = () => {
   const satelliteImageViewerRef = useRef(); // Reference to SatelliteImageViewer for reset function
   const animationIntervalRef = useRef(null);
   const autoRefreshIntervalRef = useRef(null);
+  const animationSpeedRef = useRef(settings.animationSpeed); // Ref for animation speed to avoid interval recreation
+  // Refs for auto-refresh to avoid recreating interval on every dependency change
+  const autoRefreshDepsRef = useRef({
+    selectedDomain,
+    selectedRGBProduct,
+    selectedChannel,
+    viewMode,
+    frameCount: settings.frameCount,
+  });
   const [showColorPickerFromButton, setShowColorPickerFromButton] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showBrandingOverlay, setShowBrandingOverlay] = useState(false); // For "Satellite Weather" text during capture
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 }); // Track actual viewport size
   const [isRotating, setIsRotating] = useState(false); // Track rotation state
   const [isLocationLoading, setIsLocationLoading] = useState(false); // Prevent double location fetches
+  const [showTutorial, setShowTutorial] = useState(false); // Tutorial overlay
 
   const isLandscape = layoutOrientation === 'landscape';
   const locationRefreshIntervalRef = useRef(null);
@@ -109,6 +124,18 @@ export const MainScreen = () => {
     return () => {
       stopCacheCleanup();
     };
+  }, []);
+
+  // Check if tutorial should be shown (first launch)
+  useEffect(() => {
+    const checkTutorial = async () => {
+      const shouldShow = await shouldShowTutorial();
+      if (shouldShow) {
+        // Delay tutorial to allow app to load first
+        setTimeout(() => setShowTutorial(true), 1500);
+      }
+    };
+    checkTutorial();
   }, []);
 
   // Fetch user location once on mount and cache it (avoids delay when clicking location button)
@@ -315,7 +342,23 @@ export const MainScreen = () => {
     }
   }, [actualImageSize]); // Only trigger when image size changes
 
-  // Animation loop
+  // Keep animation speed ref in sync (prevents interval recreation on speed change)
+  useEffect(() => {
+    animationSpeedRef.current = settings.animationSpeed;
+  }, [settings.animationSpeed]);
+
+  // Keep auto-refresh dependencies ref in sync
+  useEffect(() => {
+    autoRefreshDepsRef.current = {
+      selectedDomain,
+      selectedRGBProduct,
+      selectedChannel,
+      viewMode,
+      frameCount: settings.frameCount,
+    };
+  }, [selectedDomain, selectedRGBProduct, selectedChannel, viewMode, settings.frameCount]);
+
+  // Animation loop - uses ref for speed to avoid timer accumulation
   useEffect(() => {
     // Always clear any existing interval first to prevent multiple timers
     if (animationIntervalRef.current) {
@@ -324,7 +367,7 @@ export const MainScreen = () => {
     }
 
     if (isAnimating) {
-      console.log(`Starting animation with speed: ${settings.animationSpeed}ms per frame`);
+      console.log(`Starting animation with speed: ${animationSpeedRef.current}ms per frame`);
       animationIntervalRef.current = setInterval(() => {
         setCurrentFrameIndex((prev) => {
           if (prev >= availableTimestamps.length - 1) {
@@ -332,7 +375,7 @@ export const MainScreen = () => {
           }
           return prev + 1;
         });
-      }, settings.animationSpeed);
+      }, animationSpeedRef.current);
     }
 
     return () => {
@@ -341,11 +384,12 @@ export const MainScreen = () => {
         animationIntervalRef.current = null;
       }
     };
-  }, [isAnimating, availableTimestamps.length, settings.animationSpeed]);
+  }, [isAnimating, availableTimestamps.length]); // Removed settings.animationSpeed to prevent timer accumulation
 
-  // Auto-refresh functionality with smart caching
+  // Auto-refresh functionality with smart caching - uses refs to avoid interval recreation
   useEffect(() => {
     let isMounted = true;
+    let abortController = new AbortController();
 
     // Always clear any existing interval first
     if (autoRefreshIntervalRef.current) {
@@ -359,10 +403,12 @@ export const MainScreen = () => {
       console.log(`Auto-refresh enabled: refreshing every ${settings.autoRefreshInterval} minute(s)`);
 
       autoRefreshIntervalRef.current = setInterval(async () => {
-        if (!isMounted) return; // Skip if component unmounted
+        if (!isMounted || abortController.signal.aborted) return; // Skip if component unmounted
 
         console.log('[AUTO-REFRESH] Checking for new data...');
-        const product = viewMode === 'rgb' ? selectedRGBProduct : selectedChannel;
+        // Use refs to get current values without recreating interval
+        const { selectedDomain: domain, selectedRGBProduct: rgbProduct, selectedChannel: channel, viewMode: mode, frameCount } = autoRefreshDepsRef.current;
+        const product = mode === 'rgb' ? rgbProduct : channel;
 
         if (!product) {
           console.warn('[AUTO-REFRESH] Skipped: No product selected');
@@ -373,15 +419,15 @@ export const MainScreen = () => {
           // Generate validated timestamps (only frames that exist)
           // Enforce subscription tier frame limit
           const maxAllowedFrames = getAnimationMaxFrames();
-          const effectiveFrameCount = Math.min(settings.frameCount, maxAllowedFrames);
+          const effectiveFrameCount = Math.min(frameCount, maxAllowedFrames);
           const validFrames = await generateValidatedTimestampArray(
-            selectedDomain,
+            domain,
             product,
             effectiveFrameCount,
             5
           );
 
-          if (!isMounted) return; // Check again after async operation
+          if (!isMounted || abortController.signal.aborted) return; // Check again after async operation
 
           if (validFrames.length === 0) {
             console.error('[AUTO-REFRESH] No valid frames available');
@@ -392,7 +438,7 @@ export const MainScreen = () => {
           const latestTimestamp = newTimestamps[newTimestamps.length - 1];
 
           // Check if we already have the latest frame - if so, no new data
-          if (frameCache.hasLatestFrame(selectedDomain, product, latestTimestamp)) {
+          if (frameCache.hasLatestFrame(domain, product, latestTimestamp)) {
             console.log('[AUTO-REFRESH] No new data available, skipping reload');
             return;
           }
@@ -400,7 +446,7 @@ export const MainScreen = () => {
           console.log('[AUTO-REFRESH] New data detected, performing smart cache update...');
 
           // Smart cache shift - only fetch what we don't have
-          const { toFetch, toRemove } = frameCache.shiftCache(selectedDomain, product, newTimestamps);
+          const { toFetch, toRemove } = frameCache.shiftCache(domain, product, newTimestamps);
 
           console.log(`[AUTO-REFRESH] Need to fetch ${toFetch.length} new frame(s), removed ${toRemove.length} old frame(s)`);
 
@@ -410,14 +456,14 @@ export const MainScreen = () => {
             await frameCache.prefetchFrames(
               framesToFetch.map(f => ({
                 url: f.url,
-                domain: selectedDomain,
+                domain: domain,
                 product: product,
                 timestamp: f.timestamp,
               }))
             );
           }
 
-          if (!isMounted) return; // Check again after async operation
+          if (!isMounted || abortController.signal.aborted) return; // Check again after async operation
 
           // Update available timestamps
           setAvailableTimestamps(newTimestamps);
@@ -430,20 +476,23 @@ export const MainScreen = () => {
             loadImageForTimestamp(newTimestamps[newTimestamps.length - 1]);
           }
         } catch (error) {
-          console.error('[AUTO-REFRESH] Error:', error);
-          if (isMounted) setError('Auto-refresh failed. Will retry next interval.');
+          if (!abortController.signal.aborted) {
+            console.error('[AUTO-REFRESH] Error:', error);
+            if (isMounted) setError('Auto-refresh failed. Will retry next interval.');
+          }
         }
       }, intervalMs);
     }
 
     return () => {
       isMounted = false;
+      abortController.abort(); // Cancel any in-flight operations
       if (autoRefreshIntervalRef.current) {
         clearInterval(autoRefreshIntervalRef.current);
         autoRefreshIntervalRef.current = null;
       }
     };
-  }, [settings.autoRefresh, settings.autoRefreshInterval, selectedDomain, selectedRGBProduct, selectedChannel, viewMode]);
+  }, [settings.autoRefresh, settings.autoRefreshInterval]); // Reduced dependencies - other values accessed via ref
 
   const loadImage = async () => {
     // Don't try to load if we don't have a product selected in RGB mode
@@ -490,9 +539,10 @@ export const MainScreen = () => {
     const cachedUrl = frameCache.get(selectedDomain, product, timestamp);
 
     if (cachedUrl) {
-      // Use cached URL - no loading delay!
-      setCurrentImageUrl(cachedUrl);
+      // Use cached URL - force update even if URL is same by setting timestamp first
+      // This ensures React sees a state change
       setImageTimestamp(timestamp);
+      setCurrentImageUrl(cachedUrl);
 
       // Load geospatial data for this frame (non-blocking)
       loadGeoDataForTimestamp(timestamp, product);
@@ -509,8 +559,8 @@ export const MainScreen = () => {
       return;
     }
 
-    setCurrentImageUrl(url);
     setImageTimestamp(timestamp);
+    setCurrentImageUrl(url);
 
     // Load geospatial data for this frame (non-blocking)
     loadGeoDataForTimestamp(timestamp, product);
@@ -1208,6 +1258,9 @@ export const MainScreen = () => {
               isDrawingMode={isDrawingMode}
               isInspectorMode={isInspectorMode}
             />
+
+            {/* Ad banner for free tier users - only shows in portrait mode */}
+            <AdBanner />
           </>
         )}
         </View>
@@ -1236,6 +1289,23 @@ export const MainScreen = () => {
         <SettingsModal
           visible={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
+          onShowTutorial={() => setShowTutorial(true)}
+        />
+
+        {/* Subscription screen modal */}
+        <Modal
+          visible={showSubscriptionModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowSubscriptionModal(false)}
+        >
+          <SubscriptionScreen onClose={() => setShowSubscriptionModal(false)} />
+        </Modal>
+
+        {/* Tutorial overlay - shows on first launch */}
+        <TutorialOverlay
+          visible={showTutorial}
+          onClose={() => setShowTutorial(false)}
         />
       </View>
     </SafeAreaView>
