@@ -161,11 +161,13 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   };
 
   // Update transform state in context (for coordinate calculations)
+  // CRITICAL: Only update if values actually changed to prevent infinite render loops
   const updateTransformState = (s, tx, ty) => {
-    setCurrentImageTransform({
-      scale: s,
-      translateX: tx,
-      translateY: ty,
+    setCurrentImageTransform(prev => {
+      if (prev.scale === s && prev.translateX === tx && prev.translateY === ty) {
+        return prev; // No change, return existing object
+      }
+      return { scale: s, translateX: tx, translateY: ty };
     });
   };
 
@@ -175,10 +177,11 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     const now = Date.now();
     if (now - lastUpdateTime.current > 16) {
       lastUpdateTime.current = now;
-      setCurrentImageTransform({
-        scale: s,
-        translateX: tx,
-        translateY: ty,
+      setCurrentImageTransform(prev => {
+        if (prev.scale === s && prev.translateX === tx && prev.translateY === ty) {
+          return prev; // No change, return existing object
+        }
+        return { scale: s, translateX: tx, translateY: ty };
       });
     }
   };
@@ -207,10 +210,14 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       const scaleChange = newScale / scale.value;
 
       // Adjust translation to keep focal point stationary on screen
-      // The formula accounts for the transform being applied from center origin:
-      // newTranslate = oldTranslate + focalRel * (1 - scaleChange)
-      const newTranslateX = translateX.value + focalRelX * (1 - scaleChange);
-      const newTranslateY = translateY.value + focalRelY * (1 - scaleChange);
+      // CORRECT FORMULA: The existing translation must also be scaled!
+      // To keep a point P fixed on screen during zoom:
+      // - P's position in image coords: imageP = (P - translate) / scale
+      // - After zoom, P must be at same screen position: P = imageP * newScale + newTranslate
+      // - Solving: newTranslate = P - imageP * newScale = P - (P - translate) * (newScale/scale)
+      // - This simplifies to: newTranslate = translate * scaleChange + P * (1 - scaleChange)
+      const newTranslateX = translateX.value * scaleChange + focalRelX * (1 - scaleChange);
+      const newTranslateY = translateY.value * scaleChange + focalRelY * (1 - scaleChange);
 
       scale.value = newScale;
       translateX.value = newTranslateX;
