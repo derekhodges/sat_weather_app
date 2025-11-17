@@ -39,6 +39,7 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
   } = useAuth();
 
   const [localAnimationSpeed, setLocalAnimationSpeed] = useState(settings.animationSpeed.toString());
+  const [localEndDwellDuration, setLocalEndDwellDuration] = useState(settings.endDwellDuration.toString());
   const [localFrameCount, setLocalFrameCount] = useState(settings.frameCount.toString());
   const [localFrameSkip, setLocalFrameSkip] = useState(settings.frameSkip.toString());
   const [showCustomFrameSkip, setShowCustomFrameSkip] = useState(false);
@@ -72,6 +73,14 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
     const numValue = parseInt(value);
     if (!isNaN(numValue) && numValue >= 100 && numValue <= 2000) {
       updateSettings({ animationSpeed: numValue });
+    }
+  };
+
+  const handleEndDwellDurationChange = (value) => {
+    setLocalEndDwellDuration(value);
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 10000) {
+      updateSettings({ endDwellDuration: numValue });
     }
   };
 
@@ -167,6 +176,23 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
                 onChangeText={handleAnimationSpeedChange}
                 keyboardType="numeric"
                 placeholder="500"
+                placeholderTextColor="#666"
+              />
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>End Dwell Duration (ms)</Text>
+                <Text style={styles.settingDescription}>
+                  Pause on newest frame before loop (0-10000ms)
+                </Text>
+              </View>
+              <TextInput
+                style={styles.settingInput}
+                value={localEndDwellDuration}
+                onChangeText={handleEndDwellDurationChange}
+                keyboardType="numeric"
+                placeholder="1500"
                 placeholderTextColor="#666"
               />
             </View>

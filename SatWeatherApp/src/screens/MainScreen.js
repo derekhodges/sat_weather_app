@@ -98,6 +98,7 @@ export const MainScreen = () => {
   const animationIntervalRef = useRef(null);
   const autoRefreshIntervalRef = useRef(null);
   const animationSpeedRef = useRef(settings.animationSpeed); // Ref for animation speed to avoid interval recreation
+  const endDwellDurationRef = useRef(settings.endDwellDuration); // Ref for end dwell duration
   // Refs for auto-refresh to avoid recreating interval on every dependency change
   const autoRefreshDepsRef = useRef({
     selectedDomain,
@@ -347,6 +348,11 @@ export const MainScreen = () => {
     animationSpeedRef.current = settings.animationSpeed;
   }, [settings.animationSpeed]);
 
+  // Keep end dwell duration ref in sync
+  useEffect(() => {
+    endDwellDurationRef.current = settings.endDwellDuration;
+  }, [settings.endDwellDuration]);
+
   // Keep auto-refresh dependencies ref in sync
   useEffect(() => {
     autoRefreshDepsRef.current = {
@@ -367,20 +373,31 @@ export const MainScreen = () => {
     }
 
     if (isAnimating) {
-      console.log(`Starting animation with speed: ${animationSpeedRef.current}ms per frame`);
-      animationIntervalRef.current = setInterval(() => {
+      console.log(`Starting animation with speed: ${animationSpeedRef.current}ms per frame, end dwell: ${endDwellDurationRef.current}ms`);
+
+      // Use a function to schedule the next frame with dynamic timing
+      const scheduleNextFrame = () => {
         setCurrentFrameIndex((prev) => {
-          if (prev >= availableTimestamps.length - 1) {
-            return 0; // Loop back to start
-          }
-          return prev + 1;
+          const isOnLastFrame = prev >= availableTimestamps.length - 1;
+          const nextIndex = isOnLastFrame ? 0 : prev + 1;
+
+          // Determine delay: use end dwell if we're transitioning from last frame to first
+          const delay = isOnLastFrame ? endDwellDurationRef.current : animationSpeedRef.current;
+
+          // Schedule next frame
+          animationIntervalRef.current = setTimeout(scheduleNextFrame, delay);
+
+          return nextIndex;
         });
-      }, animationSpeedRef.current);
+      };
+
+      // Start the animation loop
+      animationIntervalRef.current = setTimeout(scheduleNextFrame, animationSpeedRef.current);
     }
 
     return () => {
       if (animationIntervalRef.current) {
-        clearInterval(animationIntervalRef.current);
+        clearTimeout(animationIntervalRef.current);
         animationIntervalRef.current = null;
       }
     };

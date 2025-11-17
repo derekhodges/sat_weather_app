@@ -107,9 +107,19 @@ export const validateSettings = (settings) => {
     const val = parseInt(settings.animationSpeed);
     if (isNaN(val) || val < 100 || val > 5000) {
       errors.push('animationSpeed must be between 100-5000');
-      sanitized.animationSpeed = 800; // Default
+      sanitized.animationSpeed = 500; // Default
     } else {
       sanitized.animationSpeed = val;
+    }
+  }
+
+  if (settings.endDwellDuration !== undefined) {
+    const val = parseInt(settings.endDwellDuration);
+    if (isNaN(val) || val < 0 || val > 10000) {
+      errors.push('endDwellDuration must be between 0-10000');
+      sanitized.endDwellDuration = 1500; // Default
+    } else {
+      sanitized.endDwellDuration = val;
     }
   }
 
