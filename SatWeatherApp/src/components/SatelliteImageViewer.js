@@ -171,20 +171,31 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   // Pinch gesture for zoom - zooms toward the focal point (center of pinch)
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
+      'worklet';
       const newScale = Math.max(1, Math.min(5, savedScale.value * event.scale));
 
       // Calculate zoom toward focal point
-      // The focal point is where the user's fingers are centered
+      // The focal point is where the user's fingers are centered (screen coordinates)
       const focalX = event.focalX;
       const focalY = event.focalY;
+
+      // Convert focal point to be relative to screen center
+      // This is necessary because the image transform origin is at center
+      const centerX = screenWidth / 2;
+      const centerY = screenHeight / 2;
+
+      // Focal point relative to screen center
+      const focalRelX = focalX - centerX;
+      const focalRelY = focalY - centerY;
 
       // Calculate the scaling factor change
       const scaleChange = newScale / scale.value;
 
-      // Adjust translation to keep focal point stationary
-      // Formula: newTranslate = focalPoint - scaleChange * (focalPoint - oldTranslate)
-      const newTranslateX = focalX - scaleChange * (focalX - translateX.value);
-      const newTranslateY = focalY - scaleChange * (focalY - translateY.value);
+      // Adjust translation to keep focal point stationary on screen
+      // The formula accounts for the transform being applied from center origin:
+      // newTranslate = oldTranslate + focalRel * (1 - scaleChange)
+      const newTranslateX = translateX.value + focalRelX * (1 - scaleChange);
+      const newTranslateY = translateY.value + focalRelY * (1 - scaleChange);
 
       scale.value = newScale;
       translateX.value = newTranslateX;
@@ -194,6 +205,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
     })
     .onEnd(() => {
+      'worklet';
       // Limit scale and apply spring for smooth finish
       if (scale.value < 1) {
         scale.value = withSpring(1, { damping: 20, stiffness: 300 });
