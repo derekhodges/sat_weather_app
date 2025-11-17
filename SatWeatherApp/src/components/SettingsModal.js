@@ -15,8 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, getTierFeatures } from '../config/subscription';
+import { resetTutorial } from './TutorialOverlay';
 
-export const SettingsModal = ({ visible, onClose }) => {
+export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
   const {
     settings,
     updateSettings,
@@ -589,6 +590,53 @@ export const SettingsModal = ({ visible, onClose }) => {
             </TouchableOpacity>
           </View>
 
+          {/* Help & Support Section */}
+          <View style={styles.settingsSection}>
+            <Text style={styles.settingsSectionTitle}>Help & Support</Text>
+
+            <TouchableOpacity
+              style={styles.helpButton}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  if (onShowTutorial) {
+                    onShowTutorial();
+                  }
+                }, 300);
+              }}
+            >
+              <View style={styles.helpButtonContent}>
+                <Ionicons name="school-outline" size={24} color="#4A90E2" />
+                <View style={styles.helpButtonText}>
+                  <Text style={styles.helpButtonTitle}>View Tutorial</Text>
+                  <Text style={styles.helpButtonDescription}>Learn how to use the app</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.helpButton}
+              onPress={async () => {
+                await resetTutorial();
+                Alert.alert(
+                  'Tutorial Reset',
+                  'The tutorial will show again next time you open the app.',
+                  [{ text: 'OK' }]
+                );
+              }}
+            >
+              <View style={styles.helpButtonContent}>
+                <Ionicons name="refresh-outline" size={24} color="#27ae60" />
+                <View style={styles.helpButtonText}>
+                  <Text style={styles.helpButtonTitle}>Reset Tutorial</Text>
+                  <Text style={styles.helpButtonDescription}>Show tutorial on next launch</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+
           {/* Developer Tools - For Testing Only */}
           {isDevelopment && (
             <View style={styles.settingsSection}>
@@ -882,6 +930,35 @@ const styles = StyleSheet.create({
     color: '#4A90E2',
     fontSize: 16,
     fontWeight: '600',
+  },
+  helpButton: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  helpButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  helpButtonText: {
+    marginLeft: 12,
+  },
+  helpButtonTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  helpButtonDescription: {
+    color: '#999',
+    fontSize: 12,
   },
   subscriptionTier: {
     backgroundColor: '#1a1a1a',

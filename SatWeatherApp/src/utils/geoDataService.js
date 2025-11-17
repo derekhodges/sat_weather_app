@@ -18,11 +18,11 @@ const geoDataCache = new Map();
 // Cache entry metadata for LRU/TTL
 const cacheMetadata = new Map();
 
-// Maximum cache size (number of entries)
-const MAX_CACHE_SIZE = 50;
+// Maximum cache size (number of entries) - reduced to prevent memory bloat
+const MAX_CACHE_SIZE = 30;
 
-// Cache TTL in milliseconds (30 minutes)
-const CACHE_TTL_MS = 30 * 60 * 1000;
+// Cache TTL in milliseconds (15 minutes) - reduced for better memory management
+const CACHE_TTL_MS = 15 * 60 * 1000;
 
 // Cleanup interval reference
 let cleanupIntervalId = null;

@@ -6,26 +6,16 @@ This document outlines all remaining tasks to get the app ready for release. Ite
 
 ## 🔴 CRITICAL - Must Do Before Release
 
-### 1. Performance Fixes (Stability)
-**Time Estimate: 6-8 hours**
+### ~~1. Performance Fixes (Stability)~~ ✅ COMPLETED
+**Status: DONE**
 
-See `CRITICAL_FIXES.md` for detailed code implementations.
+All critical memory and performance issues have been fixed:
 
-- [ ] **Fix animation interval memory leak** - `MainScreen.js:322`
-  - Issue: Timer accumulates when animation speed changes
-  - Fix: Remove `settings.animationSpeed` from dependency array
-
-- [ ] **Fix AutoRefresh async memory leak** - `MainScreen.js:350`
-  - Issue: Missing AbortController, unmounted component updates
-  - Fix: Add AbortController and reduce dependency array
-
-- [ ] **Add drawing path limits** - `DrawingOverlay.js`, `AppContext.js`
-  - Issue: Unlimited drawings can cause OOM crashes
-  - Fix: Max 100 drawings, 10k points per drawing
-
-- [ ] **Add GeoData cache hard limit** - `geoDataService.js`
-  - Issue: Cache can grow unbounded (3MB+)
-  - Fix: Enforce MAX_CACHE_SIZE = 30, TTL = 15 minutes
+- [x] **Fix animation interval memory leak** - Uses ref for speed to avoid timer recreation
+- [x] **Fix AutoRefresh async memory leak** - Added AbortController and reduced dependencies
+- [x] **Add drawing path limits** - Max 100 drawings, 10k points per drawing
+- [x] **Add GeoData cache hard limit** - MAX_CACHE_SIZE = 30, TTL = 15 minutes
+- [x] **Fix RAF cleanup in image slot swapping** - Periodic cleanup prevents array growth
 
 ### 2. RevenueCat Setup (In-App Purchases)
 **Time Estimate: 2-3 hours**
@@ -128,14 +118,15 @@ The placeholder is ready in `src/components/AdBanner.js`. To integrate real ads:
 
 ### 4. App Store Compliance
 
-1. [ ] **Privacy Policy**
-   - Required for both app stores
-   - Must cover: location data, analytics, ads
+1. [x] **Privacy Policy** ✅ CREATED
+   - See `PRIVACY_POLICY.md` in project root
    - Host on a public URL (GitHub Pages works)
+   - Covers: location data, analytics, ads, subscriptions
 
-2. [ ] **Terms of Service**
-   - Subscription terms and cancellation policy
-   - Data usage terms
+2. [x] **Terms of Service** ✅ CREATED
+   - See `TERMS_OF_SERVICE.md` in project root
+   - Includes subscription terms, cancellation policy, disclaimers
+   - Host on a public URL
 
 3. [ ] **App Store Screenshots**
    - iOS: 6.5" and 5.5" screenshots (required)
@@ -240,20 +231,22 @@ See `PERFORMANCE_AUDIT.md` for full details.
 
 ### 8. User Experience Improvements
 
-- [ ] **Onboarding Tutorial**
-  - First-launch walkthrough
-  - Explain key features
-  - Show tier benefits
+- [x] **Onboarding Tutorial** ✅ COMPLETED
+  - First-launch walkthrough with 12 steps
+  - Explain all key features (RGB, domains, overlays, animation, etc.)
+  - Accessible from Settings > Help & Support
+  - See `src/components/TutorialOverlay.js`
 
 - [ ] **Error Handling**
   - Add error boundaries around main components
   - Better network error messages
   - Offline mode indicators
 
-- [ ] **Analytics Integration**
-  - Track feature usage
-  - Monitor subscription funnel
-  - Identify popular products/domains
+- [x] **Analytics Integration** ✅ COMPLETED
+  - Track feature usage (domains, products, overlays, sharing)
+  - Monitor subscription funnel (upgrade prompts, purchases)
+  - Error logging with context and stack traces
+  - See `src/services/analytics.js`
 
 ### 9. Code Quality
 
@@ -277,39 +270,43 @@ See `PERFORMANCE_AUDIT.md` for full details.
 | **Ad Banner** | `src/components/AdBanner.js` | Placeholder ready |
 | **Subscription Screen** | `src/screens/SubscriptionScreen.js` | ✅ Full UI ready |
 | **RevenueCat Service** | `src/services/purchases.js` | ✅ API ready |
+| **Analytics & Error Logging** | `src/services/analytics.js` | ✅ Full service ready |
+| **Tutorial System** | `src/components/TutorialOverlay.js` | ✅ First-launch + Settings |
 | **Tier Configuration** | `src/config/subscription.js` | ✅ All tiers defined |
 | **Feature Gating** | `src/context/AuthContext.js` | ✅ All checks in place |
 | **App Icon** | `SatWeatherApp/assets/icon.png` | ✅ New logo |
 | **Splash Screen** | `SatWeatherApp/assets/splash-icon.png` | ✅ New logo |
+| **Privacy Policy** | `PRIVACY_POLICY.md` | ✅ Ready to host |
+| **Terms of Service** | `TERMS_OF_SERVICE.md` | ✅ Ready to host |
 | **Performance Audit** | `PERFORMANCE_AUDIT.md` | Full analysis |
-| **Critical Fixes** | `CRITICAL_FIXES.md` | Code implementations |
+| **Critical Fixes** | `CRITICAL_FIXES.md` | ✅ All implemented |
 
 ---
 
 ## 📊 Effort Estimates Summary
 
-| Category | Tasks | Hours | Priority |
-|----------|-------|-------|----------|
-| Performance Fixes | 4 | 6-8 | 🔴 Critical |
-| RevenueCat Setup | 6 | 2-3 | 🔴 Critical |
-| AdMob Integration | 5 | 2-3 | 🔴 Critical |
-| App Store Compliance | 5 | 4-6 | 🟡 Important |
-| Production Setup | 4 | 2-3 | 🟡 Important |
-| Build Configuration | 3 | 2-3 | 🟡 Important |
-| Advanced Optimizations | 4 | 8-12 | 🟢 Optional |
-| UX Improvements | 3 | 6-10 | 🟢 Optional |
-| **Total Critical** | **15** | **10-14** | |
-| **Total Important** | **12** | **8-12** | |
-| **Total Optional** | **7** | **14-22** | |
+| Category | Tasks | Hours | Priority | Status |
+|----------|-------|-------|----------|--------|
+| ~~Performance Fixes~~ | ~~5~~ | ~~6-8~~ | ~~🔴 Critical~~ | ✅ DONE |
+| RevenueCat Setup | 6 | 2-3 | 🔴 Critical | Pending |
+| AdMob Integration | 5 | 2-3 | 🔴 Critical | Pending |
+| ~~App Store Compliance~~ | ~~5~~ | ~~4-6~~ | ~~🟡 Important~~ | ✅ Mostly done |
+| Production Setup | 4 | 2-3 | 🟡 Important | Pending |
+| Build Configuration | 3 | 2-3 | 🟡 Important | Pending |
+| Advanced Optimizations | 4 | 8-12 | 🟢 Optional | Pending |
+| ~~UX Improvements~~ | ~~3~~ | ~~6-10~~ | ~~🟢 Optional~~ | ✅ Tutorial done |
+| **Total Remaining Critical** | **11** | **4-6** | | |
+| **Total Remaining Important** | **10** | **4-6** | | |
+| **Total Remaining Optional** | **4** | **8-12** | | |
 
 ---
 
 ## 🚀 Suggested Release Timeline
 
-### Week 1: Critical Fixes
-- Fix all 4 performance/memory issues
-- Set up RevenueCat account and products
-- Configure AdMob account and ad units
+### Week 1: External Setup (What You Need To Do)
+- Set up RevenueCat account and products (2-3 hours)
+- Configure AdMob account and ad units (2-3 hours)
+- Host privacy policy and terms of service online
 
 ### Week 2: Integration & Testing
 - Test sandbox purchases end-to-end

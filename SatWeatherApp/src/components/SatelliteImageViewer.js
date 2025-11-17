@@ -54,10 +54,19 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const isMountedRef = useRef(true);
   const rafIdsRef = useRef([]);
 
-  // Cleanup RAF callbacks on unmount
+  // Cleanup RAF callbacks on unmount and periodically clear completed ones
   useEffect(() => {
+    // Periodically clear completed RAF IDs to prevent array growth
+    const cleanupInterval = setInterval(() => {
+      // Keep only the last 10 RAF IDs (older ones have definitely completed)
+      if (rafIdsRef.current.length > 10) {
+        rafIdsRef.current = rafIdsRef.current.slice(-10);
+      }
+    }, 5000); // Clean every 5 seconds
+
     return () => {
       isMountedRef.current = false;
+      clearInterval(cleanupInterval);
       // Cancel all pending RAF callbacks
       rafIdsRef.current.forEach(id => cancelAnimationFrame(id));
       rafIdsRef.current = [];
