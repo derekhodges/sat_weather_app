@@ -94,6 +94,11 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   // Track if pinch gesture is active (to prevent pan from overriding pinch calculations)
   const isPinchActive = useSharedValue(false);
 
+  // Track the initial focal point in SCREEN coordinates when pinch starts
+  // This is crucial because event.focalX/Y are in local view coordinates
+  const initialFocalScreenX = useSharedValue(0);
+  const initialFocalScreenY = useSharedValue(0);
+
   // Get screen dimensions for bounds checking - update on orientation change
   const [screenDimensions, setScreenDimensions] = useState({
     width: Dimensions.get('window').width,
@@ -191,34 +196,38 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
 
   // Pinch gesture for zoom - zooms toward the focal point (center of pinch)
   const pinchGesture = Gesture.Pinch()
-    .onStart(() => {
+    .onStart((event) => {
       'worklet';
       isPinchActive.value = true;
+
+      // CRITICAL: event.focalX/Y are in LOCAL view coordinates (the transformed space)
+      // We need to convert them to SCREEN coordinates to use in our calculation
+      // The view transform is: screenPos = localPos * scale + translate
+      // So: screenFocalX = event.focalX * savedScale + savedTranslateX + screenCenter
+      const centerX = screenWidthShared.value / 2;
+      const centerY = screenHeightShared.value / 2;
+
+      // Convert local focal point to screen-relative coordinates
+      // Note: event.focalX/Y are relative to the view center (which is at screen center)
+      initialFocalScreenX.value = event.focalX * savedScale.value + savedTranslateX.value;
+      initialFocalScreenY.value = event.focalY * savedScale.value + savedTranslateY.value;
     })
     .onUpdate((event) => {
       'worklet';
       const newScale = Math.max(1, Math.min(5, savedScale.value * event.scale));
 
-      // Calculate zoom toward focal point
-      // The focal point is where the user's fingers are centered (screen coordinates)
-      const focalX = event.focalX;
-      const focalY = event.focalY;
-
-      // Convert focal point to be relative to screen center
-      const centerX = screenWidthShared.value / 2;
-      const centerY = screenHeightShared.value / 2;
-
-      // Focal point relative to screen center
-      const focalRelX = focalX - centerX;
-      const focalRelY = focalY - centerY;
-
       // Calculate the scaling factor from SAVED values (gesture start)
       const scaleRatio = newScale / savedScale.value;
 
-      // Adjust translation to keep focal point stationary
-      // Formula: newTranslate = focalRel * (1 - scaleRatio) + savedTranslate * scaleRatio
-      const newTranslateX = focalRelX * (1 - scaleRatio) + savedTranslateX.value * scaleRatio;
-      const newTranslateY = focalRelY * (1 - scaleRatio) + savedTranslateY.value * scaleRatio;
+      // Use the INITIAL focal point in screen coordinates (captured at gesture start)
+      // This ensures we zoom toward where the user's fingers STARTED, not where they drift to
+      const focalScreenX = initialFocalScreenX.value;
+      const focalScreenY = initialFocalScreenY.value;
+
+      // Adjust translation to keep that screen point stationary
+      // Formula: newTranslate = screenPos * (1 - scaleRatio) + savedTranslate * scaleRatio
+      const newTranslateX = focalScreenX * (1 - scaleRatio) + savedTranslateX.value * scaleRatio;
+      const newTranslateY = focalScreenY * (1 - scaleRatio) + savedTranslateY.value * scaleRatio;
 
       scale.value = newScale;
       translateX.value = newTranslateX;
