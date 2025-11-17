@@ -64,9 +64,9 @@ export default function SubscriptionScreen({ onClose }) {
         'Cancel Subscription',
         'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.',
         [
-          { text: 'Keep Subscription', style: 'cancel' },
+          { text: 'Keep My Plan', style: 'cancel' },
           {
-            text: 'Cancel',
+            text: 'Yes, Cancel It',
             style: 'destructive',
             onPress: () => {
               // Note: RevenueCat doesn't support direct cancellation

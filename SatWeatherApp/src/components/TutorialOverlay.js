@@ -183,16 +183,18 @@ export const TutorialOverlay = ({ visible, onClose, startFromBeginning = true })
           </View>
 
           {/* Content */}
-          <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-            <Text style={styles.icon}>{step.icon}</Text>
-            <Text style={styles.title}>{step.title}</Text>
-            <Text style={styles.description}>{step.description}</Text>
+          <View style={styles.content}>
+            <ScrollView contentContainerStyle={styles.contentContainer}>
+              <Text style={styles.icon}>{step.icon}</Text>
+              <Text style={styles.title}>{step.title}</Text>
+              <Text style={styles.description}>{step.description}</Text>
 
-            {/* Step counter */}
-            <Text style={styles.stepCounter}>
-              {currentStep + 1} of {TUTORIAL_STEPS.length}
-            </Text>
-          </ScrollView>
+              {/* Step counter */}
+              <Text style={styles.stepCounter}>
+                {currentStep + 1} of {TUTORIAL_STEPS.length}
+              </Text>
+            </ScrollView>
+          </View>
 
           {/* Navigation buttons */}
           <View style={styles.buttonContainer}>
@@ -271,13 +273,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     paddingHorizontal: 20,
-    gap: 6,
   },
   progressDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#333',
+    marginHorizontal: 3,
   },
   progressDotActive: {
     backgroundColor: '#4A90E2',
@@ -320,7 +322,6 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     padding: 16,
-    gap: 12,
     borderTopWidth: 1,
     borderTopColor: '#333',
   },
@@ -330,6 +331,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
+    marginLeft: 6,
   },
   completeButton: {
     backgroundColor: '#27ae60',
@@ -345,6 +347,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
+    marginRight: 6,
   },
   secondaryButtonText: {
     color: '#999',
