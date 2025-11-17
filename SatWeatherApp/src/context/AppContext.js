@@ -6,6 +6,7 @@ import { DEFAULT_RGB_PRODUCT } from '../constants/products';
 import { DEFAULT_CHANNEL } from '../constants/satellites';
 import { OVERLAYS } from '../constants/overlays';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { safeJSONParse, validateSettings, validateFavorite, validateArray } from '../utils/validation';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -100,6 +101,7 @@ export const AppProvider = ({ children }) => {
     defaultViewMode: 'rgb', // 'rgb' or 'channel'
     defaultProduct: DEFAULT_RGB_PRODUCT, // can be RGB product or channel
     useLocalTime: false, // false = UTC, true = local time
+    channelDisplayMode: 'list', // 'list' or 'grid'
   });
 
   // Load saved preferences
@@ -148,15 +150,25 @@ export const AppProvider = ({ children }) => {
       console.error('Error loading home location:', error);
     }
 
-    // Load favorites
+    // Load favorites with validation
     try {
       const savedFavorites = await AsyncStorage.getItem('favorites');
       if (savedFavorites) {
-        try {
-          setFavorites(JSON.parse(savedFavorites));
-        } catch (parseError) {
-          console.error('Error parsing saved favorites:', parseError);
-          // Clear corrupted data
+        const parseResult = safeJSONParse(savedFavorites);
+        if (parseResult.success && Array.isArray(parseResult.data)) {
+          // Validate each favorite
+          const validation = validateArray(parseResult.data, validateFavorite);
+          if (validation.errors.length > 0) {
+            console.warn('[VALIDATION] Some favorites invalid:', validation.errors);
+          }
+          // Only load valid favorites
+          setFavorites(validation.validItems);
+          // Save cleaned data back
+          if (validation.validItems.length !== parseResult.data.length) {
+            await AsyncStorage.setItem('favorites', JSON.stringify(validation.validItems));
+          }
+        } else {
+          console.error('Error parsing saved favorites:', parseResult.error);
           await AsyncStorage.removeItem('favorites');
         }
       }
@@ -164,12 +176,13 @@ export const AppProvider = ({ children }) => {
       console.error('Error loading favorites:', error);
     }
 
-    // Load settings
+    // Load settings with validation
     try {
       const savedSettings = await AsyncStorage.getItem('settings');
       if (savedSettings) {
-        try {
-          const parsed = JSON.parse(savedSettings);
+        const parseResult = safeJSONParse(savedSettings, validateSettings);
+        if (parseResult.success || parseResult.data) {
+          const parsed = parseResult.data;
           // Migrate old default (500ms) to new default (800ms)
           if (parsed.animationSpeed === 500) {
             parsed.animationSpeed = 800;
@@ -188,14 +201,14 @@ export const AppProvider = ({ children }) => {
             defaultViewMode: 'rgb',
             defaultProduct: DEFAULT_RGB_PRODUCT,
             useLocalTime: false,
+            channelDisplayMode: 'list',
           };
           const mergedSettings = { ...defaultSettings, ...parsed };
           setSettings(mergedSettings);
-          // Save migrated settings back to storage
+          // Save migrated/validated settings back to storage
           await AsyncStorage.setItem('settings', JSON.stringify(mergedSettings));
-        } catch (parseError) {
-          console.error('Error parsing saved settings:', parseError);
-          // Clear corrupted data
+        } else {
+          console.error('Error parsing saved settings:', parseResult.error);
           await AsyncStorage.removeItem('settings');
         }
       }
@@ -251,6 +264,19 @@ export const AppProvider = ({ children }) => {
     setCurrentGeoData(null);
     setInspectorCoordinates(null);
     setInspectorDataValue(null);
+  };
+
+  // SECURITY: Clear all user location data (for privacy/logout)
+  const clearUserLocationData = async () => {
+    console.log('[PRIVACY] Clearing all user location data');
+    setUserLocation(null);
+    setSavedHomeLocation(null);
+    setShowLocationMarker(false);
+    try {
+      await AsyncStorage.removeItem('homeLocation');
+    } catch (error) {
+      console.error('Error clearing saved home location:', error);
+    }
   };
 
   const saveHomeLocation = async (location) => {
@@ -501,6 +527,7 @@ export const AppProvider = ({ children }) => {
     generateFavoriteName,
     updateSettings,
     setAsHome,
+    clearUserLocationData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

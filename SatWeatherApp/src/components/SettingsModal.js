@@ -347,6 +347,49 @@ export const SettingsModal = ({ visible, onClose }) => {
                 thumbColor="#fff"
               />
             </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingLabel}>Channel Display Mode</Text>
+                <Text style={styles.settingDescription}>
+                  List: Detailed info | Grid: Quick 4x4 number grid
+                </Text>
+              </View>
+              <View style={styles.segmentedControl}>
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    settings.channelDisplayMode === 'list' && styles.segmentButtonActive
+                  ]}
+                  onPress={() => updateSettings({ channelDisplayMode: 'list' })}
+                >
+                  <Text
+                    style={[
+                      styles.segmentButtonText,
+                      settings.channelDisplayMode === 'list' && styles.segmentButtonTextActive
+                    ]}
+                  >
+                    List
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    settings.channelDisplayMode === 'grid' && styles.segmentButtonActive
+                  ]}
+                  onPress={() => updateSettings({ channelDisplayMode: 'grid' })}
+                >
+                  <Text
+                    style={[
+                      styles.segmentButtonText,
+                      settings.channelDisplayMode === 'grid' && styles.segmentButtonTextActive
+                    ]}
+                  >
+                    Grid
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
           {/* Home View Settings */}

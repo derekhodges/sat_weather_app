@@ -73,6 +73,7 @@ const MenuButton = ({ label, isActive, onPress }) => (
 const ChannelPanel = ({ onSelect }) => {
   const [selectedInfo, setSelectedInfo] = useState(null);
   const { canAccessChannel, showUpgradePrompt } = useAuth();
+  const { settings } = useApp();
 
   const handleChannelSelect = (channel) => {
     if (!canAccessChannel(channel.number)) {
@@ -82,46 +83,88 @@ const ChannelPanel = ({ onSelect }) => {
     onSelect(channel);
   };
 
+  // Render grid view (4x4 layout with channel numbers)
+  const renderGridView = () => {
+    const rows = [];
+    for (let i = 0; i < CHANNELS.length; i += 4) {
+      const rowChannels = CHANNELS.slice(i, i + 4);
+      rows.push(
+        <View key={`row-${i}`} style={styles.channelGridRow}>
+          {rowChannels.map((channel) => {
+            const isLocked = !canAccessChannel(channel.number);
+            return (
+              <TouchableOpacity
+                key={channel.id}
+                style={[styles.channelGridItem, isLocked && styles.lockedGridItem]}
+                onPress={() => handleChannelSelect(channel)}
+                onLongPress={() => setSelectedInfo({ type: 'channel', data: channel })}
+              >
+                <Text style={[styles.channelGridNumber, isLocked && styles.lockedText]}>
+                  {channel.number}
+                </Text>
+                <Text style={[styles.channelGridName, isLocked && styles.lockedText]} numberOfLines={1}>
+                  {channel.name}
+                </Text>
+                {isLocked && (
+                  <Ionicons name="lock-closed" size={12} color="#FF6B6B" style={styles.gridLockIcon} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      );
+    }
+    return rows;
+  };
+
+  // Render list view (detailed with descriptions)
+  const renderListView = () => (
+    <View style={styles.channelList}>
+      {CHANNELS.map((channel) => {
+        const isLocked = !canAccessChannel(channel.number);
+        return (
+          <View key={channel.id} style={styles.listItemWrapper}>
+            <TouchableOpacity
+              style={[styles.channelListItem, isLocked && styles.lockedItem]}
+              onPress={() => handleChannelSelect(channel)}
+            >
+              <View style={styles.channelListContent}>
+                <View style={styles.channelTitleRow}>
+                  <Text style={[styles.channelListTitle, isLocked && styles.lockedText]}>
+                    Channel {channel.number} - {channel.name} ({channel.wavelength})
+                  </Text>
+                  {isLocked && (
+                    <Ionicons name="lock-closed" size={16} color="#FF6B6B" style={styles.lockIcon} />
+                  )}
+                </View>
+                <Text style={[styles.channelListDescription, isLocked && styles.lockedText]} numberOfLines={2}>
+                  {channel.useCase}
+                </Text>
+                {isLocked && (
+                  <Text style={styles.proRequiredText}>PRO required</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.infoButton}
+              onPress={() => setSelectedInfo({ type: 'channel', data: channel })}
+            >
+              <Ionicons name="information-circle-outline" size={24} color="#2196F3" />
+            </TouchableOpacity>
+          </View>
+        );
+      })}
+    </View>
+  );
+
   return (
     <>
       <ScrollView style={styles.panel}>
         <Text style={styles.panelTitle}>SELECT SATELLITE CHANNEL</Text>
-        <View style={styles.channelList}>
-          {CHANNELS.map((channel) => {
-            const isLocked = !canAccessChannel(channel.number);
-            return (
-              <View key={channel.id} style={styles.listItemWrapper}>
-                <TouchableOpacity
-                  style={[styles.channelListItem, isLocked && styles.lockedItem]}
-                  onPress={() => handleChannelSelect(channel)}
-                >
-                  <View style={styles.channelListContent}>
-                    <View style={styles.channelTitleRow}>
-                      <Text style={[styles.channelListTitle, isLocked && styles.lockedText]}>
-                        Channel {channel.number} - {channel.name} ({channel.wavelength})
-                      </Text>
-                      {isLocked && (
-                        <Ionicons name="lock-closed" size={16} color="#FF6B6B" style={styles.lockIcon} />
-                      )}
-                    </View>
-                    <Text style={[styles.channelListDescription, isLocked && styles.lockedText]} numberOfLines={2}>
-                      {channel.useCase}
-                    </Text>
-                    {isLocked && (
-                      <Text style={styles.proRequiredText}>PRO required</Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.infoButton}
-                  onPress={() => setSelectedInfo({ type: 'channel', data: channel })}
-                >
-                  <Ionicons name="information-circle-outline" size={24} color="#2196F3" />
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-        </View>
+        {settings.channelDisplayMode === 'grid' && (
+          <Text style={styles.gridHint}>Long press for channel info</Text>
+        )}
+        {settings.channelDisplayMode === 'grid' ? renderGridView() : renderListView()}
       </ScrollView>
 
       <InfoModal
@@ -854,6 +897,49 @@ const styles = StyleSheet.create({
     color: '#ff6666',
     fontSize: 10,
     marginTop: 4,
+    fontStyle: 'italic',
+  },
+  // Grid view styles for channels
+  channelGridRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    gap: 8,
+  },
+  channelGridItem: {
+    flex: 1,
+    backgroundColor: '#424242',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 70,
+    position: 'relative',
+  },
+  lockedGridItem: {
+    backgroundColor: '#2a2a2a',
+    opacity: 0.7,
+  },
+  channelGridNumber: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  channelGridName: {
+    color: '#999',
+    fontSize: 9,
+    textAlign: 'center',
+  },
+  gridLockIcon: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+  },
+  gridHint: {
+    color: '#666',
+    fontSize: 10,
+    marginBottom: 8,
     fontStyle: 'italic',
   },
 });

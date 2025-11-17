@@ -6,6 +6,88 @@
 
 const COD_BASE_URL = 'https://weather.cod.edu/data/satellite';
 
+// SECURITY: Whitelist of allowed domain types to prevent injection
+const ALLOWED_DOMAIN_TYPES = ['full_disk', 'conus', 'regional', 'local', 'mesoscale'];
+
+// SECURITY: Regex pattern for valid timestamps (YYYYMMDD.HHMMSS)
+const TIMESTAMP_PATTERN = /^\d{8}\.\d{6}$/;
+
+// SECURITY: Regex pattern for valid domain/product names (alphanumeric, underscore, hyphen only)
+const SAFE_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
+// Request deduplication to prevent duplicate network calls
+import { requestDeduplicator } from './requestDeduplicator';
+
+/**
+ * Retry with exponential backoff
+ * @param {Function} fn - Async function to retry
+ * @param {number} maxRetries - Maximum number of retries (default: 3)
+ * @param {number} baseDelay - Base delay in ms (default: 1000)
+ * @returns {Promise} Result of the function
+ */
+const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < maxRetries) {
+        // Exponential backoff: 1s, 2s, 4s, 8s...
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.log(`[RETRY] Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError;
+};
+
+/**
+ * Validate timestamp format for security
+ * @param {string} timestamp - Timestamp string to validate
+ * @returns {boolean} True if valid
+ */
+const isValidTimestamp = (timestamp) => {
+  if (!timestamp || typeof timestamp !== 'string') return false;
+  if (!TIMESTAMP_PATTERN.test(timestamp)) return false;
+
+  // Additional validation: check date/time values are reasonable
+  const dateStr = timestamp.split('.')[0];
+  const timeStr = timestamp.split('.')[1];
+
+  const year = parseInt(dateStr.substring(0, 4));
+  const month = parseInt(dateStr.substring(4, 6));
+  const day = parseInt(dateStr.substring(6, 8));
+  const hours = parseInt(timeStr.substring(0, 2));
+  const minutes = parseInt(timeStr.substring(2, 4));
+  const seconds = parseInt(timeStr.substring(4, 6));
+
+  // Validate ranges
+  if (year < 2000 || year > 2100) return false;
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (hours < 0 || hours > 23) return false;
+  if (minutes < 0 || minutes > 59) return false;
+  if (seconds < 0 || seconds > 59) return false;
+
+  return true;
+};
+
+/**
+ * Validate domain/product name for security (prevent path traversal)
+ * @param {string} name - Name to validate
+ * @returns {boolean} True if safe
+ */
+const isSafeName = (name) => {
+  if (!name || typeof name !== 'string') return false;
+  // Must be alphanumeric with underscores/hyphens only (no dots, slashes, etc.)
+  return SAFE_NAME_PATTERN.test(name) && name.length > 0 && name.length < 100;
+};
+
 /**
  * Fetch with timeout to prevent hanging on slow/dead connections
  * @param {string} url - URL to fetch
@@ -50,14 +132,37 @@ export const generateCODImageUrl = (domain, product, timestamp = null) => {
     return null;
   }
 
+  // SECURITY: Validate domain type is in whitelist
+  if (!ALLOWED_DOMAIN_TYPES.includes(domain.type)) {
+    console.error('generateCODImageUrl: Invalid domain type', domain.type);
+    return null;
+  }
+
+  // SECURITY: Validate domain name is safe (no path traversal)
+  if (!isSafeName(domain.codName)) {
+    console.error('generateCODImageUrl: Invalid domain codName (unsafe characters)', domain.codName);
+    return null;
+  }
+
   // Product can be either an RGB product (with codName) or a channel (with number)
   // For channels, pad with leading zero (e.g., 2 becomes "02")
   let productName;
   if (product.codName) {
+    // SECURITY: Validate product name is safe
+    if (!isSafeName(product.codName)) {
+      console.error('generateCODImageUrl: Invalid product codName (unsafe characters)', product.codName);
+      return null;
+    }
     productName = product.codName;
   } else if (product.number !== undefined) {
+    // SECURITY: Validate channel number is reasonable (1-16 for GOES satellites)
+    const channelNum = parseInt(product.number);
+    if (isNaN(channelNum) || channelNum < 1 || channelNum > 20) {
+      console.error('generateCODImageUrl: Invalid channel number', product.number);
+      return null;
+    }
     // Pad channel numbers with leading zero for URLs (e.g., 02, 05, 13)
-    productName = String(product.number).padStart(2, '0');
+    productName = String(channelNum).padStart(2, '0');
   } else {
     productName = null;
   }
@@ -68,6 +173,12 @@ export const generateCODImageUrl = (domain, product, timestamp = null) => {
   }
 
   const ts = timestamp || generateCurrentTimestamp();
+
+  // SECURITY: Validate timestamp format
+  if (!isValidTimestamp(ts)) {
+    console.error('generateCODImageUrl: Invalid timestamp format', ts);
+    return null;
+  }
 
   // Determine the base path based on domain type
   let basePath = '';
@@ -81,6 +192,8 @@ export const generateCODImageUrl = (domain, product, timestamp = null) => {
     basePath = `regional/${domainName}`;
   } else if (domain.type === 'local') {
     basePath = `local/${domainName}`;
+  } else if (domain.type === 'mesoscale') {
+    basePath = `mesoscale/${domainName}`;
   }
 
   // Construct the full URL
@@ -205,19 +318,21 @@ export const formatTimestamp = (timestamp, useLocalTime = false) => {
 };
 
 /**
- * Check if image URL is valid (exists)
+ * Check if image URL is valid (exists) with deduplication and retry
  */
 export const checkImageExists = async (url) => {
-  try {
-    const response = await fetchWithTimeout(url, { method: 'HEAD' }, 10000);
-    return response.ok;
-  } catch (error) {
-    // Log timeout errors vs network errors for debugging
-    if (error.message === 'Request timeout') {
-      console.warn('Image check timeout for:', url);
+  return requestDeduplicator.dedupe(`check:${url}`, async () => {
+    try {
+      const response = await fetchWithTimeout(url, { method: 'HEAD' }, 10000);
+      return response.ok;
+    } catch (error) {
+      // Log timeout errors vs network errors for debugging
+      if (error.message === 'Request timeout') {
+        console.warn('Image check timeout for:', url);
+      }
+      return false;
     }
-    return false;
-  }
+  });
 };
 
 /**

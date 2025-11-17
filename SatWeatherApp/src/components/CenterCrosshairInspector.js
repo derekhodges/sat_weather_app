@@ -322,7 +322,7 @@ export const CenterCrosshairInspector = () => {
       {/* Instruction text */}
       <View style={styles.instructionContainer}>
         <Text style={styles.instructionText}>
-          Inspector Mode - Tap to reposition crosshair
+          Inspector Mode - Tap or drag to move crosshair
         </Text>
       </View>
     </View>

@@ -12,11 +12,66 @@
 
 import { generateCODImageUrl } from './imageService';
 
-// In-memory cache for geospatial data
+// In-memory cache for geospatial data with TTL support
 const geoDataCache = new Map();
+
+// Cache entry metadata for LRU/TTL
+const cacheMetadata = new Map();
 
 // Maximum cache size (number of entries)
 const MAX_CACHE_SIZE = 50;
+
+// Cache TTL in milliseconds (30 minutes)
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+// Cleanup interval reference
+let cleanupIntervalId = null;
+
+/**
+ * Start periodic cache cleanup (runs every 10 minutes)
+ * Automatically removes expired entries and enforces LRU eviction
+ */
+export const startCacheCleanup = () => {
+  if (cleanupIntervalId) return; // Already running
+
+  cleanupIntervalId = setInterval(() => {
+    const now = Date.now();
+    const expiredKeys = [];
+
+    // Find expired entries
+    for (const [key, metadata] of cacheMetadata.entries()) {
+      if (now - metadata.timestamp > CACHE_TTL_MS) {
+        expiredKeys.push(key);
+      }
+    }
+
+    // Remove expired entries
+    expiredKeys.forEach(key => {
+      geoDataCache.delete(key);
+      cacheMetadata.delete(key);
+    });
+
+    if (expiredKeys.length > 0) {
+      console.log(`[GEODATA] TTL cleanup: removed ${expiredKeys.length} expired entries`);
+    }
+
+    // Also enforce size limit
+    cleanupCache();
+  }, 10 * 60 * 1000); // Every 10 minutes
+
+  console.log('[GEODATA] Cache cleanup timer started');
+};
+
+/**
+ * Stop periodic cache cleanup
+ */
+export const stopCacheCleanup = () => {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+    console.log('[GEODATA] Cache cleanup timer stopped');
+  }
+};
 
 /**
  * Generate URL for geospatial metadata file
@@ -56,22 +111,24 @@ const generateCacheKey = (domain, product, timestamp) => {
 
 /**
  * Clean up cache if it exceeds maximum size
- * Removes oldest entries first (FIFO)
+ * Uses LRU (Least Recently Used) eviction based on access time
  */
 const cleanupCache = () => {
   if (geoDataCache.size > MAX_CACHE_SIZE) {
-    const keysToDelete = [];
     const deleteCount = geoDataCache.size - MAX_CACHE_SIZE;
 
-    let count = 0;
-    for (const key of geoDataCache.keys()) {
-      if (count >= deleteCount) break;
-      keysToDelete.push(key);
-      count++;
+    // Sort by last access time (oldest first)
+    const sortedEntries = Array.from(cacheMetadata.entries())
+      .sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+
+    // Delete oldest entries
+    for (let i = 0; i < deleteCount && i < sortedEntries.length; i++) {
+      const key = sortedEntries[i][0];
+      geoDataCache.delete(key);
+      cacheMetadata.delete(key);
     }
 
-    keysToDelete.forEach(key => geoDataCache.delete(key));
-    console.log(`GeoData cache cleanup: removed ${deleteCount} entries`);
+    console.log(`[GEODATA] LRU cleanup: removed ${deleteCount} entries`);
   }
 };
 
@@ -99,6 +156,10 @@ export const fetchGeoData = async (domain, product, timestamp, options = {}) => 
 
   // Check cache first
   if (useCache && geoDataCache.has(cacheKey)) {
+    // Update last access time for LRU
+    if (cacheMetadata.has(cacheKey)) {
+      cacheMetadata.get(cacheKey).lastAccess = Date.now();
+    }
     console.log('GeoData cache hit:', cacheKey);
     return geoDataCache.get(cacheKey);
   }
@@ -129,6 +190,7 @@ export const fetchGeoData = async (domain, product, timestamp, options = {}) => 
       // Cache the fallback too to avoid repeated requests
       if (useCache && fallbackData) {
         geoDataCache.set(cacheKey, fallbackData);
+        cacheMetadata.set(cacheKey, { timestamp: Date.now(), lastAccess: Date.now() });
         cleanupCache();
       }
 
@@ -143,6 +205,7 @@ export const fetchGeoData = async (domain, product, timestamp, options = {}) => 
     // Cache the result
     if (useCache && validatedData) {
       geoDataCache.set(cacheKey, validatedData);
+      cacheMetadata.set(cacheKey, { timestamp: Date.now(), lastAccess: Date.now() });
       cleanupCache();
     }
 
@@ -334,6 +397,7 @@ export const prefetchGeoData = async (domain, product, timestamps, options = {})
  */
 export const clearGeoDataCache = () => {
   geoDataCache.clear();
+  cacheMetadata.clear();
   console.log('GeoData cache cleared');
 };
 
