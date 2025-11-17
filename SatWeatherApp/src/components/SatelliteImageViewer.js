@@ -97,6 +97,10 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     height: Dimensions.get('window').height,
   });
 
+  // Shared values for screen dimensions (accessible in worklets)
+  const screenWidthShared = useSharedValue(Dimensions.get('window').width);
+  const screenHeightShared = useSharedValue(Dimensions.get('window').height);
+
   // Listen for dimension changes (orientation changes)
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -104,6 +108,9 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
         width: window.width,
         height: window.height,
       });
+      // Update shared values for worklets
+      screenWidthShared.value = window.width;
+      screenHeightShared.value = window.height;
     });
 
     return () => {
@@ -122,21 +129,29 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     [forceContainMode, settings.imageDisplayMode]
   );
 
+  // Shared value for display mode (1 = contain, 2 = cover for image size multiplier)
+  const displayModeMultiplier = useSharedValue(effectiveDisplayMode === 'cover' ? 2 : 1);
+
+  // Update shared value when display mode changes
+  useEffect(() => {
+    displayModeMultiplier.value = effectiveDisplayMode === 'cover' ? 2 : 1;
+  }, [effectiveDisplayMode]);
+
   // Helper function to constrain translation based on current scale
   const constrainTranslation = (x, y, currentScale) => {
     'worklet';
 
     // For contain mode, image fits in screen, so allow moderate panning to see all parts
     // For cover mode, image is 200% size (extends 50% beyond each edge), need full panning
-    const imageSize = effectiveDisplayMode === 'cover' ? 2 : 1;
+    const imageSize = displayModeMultiplier.value;
 
     // Calculate maximum allowed translation based on zoom level
     // When zoomed in, allow more panning. When zoomed out, still allow some panning.
     // For contain mode: allow panning up to 50% of screen to see edges
     // For cover mode: image extends 50% beyond each edge, so need 50% pan to see all
     const basePanAllowance = 0.5;
-    const maxOffsetX = (screenWidth * (currentScale - 1) * imageSize) / 2 + (screenWidth * basePanAllowance);
-    const maxOffsetY = (screenHeight * (currentScale - 1) * imageSize) / 2 + (screenHeight * basePanAllowance);
+    const maxOffsetX = (screenWidthShared.value * (currentScale - 1) * imageSize) / 2 + (screenWidthShared.value * basePanAllowance);
+    const maxOffsetY = (screenHeightShared.value * (currentScale - 1) * imageSize) / 2 + (screenHeightShared.value * basePanAllowance);
 
     // Constrain to bounds
     const constrainedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, x));
@@ -181,8 +196,8 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
 
       // Convert focal point to be relative to screen center
       // This is necessary because the image transform origin is at center
-      const centerX = screenWidth / 2;
-      const centerY = screenHeight / 2;
+      const centerX = screenWidthShared.value / 2;
+      const centerY = screenHeightShared.value / 2;
 
       // Focal point relative to screen center
       const focalRelX = focalX - centerX;
