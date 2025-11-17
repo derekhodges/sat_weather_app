@@ -57,7 +57,7 @@ const TUTORIAL_STEPS = [
     id: 'welcome',
     title: 'Welcome to Satellite Weather',
     description: 'View real-time GOES satellite imagery. This tutorial covers the key features.',
-    icon: { library: 'Ionicons', name: 'satellite', emoji: '🛰️' },
+    icon: { library: 'MaterialCommunityIcons', name: 'satellite-variant', emoji: '🛰️' },
   },
   {
     id: 'satellite',
