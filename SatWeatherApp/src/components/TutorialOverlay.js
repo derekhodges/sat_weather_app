@@ -67,7 +67,7 @@ const TUTORIAL_STEPS = [
     id: 'zoom_pan',
     title: 'Zoom & Pan',
     description:
-      'Pinch to zoom. Drag to pan. Tap 🔄 to reset zoom.',
+      'Pinch to zoom. Drag to pan. Tap 🎯 to reset zoom.',
     icon: '🔍',
   },
   {
@@ -88,14 +88,14 @@ const TUTORIAL_STEPS = [
     id: 'inspector',
     title: 'Inspect Pixel Values',
     description:
-      'Tap 💧 to enter inspector mode. Tap anywhere to see coordinates and data values.',
-    icon: '💧',
+      'Tap 🎨 to enter inspector mode. Tap anywhere to see coordinates and data values.',
+    icon: '🎨',
   },
   {
     id: 'favorites',
     title: 'Save Favorites',
     description:
-      'Tap ☆ to save your current view for quick access later.',
+      'Tap ⭐ to save your current view for quick access later.',
     icon: '⭐',
   },
   {
@@ -109,14 +109,14 @@ const TUTORIAL_STEPS = [
     id: 'orientation',
     title: 'Flip Orientation',
     description:
-      'Tap 📱↔️ to switch between portrait and landscape modes.',
+      'Tap 🔄 to switch between portrait and landscape modes.',
     icon: '🔄',
   },
   {
     id: 'sharing',
     title: 'Share & Save',
     description:
-      'Tap ⋮ to save screenshots or create animated GIFs.',
+      'Tap 📤 to save screenshots or create animated GIFs.',
     icon: '📤',
   },
   {
