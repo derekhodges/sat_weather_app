@@ -69,7 +69,7 @@ const TUTORIAL_STEPS = [
     id: 'products',
     title: 'RGB Products & Channels',
     description: 'Tap RGB for composite images (Geocolor, etc.) or CHANNEL for individual bands. Different channels identify details about clouds, fires, fog, and more.',
-    icon: { library: 'Ionicons', name: 'color-palette', emoji: '🌈' },
+    icon: { library: 'Ionicons', name: 'apps', emoji: '🌈' },
   },
   {
     id: 'domains',
