@@ -39,7 +39,7 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
   } = useAuth();
 
   const [localAnimationSpeed, setLocalAnimationSpeed] = useState(settings.animationSpeed.toString());
-  const [localEndDwellDuration, setLocalEndDwellDuration] = useState(settings.endDwellDuration.toString());
+  const [localEndDwellDuration, setLocalEndDwellDuration] = useState((settings.endDwellDuration ?? 1500).toString());
   const [localFrameCount, setLocalFrameCount] = useState(settings.frameCount.toString());
   const [localFrameSkip, setLocalFrameSkip] = useState(settings.frameSkip.toString());
   const [showCustomFrameSkip, setShowCustomFrameSkip] = useState(false);

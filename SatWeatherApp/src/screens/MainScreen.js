@@ -98,7 +98,7 @@ export const MainScreen = () => {
   const animationIntervalRef = useRef(null);
   const autoRefreshIntervalRef = useRef(null);
   const animationSpeedRef = useRef(settings.animationSpeed); // Ref for animation speed to avoid interval recreation
-  const endDwellDurationRef = useRef(settings.endDwellDuration); // Ref for end dwell duration
+  const endDwellDurationRef = useRef(settings.endDwellDuration ?? 1500); // Ref for end dwell duration
   // Refs for auto-refresh to avoid recreating interval on every dependency change
   const autoRefreshDepsRef = useRef({
     selectedDomain,
@@ -350,7 +350,7 @@ export const MainScreen = () => {
 
   // Keep end dwell duration ref in sync
   useEffect(() => {
-    endDwellDurationRef.current = settings.endDwellDuration;
+    endDwellDurationRef.current = settings.endDwellDuration ?? 1500;
   }, [settings.endDwellDuration]);
 
   // Keep auto-refresh dependencies ref in sync
