@@ -539,9 +539,10 @@ export const MainScreen = () => {
     const cachedUrl = frameCache.get(selectedDomain, product, timestamp);
 
     if (cachedUrl) {
-      // Use cached URL - no loading delay!
-      setCurrentImageUrl(cachedUrl);
+      // Use cached URL - force update even if URL is same by setting timestamp first
+      // This ensures React sees a state change
       setImageTimestamp(timestamp);
+      setCurrentImageUrl(cachedUrl);
 
       // Load geospatial data for this frame (non-blocking)
       loadGeoDataForTimestamp(timestamp, product);
@@ -558,8 +559,8 @@ export const MainScreen = () => {
       return;
     }
 
-    setCurrentImageUrl(url);
     setImageTimestamp(timestamp);
+    setCurrentImageUrl(url);
 
     // Load geospatial data for this frame (non-blocking)
     loadGeoDataForTimestamp(timestamp, product);

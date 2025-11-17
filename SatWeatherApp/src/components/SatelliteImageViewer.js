@@ -28,6 +28,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const { forceContainMode = false, onImageLoad } = props;
   const {
     currentImageUrl,
+    imageTimestamp,
     isLoading,
     error,
     settings,
@@ -378,6 +379,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   );
 
   // Handle URL changes - load into inactive slot and swap when ready
+  // Also watch imageTimestamp to force re-render even when URL is cached
   useEffect(() => {
     if (!currentImageUrl) return;
 
@@ -392,6 +394,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     }
 
     // Subsequent loads - use inactive slot
+    // Force swap even if URL is same (cached frames) by checking timestamp
     if (activeSlot === 'A') {
       // Load into slot B
       setImageBLoaded(false);
@@ -401,7 +404,7 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       setImageALoaded(false);
       setImageSlotA(currentImageUrl);
     }
-  }, [currentImageUrl]);
+  }, [currentImageUrl, imageTimestamp]);
 
   // Handle image load callbacks
   const handleImageALoad = (event) => {
