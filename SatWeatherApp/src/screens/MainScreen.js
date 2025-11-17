@@ -600,7 +600,14 @@ export const MainScreen = () => {
     if (event?.nativeEvent?.source) {
       const { width, height } = event.nativeEvent.source;
       console.log(`[IMAGE] Loaded with dimensions: ${width}x${height}`);
-      setActualImageSize({ width, height });
+      // CRITICAL: Only update if dimensions actually changed to prevent infinite render loops
+      // Creating a new object reference with same values would trigger useEffect cascades
+      setActualImageSize(prev => {
+        if (prev && prev.width === width && prev.height === height) {
+          return prev; // Same dimensions, return existing object to avoid re-renders
+        }
+        return { width, height };
+      });
     }
   }, [setActualImageSize]);
 

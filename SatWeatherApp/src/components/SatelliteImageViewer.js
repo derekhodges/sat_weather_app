@@ -91,6 +91,14 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
+  // Track if pinch gesture is active (to prevent pan from overriding pinch calculations)
+  const isPinchActive = useSharedValue(false);
+
+  // Track the initial focal point in SCREEN coordinates when pinch starts
+  // This is crucial because event.focalX/Y are in local view coordinates
+  const initialFocalScreenX = useSharedValue(0);
+  const initialFocalScreenY = useSharedValue(0);
+
   // Get screen dimensions for bounds checking - update on orientation change
   const [screenDimensions, setScreenDimensions] = useState({
     width: Dimensions.get('window').width,
@@ -161,11 +169,13 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   };
 
   // Update transform state in context (for coordinate calculations)
+  // CRITICAL: Only update if values actually changed to prevent infinite render loops
   const updateTransformState = (s, tx, ty) => {
-    setCurrentImageTransform({
-      scale: s,
-      translateX: tx,
-      translateY: ty,
+    setCurrentImageTransform(prev => {
+      if (prev.scale === s && prev.translateX === tx && prev.translateY === ty) {
+        return prev; // No change, return existing object
+      }
+      return { scale: s, translateX: tx, translateY: ty };
     });
   };
 
@@ -175,52 +185,61 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
     const now = Date.now();
     if (now - lastUpdateTime.current > 16) {
       lastUpdateTime.current = now;
-      setCurrentImageTransform({
-        scale: s,
-        translateX: tx,
-        translateY: ty,
+      setCurrentImageTransform(prev => {
+        if (prev.scale === s && prev.translateX === tx && prev.translateY === ty) {
+          return prev; // No change, return existing object
+        }
+        return { scale: s, translateX: tx, translateY: ty };
       });
     }
   };
 
   // Pinch gesture for zoom - zooms toward the focal point (center of pinch)
   const pinchGesture = Gesture.Pinch()
+    .onStart((event) => {
+      'worklet';
+      isPinchActive.value = true;
+
+      // event.focalX/Y are in the gesture view's coordinate system (top-left origin)
+      // Convert to be relative to view CENTER (which is the transform origin)
+      // The view fills the screen, so its center is at (width/2, height/2)
+      initialFocalScreenX.value = event.focalX - screenWidthShared.value / 2;
+      initialFocalScreenY.value = event.focalY - screenHeightShared.value / 2;
+    })
     .onUpdate((event) => {
       'worklet';
       const newScale = Math.max(1, Math.min(5, savedScale.value * event.scale));
 
-      // Calculate zoom toward focal point
-      // The focal point is where the user's fingers are centered (screen coordinates)
-      const focalX = event.focalX;
-      const focalY = event.focalY;
+      // Calculate the scaling factor from SAVED values (gesture start)
+      const scaleRatio = newScale / savedScale.value;
 
-      // Convert focal point to be relative to screen center
-      // This is necessary because the image transform origin is at center
-      const centerX = screenWidthShared.value / 2;
-      const centerY = screenHeightShared.value / 2;
+      // Use the INITIAL focal point relative to view center
+      const focalRelX = initialFocalScreenX.value;
+      const focalRelY = initialFocalScreenY.value;
 
-      // Focal point relative to screen center
-      const focalRelX = focalX - centerX;
-      const focalRelY = focalY - centerY;
-
-      // Calculate the scaling factor change
-      const scaleChange = newScale / scale.value;
-
-      // Adjust translation to keep focal point stationary on screen
-      // The formula accounts for the transform being applied from center origin:
-      // newTranslate = oldTranslate + focalRel * (1 - scaleChange)
-      const newTranslateX = translateX.value + focalRelX * (1 - scaleChange);
-      const newTranslateY = translateY.value + focalRelY * (1 - scaleChange);
+      // The content point under the focal is at:
+      // contentPoint = (focalRel - savedTranslate) / savedScale
+      //
+      // After zoom, we want that content point to stay at the same screen position:
+      // focalRel = contentPoint * newScale + newTranslate
+      //
+      // Solving: newTranslate = focalRel - contentPoint * newScale
+      //        = focalRel - (focalRel - savedTranslate) * (newScale/savedScale)
+      //        = focalRel * (1 - scaleRatio) + savedTranslate * scaleRatio
+      const newTranslateX = focalRelX * (1 - scaleRatio) + savedTranslateX.value * scaleRatio;
+      const newTranslateY = focalRelY * (1 - scaleRatio) + savedTranslateY.value * scaleRatio;
 
       scale.value = newScale;
       translateX.value = newTranslateX;
       translateY.value = newTranslateY;
 
-      // Update transform state in real-time (throttled)
-      runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
+      // DON'T update transform state during gesture - only on end
+      // This prevents React re-renders during the gesture which causes glitches
     })
     .onEnd(() => {
       'worklet';
+      isPinchActive.value = false;
+
       // Limit scale and apply spring for smooth finish
       if (scale.value < 1) {
         scale.value = withSpring(1, { damping: 20, stiffness: 300 });
@@ -250,6 +269,12 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
   const panGesture = Gesture.Pan()
     .enabled(!isInspectorMode)
     .onUpdate((event) => {
+      'worklet';
+      // Skip pan updates while pinch is active to prevent fighting
+      if (isPinchActive.value) {
+        return;
+      }
+
       const newX = savedTranslateX.value + event.translationX;
       const newY = savedTranslateY.value + event.translationY;
 
@@ -257,10 +282,11 @@ export const SatelliteImageViewer = forwardRef((props, ref) => {
       const constrained = constrainTranslation(newX, newY, scale.value);
       translateX.value = constrained.x;
       translateY.value = constrained.y;
-      // Update transform state in real-time (throttled)
-      runOnJS(throttledUpdateTransform)(scale.value, translateX.value, translateY.value);
+      // DON'T update transform state during gesture - only on end
+      // This prevents React re-renders during the gesture which causes glitches
     })
     .onEnd(() => {
+      'worklet';
       // Save final constrained position
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
