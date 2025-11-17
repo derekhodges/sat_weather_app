@@ -8,9 +8,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useApp } from '../context/AppContext';
 
 export default function AdBanner({ style }) {
-  const { shouldDisplayAds, showUpgradePrompt } = useAuth();
+  const { shouldDisplayAds } = useAuth();
+  const { setShowSubscriptionModal } = useApp();
 
   // Don't show if user has paid subscription
   if (!shouldDisplayAds()) {
@@ -18,7 +20,7 @@ export default function AdBanner({ style }) {
   }
 
   const handleUpgrade = () => {
-    showUpgradePrompt('Ad-free experience');
+    setShowSubscriptionModal(true);
   };
 
   return (

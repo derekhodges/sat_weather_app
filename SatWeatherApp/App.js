@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ActivityIndicator, View } from 'react-native';
+import { useKeepAwake } from 'expo-keep-awake';
 import { AppProvider } from './src/context/AppContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { MainScreen } from './src/screens/MainScreen';
@@ -37,6 +38,9 @@ function AuthGate() {
 }
 
 export default function App() {
+  // Keep screen awake while app is open
+  useKeepAwake();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

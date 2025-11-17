@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, ActivityIndicator, AppState } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform, TouchableOpacity, Text, Dimensions, Alert, ActivityIndicator, AppState, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import * as Sharing from 'expo-sharing';
@@ -19,6 +19,8 @@ import { CenterCrosshairInspector } from '../components/CenterCrosshairInspector
 import { FavoritesMenu } from '../components/FavoritesMenu';
 import ShareMenu from '../components/ShareMenu';
 import { SettingsModal } from '../components/SettingsModal';
+import AdBanner from '../components/AdBanner';
+import SubscriptionScreen from './SubscriptionScreen';
 import {
   captureScreenshot,
   saveScreenshotToLibrary,
@@ -77,6 +79,8 @@ export const MainScreen = () => {
     showLocationMarker,
     showSettingsModal,
     setShowSettingsModal,
+    showSubscriptionModal,
+    setShowSubscriptionModal,
     setCurrentGeoData,
     setActualImageSize,
     clearGeoData,
@@ -1208,6 +1212,9 @@ export const MainScreen = () => {
               isDrawingMode={isDrawingMode}
               isInspectorMode={isInspectorMode}
             />
+
+            {/* Ad banner for free tier users - only shows in portrait mode */}
+            <AdBanner />
           </>
         )}
         </View>
@@ -1237,6 +1244,16 @@ export const MainScreen = () => {
           visible={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
         />
+
+        {/* Subscription screen modal */}
+        <Modal
+          visible={showSubscriptionModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowSubscriptionModal(false)}
+        >
+          <SubscriptionScreen onClose={() => setShowSubscriptionModal(false)} />
+        </Modal>
       </View>
     </SafeAreaView>
   );

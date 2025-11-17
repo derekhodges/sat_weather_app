@@ -24,7 +24,8 @@ export const SettingsModal = ({ visible, onClose }) => {
     selectedDomain,
     selectedRGBProduct,
     selectedChannel,
-    viewMode
+    viewMode,
+    setShowSubscriptionModal,
   } = useApp();
 
   const {
@@ -487,6 +488,20 @@ export const SettingsModal = ({ visible, onClose }) => {
               )}
             </View>
 
+            {/* Manage Subscription Button */}
+            <TouchableOpacity
+              style={styles.manageSubscriptionButton}
+              onPress={() => {
+                onClose(); // Close settings modal first
+                setTimeout(() => setShowSubscriptionModal(true), 300); // Then open subscription modal
+              }}
+            >
+              <Text style={styles.manageSubscriptionButtonText}>
+                {subscriptionTier === SUBSCRIPTION_TIERS.FREE ? 'Upgrade Your Plan' : 'Manage Subscription'}
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#4A90E2" />
+            </TouchableOpacity>
+
             {/* Free Tier */}
             <TouchableOpacity
               style={[
@@ -851,8 +866,22 @@ const styles = StyleSheet.create({
   currentStatusNote: {
     color: '#FF6B6B',
     fontSize: 12,
-    marginTop: 4,
-    fontStyle: 'italic',
+  },
+  manageSubscriptionButton: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#4A90E2',
+  },
+  manageSubscriptionButtonText: {
+    color: '#4A90E2',
+    fontSize: 16,
+    fontWeight: '600',
   },
   subscriptionTier: {
     backgroundColor: '#1a1a1a',
