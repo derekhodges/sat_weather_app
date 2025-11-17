@@ -290,15 +290,19 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    minHeight: 200,
   },
   contentContainer: {
+    flexGrow: 1,
     paddingHorizontal: 24,
-    paddingBottom: 20,
+    paddingVertical: 20,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   icon: {
     fontSize: 48,
     marginBottom: 16,
+    color: '#fff',
   },
   title: {
     fontSize: 22,
@@ -316,7 +320,7 @@ const styles = StyleSheet.create({
   },
   stepCounter: {
     fontSize: 12,
-    color: '#666',
+    color: '#888',
     marginTop: 8,
   },
   buttonContainer: {
