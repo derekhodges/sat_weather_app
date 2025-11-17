@@ -91,7 +91,8 @@ export const AppProvider = ({ children }) => {
 
   // Settings
   const [settings, setSettings] = useState({
-    animationSpeed: 800, // ms per frame
+    animationSpeed: 500, // ms per frame (industry standard)
+    endDwellDuration: 1500, // ms to pause on last frame before looping
     frameCount: 12, // number of frames to load
     frameSkip: 0, // number of frames to skip (0-12)
     imageDisplayMode: 'contain', // 'contain' or 'cover'
