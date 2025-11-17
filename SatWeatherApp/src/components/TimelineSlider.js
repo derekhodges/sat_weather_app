@@ -11,6 +11,14 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
     return null;
   }
 
+  // Round slider values to integers to ensure proper frame switching
+  const handleValueChange = (value) => {
+    const roundedValue = Math.round(value);
+    if (roundedValue !== currentFrameIndex) {
+      setCurrentFrameIndex(roundedValue);
+    }
+  };
+
   const isVertical = orientation === 'vertical';
   const isHorizontal = orientation === 'horizontal';
 
@@ -25,7 +33,7 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
             maximumValue={Math.max(0, availableTimestamps.length - 1)}
             step={1}
             value={currentFrameIndex}
-            onValueChange={setCurrentFrameIndex}
+            onValueChange={handleValueChange}
             minimumTrackTintColor="#fff"
             maximumTrackTintColor="#555"
             thumbTintColor="#fff"
@@ -43,7 +51,7 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
         maximumValue={Math.max(0, availableTimestamps.length - 1)}
         step={1}
         value={currentFrameIndex}
-        onValueChange={setCurrentFrameIndex}
+        onValueChange={handleValueChange}
         minimumTrackTintColor="#fff"
         maximumTrackTintColor="#555"
         thumbTintColor="#fff"

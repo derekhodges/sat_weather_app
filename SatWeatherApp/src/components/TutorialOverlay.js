@@ -289,15 +289,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#2196F3',
   },
   content: {
-    flex: 1,
+    maxHeight: 300,
     minHeight: 200,
   },
   contentContainer: {
-    flexGrow: 1,
     paddingHorizontal: 24,
     paddingVertical: 20,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   icon: {
     fontSize: 48,
