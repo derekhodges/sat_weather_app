@@ -208,7 +208,7 @@ export const DOMAINS = {
   },
 };
 
-export const DEFAULT_DOMAIN = DOMAINS.OKLAHOMA;
+export const DEFAULT_DOMAIN = DOMAINS.CONUS;
 
 // Organize domains by type for menu display
 export const DOMAINS_BY_TYPE = {
