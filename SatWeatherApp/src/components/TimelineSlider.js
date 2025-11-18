@@ -49,7 +49,10 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
       {/* Visual track background for better visibility */}
       <View style={styles.trackBackground} />
       <Slider
-        style={styles.slider}
+        style={[
+          styles.slider,
+          Platform.OS === 'android' && styles.sliderAndroid
+        ]}
         minimumValue={0}
         maximumValue={Math.max(0, availableTimestamps.length - 1)}
         step={1}
@@ -87,6 +90,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 60,
     zIndex: 10,
+  },
+  sliderAndroid: {
+    // Scale up the slider on Android to make thumb bigger
+    transform: [{ scaleY: 1.5 }],
   },
   containerVertical: {
     backgroundColor: '#1a1a1a',
