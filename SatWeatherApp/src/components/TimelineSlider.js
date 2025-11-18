@@ -76,6 +76,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#333',
     position: 'relative',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   trackBackground: {
     position: 'absolute',
@@ -89,11 +90,10 @@ const styles = StyleSheet.create({
   slider: {
     width: '100%',
     height: 60,
-    zIndex: 10,
   },
   sliderAndroid: {
     // Scale up the slider on Android to make thumb bigger and square
-    transform: [{ scaleY: 2 }, { scaleX: 2 }],
+    transform: [{ scaleY: 2 }, { scaleX: 1.5 }],
   },
   containerVertical: {
     backgroundColor: '#1a1a1a',
@@ -126,3 +126,4 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 });
+
