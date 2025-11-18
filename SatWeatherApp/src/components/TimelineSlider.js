@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1a1a1a',
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: '#333',
     position: 'relative',
@@ -92,8 +92,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   sliderAndroid: {
-    // Scale up the slider on Android to make thumb bigger
-    transform: [{ scaleY: 1.5 }],
+    // Scale up the slider on Android to make thumb bigger and square
+    transform: [{ scaleY: 2 }, { scaleX: 2 }],
   },
   containerVertical: {
     backgroundColor: '#1a1a1a',
