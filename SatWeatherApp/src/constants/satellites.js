@@ -10,13 +10,7 @@ export const SATELLITES = {
     id: 'goes-18',
     name: 'GOES-18',
     location: 'West',
-    available: false, // Placeholder for future
-  },
-  GOES_17: {
-    id: 'goes-17',
-    name: 'GOES-17',
-    location: 'West',
-    available: false, // Placeholder for future
+    available: true,
   },
 };
 

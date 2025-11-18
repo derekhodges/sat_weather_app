@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useApp } from '../context/AppContext';
 
@@ -45,6 +45,8 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
 
   return (
     <View style={styles.container}>
+      {/* Visual track background for better visibility */}
+      <View style={styles.trackBackground} />
       <Slider
         style={styles.slider}
         minimumValue={0}
@@ -52,9 +54,10 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
         step={1}
         value={currentFrameIndex}
         onValueChange={handleValueChange}
-        minimumTrackTintColor="#fff"
+        minimumTrackTintColor="#4A90E2"
         maximumTrackTintColor="#555"
         thumbTintColor="#fff"
+        {...(Platform.OS === 'ios' ? { thumbStyle: styles.thumbStyle } : {})}
       />
     </View>
   );
@@ -67,6 +70,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: '#333',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  trackBackground: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    height: 8,
+    backgroundColor: '#333',
+    borderRadius: 4,
+    alignSelf: 'center',
   },
   slider: {
     width: '100%',
@@ -74,8 +88,8 @@ const styles = StyleSheet.create({
   },
   containerVertical: {
     backgroundColor: '#1a1a1a',
-    width: 60,
-    paddingVertical: 16,
+    width: 80,
+    paddingVertical: 2,
     paddingHorizontal: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -90,5 +104,16 @@ const styles = StyleSheet.create({
   sliderVertical: {
     width: 300,
     height: 40,
+  },
+  thumbStyle: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 10,
   },
 });
