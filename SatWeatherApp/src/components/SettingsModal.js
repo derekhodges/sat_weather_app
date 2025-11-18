@@ -563,7 +563,7 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
               ]}
             >
               <View style={styles.subscriptionTierHeader}>
-                <Text style={styles.subscriptionTierName}>Pro [SETTINGS MODAL]</Text>
+                <Text style={styles.subscriptionTierName}>Pro</Text>
                 <Text style={styles.subscriptionTierPrice}>$1.99/mo or $20/yr</Text>
               </View>
               <View style={styles.subscriptionFeatures}>

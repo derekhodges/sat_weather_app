@@ -228,7 +228,7 @@ export default function SubscriptionScreen({ onClose }) {
       <View key={tier} style={[styles.tierCard, isCurrent && styles.tierCardCurrent]}>
         {isCurrent && <Text style={styles.currentBadge}>Current Plan</Text>}
 
-        <Text style={styles.tierName}>{tierData.name} [SUBSCRIPTION SCREEN]</Text>
+        <Text style={styles.tierName}>{tierData.name}</Text>
         <View style={styles.priceContainer}>
           <Text style={styles.tierPrice}>{price}</Text>
           <Text style={styles.tierPeriod}>{periodText}</Text>
