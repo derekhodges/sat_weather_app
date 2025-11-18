@@ -564,7 +564,7 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
             >
               <View style={styles.subscriptionTierHeader}>
                 <Text style={styles.subscriptionTierName}>Pro</Text>
-                <Text style={styles.subscriptionTierPrice}>$0.99/mo or $10/yr</Text>
+                <Text style={styles.subscriptionTierPrice}>$1.99/mo or $20/yr</Text>
               </View>
               <View style={styles.subscriptionFeatures}>
                 <Text style={styles.subscriptionFeature}>✓ All RGB products</Text>
@@ -594,7 +594,7 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
             >
               <View style={styles.subscriptionTierHeader}>
                 <Text style={styles.subscriptionTierName}>Pro Plus</Text>
-                <Text style={styles.subscriptionTierPrice}>$2.99/mo or $30/yr</Text>
+                <Text style={styles.subscriptionTierPrice}>$4.99/mo or $50/yr</Text>
               </View>
               <View style={styles.subscriptionFeatures}>
                 <Text style={styles.subscriptionFeature}>✓ Everything in Pro</Text>

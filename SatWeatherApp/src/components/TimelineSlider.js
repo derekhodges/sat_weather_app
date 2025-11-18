@@ -46,6 +46,8 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
 
   return (
     <View style={styles.container}>
+      {/* Visual track background for better visibility */}
+      <View style={styles.trackBackground} />
       <Slider
         style={styles.slider}
         minimumValue={0}
@@ -53,7 +55,7 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
         step={1}
         value={currentFrameIndex}
         onValueChange={handleValueChange}
-        minimumTrackTintColor="#fff"
+        minimumTrackTintColor="#4A90E2"
         maximumTrackTintColor="#555"
         thumbTintColor="#fff"
         {...(Platform.OS === 'ios' ? { thumbStyle: styles.thumbStyle } : {})}
@@ -66,13 +68,25 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1a1a1a',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 20,
     borderTopWidth: 1,
     borderTopColor: '#333',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  trackBackground: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    height: 8,
+    backgroundColor: '#333',
+    borderRadius: 4,
+    alignSelf: 'center',
   },
   slider: {
     width: '100%',
     height: 60,
+    zIndex: 10,
   },
   containerVertical: {
     backgroundColor: '#1a1a1a',
@@ -94,14 +108,14 @@ const styles = StyleSheet.create({
     height: 60,
   },
   thumbStyle: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 5,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 10,
   },
 });
