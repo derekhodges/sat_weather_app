@@ -16,6 +16,7 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, getTierFeatures } from '../config/subscription';
 import { resetTutorial } from './TutorialOverlay';
+import { FeedbackModal } from './FeedbackModal';
 
 export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
   const {
@@ -45,6 +46,7 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
   const [showCustomFrameSkip, setShowCustomFrameSkip] = useState(false);
   const [showHomeConfirm, setShowHomeConfirm] = useState(false);
   const [showDevTools, setShowDevTools] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // Developer tools - set to true to always show, false to hide in production
   // TODO: Set to false before releasing to production
@@ -673,6 +675,20 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
               </View>
               <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.helpButton}
+              onPress={() => setShowFeedbackModal(true)}
+            >
+              <View style={styles.helpButtonContent}>
+                <Ionicons name="chatbubble-outline" size={24} color="#FF9500" />
+                <View style={styles.helpButtonText}>
+                  <Text style={styles.helpButtonTitle}>Send Feedback</Text>
+                  <Text style={styles.helpButtonDescription}>Report bugs or suggest features</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
           </View>
 
           {/* Developer Tools - For Testing Only */}
@@ -773,6 +789,12 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
           )}
         </ScrollView>
       </SafeAreaView>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        visible={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+      />
     </Modal>
   );
 };
