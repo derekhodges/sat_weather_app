@@ -579,9 +579,15 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
                   <Text style={styles.subscriptionBadgeText}>CURRENT</Text>
                 </View>
               ) : (
-                <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
-                  <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.subscriptionButton}
+                  onPress={() => {
+                    onClose(); // Close settings modal
+                    setTimeout(() => setShowSubscriptionModal(true), 300); // Open subscription modal
+                  }}
+                >
+                  <Text style={styles.subscriptionButtonText}>Upgrade to Pro</Text>
+                </TouchableOpacity>
               )}
             </TouchableOpacity>
 
@@ -609,9 +615,15 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
                   <Text style={styles.subscriptionBadgeText}>CURRENT</Text>
                 </View>
               ) : (
-                <View style={[styles.subscriptionButton, styles.subscriptionButtonInactive]}>
-                  <Text style={styles.subscriptionButtonText}>Coming Soon</Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.subscriptionButton}
+                  onPress={() => {
+                    onClose(); // Close settings modal
+                    setTimeout(() => setShowSubscriptionModal(true), 300); // Open subscription modal
+                  }}
+                >
+                  <Text style={styles.subscriptionButtonText}>Upgrade to Pro Plus</Text>
+                </TouchableOpacity>
               )}
             </TouchableOpacity>
           </View>
