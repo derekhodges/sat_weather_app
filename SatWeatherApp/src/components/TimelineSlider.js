@@ -37,7 +37,6 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
             minimumTrackTintColor="#fff"
             maximumTrackTintColor="#555"
             thumbTintColor="#fff"
-            {...(Platform.OS === 'ios' ? { thumbStyle: styles.thumbStyle } : {})}
           />
         </View>
       </View>
@@ -49,10 +48,7 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
       {/* Visual track background for better visibility */}
       <View style={styles.trackBackground} />
       <Slider
-        style={[
-          styles.slider,
-          Platform.OS === 'android' && styles.sliderAndroid
-        ]}
+        style={styles.slider}
         minimumValue={0}
         maximumValue={Math.max(0, availableTimestamps.length - 1)}
         step={1}
@@ -70,18 +66,17 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1a1a1a',
-    paddingHorizontal: 36,
-    paddingVertical: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: '#333',
     position: 'relative',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
   trackBackground: {
     position: 'absolute',
-    left: 36,
-    right: 36,
+    left: 16,
+    right: 16,
     height: 8,
     backgroundColor: '#333',
     borderRadius: 4,
@@ -89,30 +84,26 @@ const styles = StyleSheet.create({
   },
   slider: {
     width: '100%',
-    height: 60,
-  },
-  sliderAndroid: {
-    // Scale up the slider on Android to make thumb bigger and square
-    transform: [{ scaleY: 2 }, { scaleX: 1.5 }],
+    height: 40,
   },
   containerVertical: {
     backgroundColor: '#1a1a1a',
     width: 80,
-    paddingVertical: 16,
+    paddingVertical: 2,
     paddingHorizontal: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   verticalSliderWrapper: {
     width: 300, // This will become the height after rotation
-    height: 60,
+    height: 40,
     transform: [{ rotate: '-90deg' }],
     justifyContent: 'center',
     alignItems: 'center',
   },
   sliderVertical: {
     width: 300,
-    height: 60,
+    height: 40,
   },
   thumbStyle: {
     width: 44,
@@ -126,4 +117,3 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 });
-
