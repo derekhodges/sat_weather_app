@@ -70,8 +70,8 @@ export const TimelineSlider = ({ orientation = 'portrait' }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1a1a1a',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 2,
     borderTopWidth: 1,
     borderTopColor: '#333',
     position: 'relative',
@@ -79,8 +79,8 @@ const styles = StyleSheet.create({
   },
   trackBackground: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    left: 24,
+    right: 24,
     height: 8,
     backgroundColor: '#333',
     borderRadius: 4,
