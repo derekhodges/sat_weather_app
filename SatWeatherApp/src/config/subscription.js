@@ -60,8 +60,8 @@ export const TIER_FEATURES = {
 
   [SUBSCRIPTION_TIERS.PRO]: {
     name: 'Pro',
-    price: '$0.99/month',
-    priceYearly: '$10/year',
+    price: '$1.99/month',
+    priceYearly: '$20/year',
     features: {
       // Animation
       maxFrames: 24,
@@ -104,8 +104,8 @@ export const TIER_FEATURES = {
 
   [SUBSCRIPTION_TIERS.PRO_PLUS]: {
     name: 'Pro Plus',
-    price: '$2.99/month',
-    priceYearly: '$30/year',
+    price: '$4.99/month',
+    priceYearly: '$50/year',
     features: {
       // Animation
       maxFrames: 36,
