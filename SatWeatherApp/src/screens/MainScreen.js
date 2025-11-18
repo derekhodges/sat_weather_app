@@ -1408,7 +1408,7 @@ const styles = StyleSheet.create({
   },
   menuButtonText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
   },
   separator: {
