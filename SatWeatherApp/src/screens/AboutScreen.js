@@ -209,62 +209,78 @@ export default function AboutScreen({ onClose }) {
               Here's what we're working on for future releases:
             </Text>
 
+            <Text style={styles.roadmapTierHeader}>Pro Features</Text>
+
             <View style={styles.featureItem}>
-              <View style={styles.featurePriority} />
+              <View style={[styles.featurePriority, { backgroundColor: '#4A90E2' }]} />
               <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Enhanced Radar Integration</Text>
+                <Text style={styles.featureTitle}>GLM Lightning Data Overlays</Text>
                 <Text style={styles.featureDescription}>
-                  More detailed radar products and velocity data
+                  Enhanced lightning detection from Geostationary Lightning Mapper
                 </Text>
               </View>
             </View>
 
             <View style={styles.featureItem}>
-              <View style={styles.featurePriority} />
+              <View style={[styles.featurePriority, { backgroundColor: '#4A90E2' }]} />
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>Additional Satellite Overlays</Text>
+                <Text style={styles.featureDescription}>
+                  More satellite-derived products and enhancements
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.featureItem}>
+              <View style={[styles.featurePriority, { backgroundColor: '#4A90E2' }]} />
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>RAP Analysis Overlays</Text>
+                <Text style={styles.featureDescription}>
+                  Rapid Refresh analysis data for detailed atmospheric conditions
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.roadmapTierHeader}>Pro Plus Features</Text>
+
+            <View style={styles.featureItem}>
+              <View style={[styles.featurePriority, { backgroundColor: '#667eea' }]} />
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>Model & ACARS Soundings</Text>
+                <Text style={styles.featureDescription}>
+                  Vertical atmospheric profiles from weather models and aircraft reports
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.featureItem}>
+              <View style={[styles.featurePriority, { backgroundColor: '#667eea' }]} />
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>Multiple MRMS Radar Layers</Text>
+                <Text style={styles.featureDescription}>
+                  Expanded radar products including reflectivity, velocity, and derived products
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.roadmapTierHeader}>All Tiers</Text>
+
+            <View style={styles.featureItem}>
+              <View style={[styles.featurePriority, { backgroundColor: '#27ae60' }]} />
               <View style={styles.featureContent}>
                 <Text style={styles.featureTitle}>Custom Location Alerts</Text>
                 <Text style={styles.featureDescription}>
-                  Push notifications for weather events in your area
+                  Push notifications for weather events in your saved locations
                 </Text>
               </View>
             </View>
 
             <View style={styles.featureItem}>
-              <View style={styles.featurePriority} />
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Time Series Analysis</Text>
-                <Text style={styles.featureDescription}>
-                  Compare imagery across different time periods
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.featureItem}>
-              <View style={styles.featurePriority} />
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Storm Tracking</Text>
-                <Text style={styles.featureDescription}>
-                  Automated detection and tracking of severe weather
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.featureItem}>
-              <View style={styles.featurePriority} />
+              <View style={[styles.featurePriority, { backgroundColor: '#27ae60' }]} />
               <View style={styles.featureContent}>
                 <Text style={styles.featureTitle}>Historical Archive</Text>
                 <Text style={styles.featureDescription}>
-                  Access past satellite imagery for research
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.featureItem}>
-              <View style={styles.featurePriority} />
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>3D Visualization</Text>
-                <Text style={styles.featureDescription}>
-                  Interactive 3D views of cloud formations
+                  Access past satellite imagery for analysis and research
                 </Text>
               </View>
             </View>
@@ -346,7 +362,7 @@ export default function AboutScreen({ onClose }) {
             </Text>
 
             <View style={styles.licenseItem}>
-              <Text style={styles.licenseName}>React Native</Text>
+              <Text style={styles.licenseName}>React & React Native</Text>
               <Text style={styles.licenseType}>MIT License</Text>
             </View>
 
@@ -356,8 +372,8 @@ export default function AboutScreen({ onClose }) {
             </View>
 
             <View style={styles.licenseItem}>
-              <Text style={styles.licenseName}>Supabase</Text>
-              <Text style={styles.licenseType}>Apache 2.0 License</Text>
+              <Text style={styles.licenseName}>Supabase JS</Text>
+              <Text style={styles.licenseType}>MIT License</Text>
             </View>
 
             <View style={styles.licenseItem}>
@@ -366,7 +382,17 @@ export default function AboutScreen({ onClose }) {
             </View>
 
             <View style={styles.licenseItem}>
-              <Text style={styles.licenseName}>RevenueCat</Text>
+              <Text style={styles.licenseName}>React Native SVG</Text>
+              <Text style={styles.licenseType}>MIT License</Text>
+            </View>
+
+            <View style={styles.licenseItem}>
+              <Text style={styles.licenseName}>RevenueCat Purchases</Text>
+              <Text style={styles.licenseType}>MIT License</Text>
+            </View>
+
+            <View style={styles.licenseItem}>
+              <Text style={styles.licenseName}>AsyncStorage</Text>
               <Text style={styles.licenseType}>MIT License</Text>
             </View>
 
@@ -587,6 +613,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 16,
     lineHeight: 20,
+  },
+  roadmapTierHeader: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   featureItem: {
     flexDirection: 'row',
