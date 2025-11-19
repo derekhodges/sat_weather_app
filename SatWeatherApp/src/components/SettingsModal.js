@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, getTierFeatures } from '../config/subscription';
 import { resetTutorial } from './TutorialOverlay';
 import { FeedbackModal } from './FeedbackModal';
+import AboutScreen from '../screens/AboutScreen';
 
 export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
   const {
@@ -47,6 +48,7 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
   const [showHomeConfirm, setShowHomeConfirm] = useState(false);
   const [showDevTools, setShowDevTools] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showAboutScreen, setShowAboutScreen] = useState(false);
 
   // Developer tools - set to true to always show, false to hide in production
   // TODO: Set to false before releasing to production
@@ -689,6 +691,20 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
               </View>
               <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.helpButton}
+              onPress={() => setShowAboutScreen(true)}
+            >
+              <View style={styles.helpButtonContent}>
+                <Ionicons name="information-circle-outline" size={24} color="#9b59b6" />
+                <View style={styles.helpButtonText}>
+                  <Text style={styles.helpButtonTitle}>About This App</Text>
+                  <Text style={styles.helpButtonDescription}>Version, credits, and changelog</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
           </View>
 
           {/* Developer Tools - For Testing Only */}
@@ -795,6 +811,17 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
         visible={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
       />
+
+      {/* About Screen */}
+      {showAboutScreen && (
+        <Modal
+          visible={showAboutScreen}
+          animationType="slide"
+          onRequestClose={() => setShowAboutScreen(false)}
+        >
+          <AboutScreen onClose={() => setShowAboutScreen(false)} />
+        </Modal>
+      )}
     </Modal>
   );
 };
