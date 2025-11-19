@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, TIER_FEATURES } from '../config/subscription';
 import {
@@ -292,7 +293,7 @@ export default function SubscriptionScreen({ onClose }) {
   const trialStatus = getTrialStatus();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Choose Your Plan</Text>
@@ -423,7 +424,7 @@ export default function SubscriptionScreen({ onClose }) {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
