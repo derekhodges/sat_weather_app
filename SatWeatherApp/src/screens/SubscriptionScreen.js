@@ -28,9 +28,17 @@ import {
 } from '../services/purchases';
 
 export default function SubscriptionScreen({ onClose }) {
-  const { subscriptionTier, setDeveloperTierOverride } = useAuth();
+  const {
+    subscriptionTier,
+    setDeveloperTierOverride,
+    trialActive,
+    trialUsed,
+    startTrial,
+    getTrialStatus,
+  } = useAuth();
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [startingTrial, setStartingTrial] = useState(false);
   const [offerings, setOfferings] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('monthly'); // 'monthly' or 'yearly'
 
@@ -171,6 +179,27 @@ export default function SubscriptionScreen({ onClose }) {
     }
   };
 
+  const handleStartTrial = async () => {
+    setStartingTrial(true);
+    try {
+      const result = await startTrial();
+
+      if (result.success) {
+        Alert.alert(
+          'Trial Started!',
+          'Welcome to your 7-day free trial of Pro Plus! You now have access to all premium features including radar overlays, custom time selection, and more.',
+          [{ text: 'Start Exploring', onPress: onClose }]
+        );
+      } else {
+        Alert.alert('Unable to Start Trial', result.error || 'Please try again later.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to start trial. Please try again.');
+    } finally {
+      setStartingTrial(false);
+    }
+  };
+
   const getPackageForTier = (tier) => {
     if (!offerings) return null;
 
@@ -257,6 +286,9 @@ export default function SubscriptionScreen({ onClose }) {
     );
   };
 
+  // Get trial status for display
+  const trialStatus = getTrialStatus();
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -266,6 +298,42 @@ export default function SubscriptionScreen({ onClose }) {
           <Text style={styles.closeText}>✕</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Trial Status Banner */}
+      {trialActive && (
+        <View style={styles.trialBanner}>
+          <Text style={styles.trialBannerTitle}>🎉 Free Trial Active</Text>
+          <Text style={styles.trialBannerText}>
+            {trialStatus.daysRemaining} {trialStatus.daysRemaining === 1 ? 'day' : 'days'} remaining of Pro Plus features
+          </Text>
+        </View>
+      )}
+
+      {/* Free Trial Card */}
+      {!trialActive && !trialUsed && subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
+        <View style={styles.trialCard}>
+          <View style={styles.trialCardHeader}>
+            <Text style={styles.trialCardTitle}>Try Pro Plus Free for 7 Days</Text>
+            <View style={styles.trialBadge}>
+              <Text style={styles.trialBadgeText}>LIMITED TIME</Text>
+            </View>
+          </View>
+          <Text style={styles.trialCardDescription}>
+            Get full access to all premium features including radar overlays, custom time selection, high-res imagery, and more. No credit card required!
+          </Text>
+          <TouchableOpacity
+            style={[styles.trialButton, startingTrial && styles.trialButtonDisabled]}
+            onPress={handleStartTrial}
+            disabled={startingTrial || loading}
+          >
+            {startingTrial ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.trialButtonText}>Start Free Trial</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Billing Period Toggle */}
       <View style={styles.periodToggle}>
@@ -513,5 +581,77 @@ const styles = StyleSheet.create({
     color: '#ccaa00',
     fontSize: 12,
     lineHeight: 18,
+  },
+  trialBanner: {
+    backgroundColor: '#1a4d2e',
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#27ae60',
+  },
+  trialBannerTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  trialBannerText: {
+    color: '#a8e6cf',
+    fontSize: 14,
+  },
+  trialCard: {
+    backgroundColor: '#2d1b69',
+    borderRadius: 12,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  trialCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  trialCardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    marginRight: 8,
+  },
+  trialBadge: {
+    backgroundColor: '#ffd700',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  trialBadgeText: {
+    color: '#000',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  trialCardDescription: {
+    fontSize: 14,
+    color: '#e0e0e0',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  trialButton: {
+    backgroundColor: '#667eea',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+  },
+  trialButtonDisabled: {
+    opacity: 0.7,
+  },
+  trialButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
