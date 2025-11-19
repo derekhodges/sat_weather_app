@@ -8,10 +8,9 @@ import { IR_COLOR_TABLES, temperatureFromColor, interpretRGBProductColor } from 
  * Determines if a colorbar should be displayed based on the current product/channel
  *
  * Rules:
- * - Geocolor (truecolor): NO colorbar
+ * - All RGB products: NO colorbar (generic gradients don't provide meaningful information)
  * - Visible channels: NO colorbar
- * - IR channels: YES colorbar
- * - Other RGB products: YES colorbar (for now - can be refined later)
+ * - IR channels: YES colorbar (uses proper temperature-based color tables)
  *
  * @param {string} viewMode - 'rgb' or 'channel'
  * @param {object} selectedChannel - Current channel object (if in channel mode)
@@ -26,16 +25,10 @@ export const shouldShowColorbar = (viewMode, selectedChannel, selectedRGBProduct
   }
 
   if (viewMode === 'rgb') {
-    // For RGB products, hide colorbar for geocolor/truecolor
-    if (!selectedRGBProduct) return false;
-
-    // Geocolor uses 'truecolor' as codName
-    if (selectedRGBProduct.codName === 'truecolor' || selectedRGBProduct.id === 'geocolor') {
-      return false;
-    }
-
-    // Other RGB products show colorbar (can be refined later)
-    return true;
+    // For RGB products, hide colorbar for all products
+    // Generic gradients don't provide meaningful color interpretation
+    // Each RGB product needs its own specific color scale (future enhancement)
+    return false;
   }
 
   return false;
