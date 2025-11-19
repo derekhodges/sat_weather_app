@@ -44,7 +44,6 @@ export default function SubscriptionScreen({ onClose }) {
   const [startingTrial, setStartingTrial] = useState(false);
   const [offerings, setOfferings] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('monthly'); // 'monthly' or 'yearly'
-  const [showTrialCardOverride, setShowTrialCardOverride] = useState(false); // Developer override
 
   // Check if we're in development mode
   const isDevelopment = __DEV__ || process.env.EXPO_PUBLIC_APP_ENV === 'development';
@@ -260,37 +259,42 @@ export default function SubscriptionScreen({ onClose }) {
 
     const periodText = isFreeTier ? 'forever' : selectedPeriod === 'monthly' ? '/month' : '/year';
 
+    // Determine button text
+    let buttonText = 'Subscribe';
+    if (isCurrent) {
+      buttonText = 'Current Plan';
+    } else if (isFreeTier) {
+      buttonText = 'Cancel Subscription';
+    }
+
     return (
       <TouchableOpacity
         key={tier}
-        activeOpacity={loading || isCurrent ? 1 : 0.7}
-        onPress={() => !loading && !isCurrent && handleSubscribe(tier)}
+        activeOpacity={isCurrent ? 1 : 0.7}
+        onPress={() => handleSubscribe(tier)}
         disabled={loading || isCurrent}
+        style={[styles.tierCard, isCurrent && styles.tierCardCurrent]}
       >
-        <View style={[styles.tierCard, isCurrent && styles.tierCardCurrent]}>
-          {isCurrent && <Text style={styles.currentBadge}>Current Plan</Text>}
+        {isCurrent && <Text style={styles.currentBadge}>Current Plan</Text>}
 
-          <Text style={styles.tierName}>{tierData.name}</Text>
-          <View style={styles.priceContainer}>
-            <Text style={styles.tierPrice}>{price}</Text>
-            <Text style={styles.tierPeriod}>{periodText}</Text>
-          </View>
+        <Text style={styles.tierName}>{tierData.name}</Text>
+        <View style={styles.priceContainer}>
+          <Text style={styles.tierPrice}>{price}</Text>
+          <Text style={styles.tierPeriod}>{periodText}</Text>
+        </View>
 
-          {!isFreeTier && selectedPeriod === 'yearly' && (
-            <Text style={styles.savingsText}>Save 17% with yearly billing</Text>
+        {!isFreeTier && selectedPeriod === 'yearly' && (
+          <Text style={styles.savingsText}>Save 17% with yearly billing</Text>
+        )}
+
+        {renderFeatureList(tierData.features)}
+
+        <View style={[styles.subscribeButton, isCurrent && styles.subscribeButtonCurrent, loading && styles.subscribeButtonDisabled]}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.subscribeButtonText}>{buttonText}</Text>
           )}
-
-          {renderFeatureList(tierData.features)}
-
-          <View style={[styles.subscribeButton, isCurrent && styles.subscribeButtonCurrent, loading && styles.subscribeButtonDisabled]}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.subscribeButtonText}>
-                {isCurrent ? 'Current Plan' : isFreeTier ? 'Downgrade' : 'Subscribe'}
-              </Text>
-            )}
-          </View>
         </View>
       </TouchableOpacity>
     );
@@ -319,8 +323,8 @@ export default function SubscriptionScreen({ onClose }) {
         </View>
       )}
 
-      {/* Free Trial Card - Show if conditions are met OR developer override is enabled */}
-      {(showTrialCardOverride || (authEnabled && isAuthenticated && !trialActive && !trialUsed && subscriptionTier === SUBSCRIPTION_TIERS.FREE)) && (
+      {/* Free Trial Card - Always show in dev mode, conditionally in production */}
+      {(isDevelopment || (authEnabled && isAuthenticated && !trialActive && !trialUsed && subscriptionTier === SUBSCRIPTION_TIERS.FREE)) && !trialActive && (
         <View style={styles.trialCard}>
           <View style={styles.trialCardHeader}>
             <Text style={styles.trialCardTitle}>Try Pro Plus Free for 7 Days</Text>
@@ -333,44 +337,39 @@ export default function SubscriptionScreen({ onClose }) {
           </Text>
           <TouchableOpacity
             style={[styles.trialButton, startingTrial && styles.trialButtonDisabled]}
-            onPress={handleStartTrial}
+            onPress={() => {
+              // In dev mode with auth disabled, guide user to enable auth
+              if (!authEnabled) {
+                Alert.alert(
+                  'Enable Authentication',
+                  'To use the free trial feature, you need to enable authentication in your .env file:\n\nEXPO_PUBLIC_ENABLE_AUTH=true\n\nThen restart the app and create an account.',
+                  [{ text: 'OK' }]
+                );
+                return;
+              }
+
+              // If auth enabled but not logged in, guide to create account
+              if (!isAuthenticated) {
+                Alert.alert(
+                  'Create Account',
+                  'To start your free trial, please create an account first. Restart the app to see the login screen, or sign in from the settings menu if available.',
+                  [{ text: 'OK' }]
+                );
+                return;
+              }
+
+              // Otherwise start the trial
+              handleStartTrial();
+            }}
             disabled={startingTrial || loading}
           >
             {startingTrial ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.trialButtonText}>Start Free Trial</Text>
+              <Text style={styles.trialButtonText}>
+                {!authEnabled ? 'Enable Auth to Test' : !isAuthenticated ? 'Create Account' : 'Start Free Trial'}
+              </Text>
             )}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Create Account Prompt - Show if auth is enabled but user is not logged in (and not overridden) */}
-      {!showTrialCardOverride && authEnabled && !isAuthenticated && !trialActive && subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
-        <View style={styles.trialCard}>
-          <View style={styles.trialCardHeader}>
-            <Text style={styles.trialCardTitle}>Start Your 7-Day Free Trial</Text>
-            <View style={styles.trialBadge}>
-              <Text style={styles.trialBadgeText}>NEW USER OFFER</Text>
-            </View>
-          </View>
-          <Text style={styles.trialCardDescription}>
-            Create a free account to unlock a 7-day trial of Pro Plus. Try all premium features including radar overlays, custom time selection, and more!
-          </Text>
-          <TouchableOpacity
-            style={styles.trialButton}
-            onPress={() => {
-              Alert.alert(
-                'Create Account',
-                'To start your free trial, please create an account first. You can do this from the main menu.',
-                [
-                  { text: 'Maybe Later', style: 'cancel' },
-                  { text: 'OK', onPress: onClose }
-                ]
-              );
-            }}
-          >
-            <Text style={styles.trialButtonText}>Create Free Account</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -428,25 +427,6 @@ export default function SubscriptionScreen({ onClose }) {
               RevenueCat is not configured. Subscriptions will run in demo mode, allowing you to test tier functionality
               without actual payments.
             </Text>
-          </View>
-        )}
-
-        {/* Developer Tools */}
-        {isDevelopment && (
-          <View style={styles.devTools}>
-            <Text style={styles.devToolsTitle}>Developer Tools</Text>
-            <TouchableOpacity
-              style={styles.devToggle}
-              onPress={() => setShowTrialCardOverride(!showTrialCardOverride)}
-            >
-              <View style={styles.devToggleContent}>
-                <Text style={styles.devToggleLabel}>Show Free Trial Card</Text>
-                <Text style={styles.devToggleSubtext}>Override visibility conditions for testing</Text>
-              </View>
-              <View style={[styles.devToggleSwitch, showTrialCardOverride && styles.devToggleSwitchActive]}>
-                <Text style={styles.devToggleSwitchText}>{showTrialCardOverride ? 'ON' : 'OFF'}</Text>
-              </View>
-            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -711,58 +691,6 @@ const styles = StyleSheet.create({
   trialButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  devTools: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 16,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  devToolsTitle: {
-    color: '#ffcc00',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  devToggle: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  devToggleContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  devToggleLabel: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  devToggleSubtext: {
-    color: '#888',
-    fontSize: 12,
-  },
-  devToggleSwitch: {
-    backgroundColor: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    minWidth: 60,
-    alignItems: 'center',
-  },
-  devToggleSwitchActive: {
-    backgroundColor: '#4A90E2',
-  },
-  devToggleSwitchText: {
-    color: '#fff',
-    fontSize: 12,
     fontWeight: 'bold',
   },
 });
