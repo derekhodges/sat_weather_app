@@ -35,6 +35,8 @@ export default function SubscriptionScreen({ onClose }) {
     trialUsed,
     startTrial,
     getTrialStatus,
+    isAuthenticated,
+    authEnabled,
   } = useAuth();
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -309,8 +311,8 @@ export default function SubscriptionScreen({ onClose }) {
         </View>
       )}
 
-      {/* Free Trial Card */}
-      {!trialActive && !trialUsed && subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
+      {/* Free Trial Card - Only show if auth is enabled and user is logged in */}
+      {authEnabled && isAuthenticated && !trialActive && !trialUsed && subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
         <View style={styles.trialCard}>
           <View style={styles.trialCardHeader}>
             <Text style={styles.trialCardTitle}>Try Pro Plus Free for 7 Days</Text>
@@ -331,6 +333,36 @@ export default function SubscriptionScreen({ onClose }) {
             ) : (
               <Text style={styles.trialButtonText}>Start Free Trial</Text>
             )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Create Account Prompt - Show if auth is enabled but user is not logged in */}
+      {authEnabled && !isAuthenticated && !trialActive && subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
+        <View style={styles.trialCard}>
+          <View style={styles.trialCardHeader}>
+            <Text style={styles.trialCardTitle}>Start Your 7-Day Free Trial</Text>
+            <View style={styles.trialBadge}>
+              <Text style={styles.trialBadgeText}>NEW USER OFFER</Text>
+            </View>
+          </View>
+          <Text style={styles.trialCardDescription}>
+            Create a free account to unlock a 7-day trial of Pro Plus. Try all premium features including radar overlays, custom time selection, and more!
+          </Text>
+          <TouchableOpacity
+            style={styles.trialButton}
+            onPress={() => {
+              Alert.alert(
+                'Create Account',
+                'To start your free trial, please create an account first. You can do this from the main menu.',
+                [
+                  { text: 'Maybe Later', style: 'cancel' },
+                  { text: 'OK', onPress: onClose }
+                ]
+              );
+            }}
+          >
+            <Text style={styles.trialButtonText}>Create Free Account</Text>
           </TouchableOpacity>
         </View>
       )}
