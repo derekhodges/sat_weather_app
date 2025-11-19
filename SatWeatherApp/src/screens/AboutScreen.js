@@ -20,6 +20,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function AboutScreen({ onClose }) {
@@ -74,7 +75,7 @@ export default function AboutScreen({ onClose }) {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={{ width: 40 }} />
@@ -263,20 +264,8 @@ export default function AboutScreen({ onClose }) {
               </View>
             </View>
 
-            <Text style={styles.roadmapTierHeader}>All Tiers</Text>
-
             <View style={styles.featureItem}>
-              <View style={[styles.featurePriority, { backgroundColor: '#27ae60' }]} />
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Custom Location Alerts</Text>
-                <Text style={styles.featureDescription}>
-                  Push notifications for weather events in your saved locations
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.featureItem}>
-              <View style={[styles.featurePriority, { backgroundColor: '#27ae60' }]} />
+              <View style={[styles.featurePriority, { backgroundColor: '#667eea' }]} />
               <View style={styles.featureContent}>
                 <Text style={styles.featureTitle}>Historical Archive</Text>
                 <Text style={styles.featureDescription}>
@@ -324,9 +313,10 @@ export default function AboutScreen({ onClose }) {
             </View>
 
             <View style={styles.acknowledgement}>
-              <Text style={styles.ackTitle}>Storm Prediction Center</Text>
+              <Text style={styles.ackTitle}>Storm Prediction Center & Weather Prediction Center</Text>
               <Text style={styles.ackDescription}>
-                Convective outlooks and severe weather probabilities from NOAA's Storm Prediction Center (SPC).
+                Convective outlooks and severe weather probabilities from NOAA's Storm Prediction Center (SPC) and
+                surface analysis products from the Weather Prediction Center (WPC).
               </Text>
             </View>
 
@@ -480,7 +470,7 @@ export default function AboutScreen({ onClose }) {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
