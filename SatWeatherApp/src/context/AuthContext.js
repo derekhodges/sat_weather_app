@@ -41,14 +41,19 @@ export const AuthProvider = ({ children }) => {
   const [subscriptionTier, setSubscriptionTier] = useState(SUBSCRIPTION_TIERS.FREE);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null); // null, 'active', 'cancelled', 'expired'
 
+  // Free trial state
+  const [trialActive, setTrialActive] = useState(false);
+  const [trialEndsAt, setTrialEndsAt] = useState(null);
+  const [trialUsed, setTrialUsed] = useState(false);
+
   // Developer testing mode - override subscription tier for testing
   const [devTierOverride, setDevTierOverride] = useState(null);
 
   // Check if auth is actually enabled
   const authEnabled = isAuthEnabled();
 
-  // Get effective tier (respects override for testing)
-  const effectiveTier = devTierOverride || subscriptionTier;
+  // Get effective tier (respects override for testing and active trial)
+  const effectiveTier = devTierOverride || (trialActive ? SUBSCRIPTION_TIERS.PRO_PLUS : subscriptionTier);
 
   // Load dev tier override from storage
   useEffect(() => {
@@ -106,7 +111,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('tier, status, expires_at')
+        .select('tier, status, expires_at, trial_started_at, trial_ends_at, trial_used')
         .eq('user_id', userId)
         .single();
 
@@ -115,17 +120,29 @@ export const AuthProvider = ({ children }) => {
       if (data) {
         setSubscriptionTier(data.tier);
         setSubscriptionStatus(data.status);
+        setTrialUsed(data.trial_used || false);
 
         // Check if subscription is expired
         if (data.expires_at && new Date(data.expires_at) < new Date()) {
           setSubscriptionTier(SUBSCRIPTION_TIERS.FREE);
           setSubscriptionStatus('expired');
         }
+
+        // Check if trial is active
+        const now = new Date();
+        if (data.trial_ends_at && new Date(data.trial_ends_at) > now) {
+          setTrialActive(true);
+          setTrialEndsAt(data.trial_ends_at);
+        } else {
+          setTrialActive(false);
+          setTrialEndsAt(null);
+        }
       }
     } catch (error) {
       console.error('Error loading subscription:', error);
       // Default to free tier on error
       setSubscriptionTier(SUBSCRIPTION_TIERS.FREE);
+      setTrialActive(false);
     }
   };
 
@@ -315,6 +332,99 @@ export const AuthProvider = ({ children }) => {
     );
   };
 
+  /**
+   * Start free trial for the user
+   * Returns { success: boolean, error?: string }
+   */
+  const startTrial = async () => {
+    if (!user) {
+      return { success: false, error: 'You must be logged in to start a trial' };
+    }
+
+    if (trialUsed) {
+      return { success: false, error: 'You have already used your free trial' };
+    }
+
+    if (trialActive) {
+      return { success: false, error: 'Trial is already active' };
+    }
+
+    try {
+      const now = new Date();
+      const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+
+      // Check if user has a subscription record
+      const { data: existingSubscription } = await supabase
+        .from('subscriptions')
+        .select('id, trial_used')
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingSubscription?.trial_used) {
+        return { success: false, error: 'You have already used your free trial' };
+      }
+
+      if (existingSubscription) {
+        // Update existing subscription
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            trial_started_at: now.toISOString(),
+            trial_ends_at: trialEnd.toISOString(),
+            trial_used: true,
+            updated_at: now.toISOString(),
+          })
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      } else {
+        // Create new subscription record
+        const { error } = await supabase
+          .from('subscriptions')
+          .insert({
+            user_id: user.id,
+            tier: SUBSCRIPTION_TIERS.FREE,
+            status: 'active',
+            trial_started_at: now.toISOString(),
+            trial_ends_at: trialEnd.toISOString(),
+            trial_used: true,
+          });
+
+        if (error) throw error;
+      }
+
+      // Update local state
+      setTrialActive(true);
+      setTrialEndsAt(trialEnd.toISOString());
+      setTrialUsed(true);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error starting trial:', error);
+      return { success: false, error: error.message || 'Failed to start trial' };
+    }
+  };
+
+  /**
+   * Get trial status information
+   */
+  const getTrialStatus = () => {
+    if (!trialEndsAt) {
+      return { active: false, daysRemaining: 0 };
+    }
+
+    const now = new Date();
+    const endsAt = new Date(trialEndsAt);
+    const msRemaining = endsAt.getTime() - now.getTime();
+    const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+
+    return {
+      active: trialActive,
+      daysRemaining: Math.max(0, daysRemaining),
+      endsAt: trialEndsAt,
+    };
+  };
+
   const value = {
     // State
     user,
@@ -326,6 +436,11 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     authEnabled,
     devTierOverride,
+
+    // Trial state
+    trialActive,
+    trialEndsAt,
+    trialUsed,
 
     // Actions
     signUp,
@@ -344,6 +459,10 @@ export const AuthProvider = ({ children }) => {
     setDeveloperTierOverride,
     showUpgradePrompt,
     refreshSubscription: () => user && loadSubscriptionStatus(user.id),
+
+    // Trial actions
+    startTrial,
+    getTrialStatus,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { SUBSCRIPTION_TIERS, TIER_FEATURES } from '../config/subscription';
 import {
@@ -28,11 +29,24 @@ import {
 } from '../services/purchases';
 
 export default function SubscriptionScreen({ onClose }) {
-  const { subscriptionTier, setDeveloperTierOverride } = useAuth();
+  const {
+    subscriptionTier,
+    setDeveloperTierOverride,
+    trialActive,
+    trialUsed,
+    startTrial,
+    getTrialStatus,
+    isAuthenticated,
+    authEnabled,
+  } = useAuth();
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [startingTrial, setStartingTrial] = useState(false);
   const [offerings, setOfferings] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState('monthly'); // 'monthly' or 'yearly'
+
+  // Check if we're in development mode
+  const isDevelopment = __DEV__ || process.env.EXPO_PUBLIC_APP_ENV === 'development';
 
   // Load offerings on mount
   useEffect(() => {
@@ -171,6 +185,27 @@ export default function SubscriptionScreen({ onClose }) {
     }
   };
 
+  const handleStartTrial = async () => {
+    setStartingTrial(true);
+    try {
+      const result = await startTrial();
+
+      if (result.success) {
+        Alert.alert(
+          'Trial Started!',
+          'Welcome to your 7-day free trial of Pro Plus! You now have access to all premium features including radar overlays, custom time selection, and more.',
+          [{ text: 'Start Exploring', onPress: onClose }]
+        );
+      } else {
+        Alert.alert('Unable to Start Trial', result.error || 'Please try again later.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to start trial. Please try again.');
+    } finally {
+      setStartingTrial(false);
+    }
+  };
+
   const getPackageForTier = (tier) => {
     if (!offerings) return null;
 
@@ -224,8 +259,22 @@ export default function SubscriptionScreen({ onClose }) {
 
     const periodText = isFreeTier ? 'forever' : selectedPeriod === 'monthly' ? '/month' : '/year';
 
+    // Determine button text
+    let buttonText = 'Subscribe';
+    if (isCurrent) {
+      buttonText = 'Current Plan';
+    } else if (isFreeTier) {
+      buttonText = 'Cancel Subscription';
+    }
+
     return (
-      <View key={tier} style={[styles.tierCard, isCurrent && styles.tierCardCurrent]}>
+      <TouchableOpacity
+        key={tier}
+        activeOpacity={isCurrent ? 1 : 0.7}
+        onPress={() => handleSubscribe(tier)}
+        disabled={loading || isCurrent}
+        style={[styles.tierCard, isCurrent && styles.tierCardCurrent]}
+      >
         {isCurrent && <Text style={styles.currentBadge}>Current Plan</Text>}
 
         <Text style={styles.tierName}>{tierData.name}</Text>
@@ -240,25 +289,22 @@ export default function SubscriptionScreen({ onClose }) {
 
         {renderFeatureList(tierData.features)}
 
-        <TouchableOpacity
-          style={[styles.subscribeButton, isCurrent && styles.subscribeButtonCurrent, loading && styles.subscribeButtonDisabled]}
-          onPress={() => handleSubscribe(tier)}
-          disabled={loading || isCurrent}
-        >
+        <View style={[styles.subscribeButton, isCurrent && styles.subscribeButtonCurrent, loading && styles.subscribeButtonDisabled]}>
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.subscribeButtonText}>
-              {isCurrent ? 'Current Plan' : isFreeTier ? 'Downgrade' : 'Subscribe'}
-            </Text>
+            <Text style={styles.subscribeButtonText}>{buttonText}</Text>
           )}
-        </TouchableOpacity>
-      </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
+  // Get trial status for display
+  const trialStatus = getTrialStatus();
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Choose Your Plan</Text>
@@ -266,6 +312,67 @@ export default function SubscriptionScreen({ onClose }) {
           <Text style={styles.closeText}>✕</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Trial Status Banner */}
+      {trialActive && (
+        <View style={styles.trialBanner}>
+          <Text style={styles.trialBannerTitle}>🎉 Free Trial Active</Text>
+          <Text style={styles.trialBannerText}>
+            {trialStatus.daysRemaining} {trialStatus.daysRemaining === 1 ? 'day' : 'days'} remaining of Pro Plus features
+          </Text>
+        </View>
+      )}
+
+      {/* Free Trial Card - Always show in dev mode, conditionally in production */}
+      {(isDevelopment || (authEnabled && isAuthenticated && !trialActive && !trialUsed && subscriptionTier === SUBSCRIPTION_TIERS.FREE)) && !trialActive && (
+        <View style={styles.trialCard}>
+          <View style={styles.trialCardHeader}>
+            <Text style={styles.trialCardTitle}>Try Pro Plus Free for 7 Days</Text>
+            <View style={styles.trialBadge}>
+              <Text style={styles.trialBadgeText}>LIMITED TIME</Text>
+            </View>
+          </View>
+          <Text style={styles.trialCardDescription}>
+            Get full access to all premium features including radar overlays, custom time selection, high-res imagery, and more. No credit card required!
+          </Text>
+          <TouchableOpacity
+            style={[styles.trialButton, startingTrial && styles.trialButtonDisabled]}
+            onPress={() => {
+              // In dev mode with auth disabled, guide user to enable auth
+              if (!authEnabled) {
+                Alert.alert(
+                  'Enable Authentication',
+                  'To use the free trial feature, you need to enable authentication in your .env file:\n\nEXPO_PUBLIC_ENABLE_AUTH=true\n\nThen restart the app and create an account.',
+                  [{ text: 'OK' }]
+                );
+                return;
+              }
+
+              // If auth enabled but not logged in, guide to create account
+              if (!isAuthenticated) {
+                Alert.alert(
+                  'Create Account',
+                  'To start your free trial, please create an account first. Restart the app to see the login screen, or sign in from the settings menu if available.',
+                  [{ text: 'OK' }]
+                );
+                return;
+              }
+
+              // Otherwise start the trial
+              handleStartTrial();
+            }}
+            disabled={startingTrial || loading}
+          >
+            {startingTrial ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.trialButtonText}>
+                {!authEnabled ? 'Enable Auth to Test' : !isAuthenticated ? 'Create Account' : 'Start Free Trial'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Billing Period Toggle */}
       <View style={styles.periodToggle}>
@@ -323,7 +430,7 @@ export default function SubscriptionScreen({ onClose }) {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -513,5 +620,77 @@ const styles = StyleSheet.create({
     color: '#ccaa00',
     fontSize: 12,
     lineHeight: 18,
+  },
+  trialBanner: {
+    backgroundColor: '#1a4d2e',
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#27ae60',
+  },
+  trialBannerTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  trialBannerText: {
+    color: '#a8e6cf',
+    fontSize: 14,
+  },
+  trialCard: {
+    backgroundColor: '#2d1b69',
+    borderRadius: 12,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  trialCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  trialCardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    marginRight: 8,
+  },
+  trialBadge: {
+    backgroundColor: '#ffd700',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  trialBadgeText: {
+    color: '#000',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  trialCardDescription: {
+    fontSize: 14,
+    color: '#e0e0e0',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  trialButton: {
+    backgroundColor: '#667eea',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+  },
+  trialButtonDisabled: {
+    opacity: 0.7,
+  },
+  trialButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
