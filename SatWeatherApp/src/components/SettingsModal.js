@@ -534,7 +534,7 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
             </TouchableOpacity>
 
             {/* Free Tier */}
-            <TouchableOpacity
+            <View
               style={[
                 styles.subscriptionTier,
                 subscriptionTier === SUBSCRIPTION_TIERS.FREE && styles.subscriptionTierActive
@@ -552,15 +552,25 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
                 <Text style={styles.subscriptionFeature}>✓ Drawing & sharing tools</Text>
                 <Text style={styles.subscriptionFeature}>• Contains ads</Text>
               </View>
-              {subscriptionTier === SUBSCRIPTION_TIERS.FREE && (
+              {subscriptionTier === SUBSCRIPTION_TIERS.FREE ? (
                 <View style={styles.subscriptionBadge}>
                   <Text style={styles.subscriptionBadgeText}>CURRENT</Text>
                 </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.subscriptionButton}
+                  onPress={() => {
+                    onClose(); // Close settings modal
+                    setTimeout(() => setShowSubscriptionModal(true), 300); // Open subscription modal
+                  }}
+                >
+                  <Text style={styles.subscriptionButtonText}>Downgrade to Free</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
 
             {/* Pro Subscription */}
-            <TouchableOpacity
+            <View
               style={[
                 styles.subscriptionTier,
                 subscriptionTier === SUBSCRIPTION_TIERS.PRO && styles.subscriptionTierActive
@@ -593,10 +603,10 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
                   <Text style={styles.subscriptionButtonText}>Upgrade to Pro</Text>
                 </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
 
             {/* Pro Plus Subscription */}
-            <TouchableOpacity
+            <View
               style={[
                 styles.subscriptionTier,
                 subscriptionTier === SUBSCRIPTION_TIERS.PRO_PLUS && styles.subscriptionTierActive
@@ -629,7 +639,7 @@ export const SettingsModal = ({ visible, onClose, onShowTutorial }) => {
                   <Text style={styles.subscriptionButtonText}>Upgrade to Pro Plus</Text>
                 </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
           </View>
 
           {/* Help & Support Section */}
@@ -1097,6 +1107,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   subscriptionButton: {
+    backgroundColor: '#4A90E2',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
