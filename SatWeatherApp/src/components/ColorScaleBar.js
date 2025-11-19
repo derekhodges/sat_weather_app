@@ -162,11 +162,6 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight =
     return [r * 255, g * 255, b * 255];
   };
 
-  // Don't render colorbar if it shouldn't be shown for this product/channel
-  if (!showColorbar) {
-    return null;
-  }
-
   return (
     <View style={[
       isVertical ? styles.containerVertical : styles.container,
@@ -188,36 +183,38 @@ const ColorScaleBarComponent = ({ orientation = 'horizontal', matchImageHeight =
         </View>
       )}
 
-      {/* Color gradient bar */}
-      <View
-        ref={gradientBarRef}
-        style={isVertical ? styles.gradientBarVertical : styles.gradientBar}
-        onStartShouldSetResponder={() => isInspectorMode}
-        onResponderGrant={handleColorbarTouch}
-        onResponderMove={handleColorbarTouch}
-        onResponderRelease={handleTouchEnd}
-        onResponderTerminate={handleTouchEnd}
-      >
-        {gradientSegments}
+      {/* Color gradient bar - only show when colorbar should be displayed */}
+      {showColorbar && (
+        <View
+          ref={gradientBarRef}
+          style={isVertical ? styles.gradientBarVertical : styles.gradientBar}
+          onStartShouldSetResponder={() => isInspectorMode}
+          onResponderGrant={handleColorbarTouch}
+          onResponderMove={handleColorbarTouch}
+          onResponderRelease={handleTouchEnd}
+          onResponderTerminate={handleTouchEnd}
+        >
+          {gradientSegments}
 
-        {/* Touch value tooltip */}
-        {touchValue && (
-          <View
-            style={[
-              styles.touchTooltip,
-              isVertical
-                ? { top: touchValue.y - 30, left: 25 }
-                : { left: touchValue.x - 60, top: -40 }
-            ]}
-            pointerEvents="none"
-          >
-            <Text style={styles.touchTooltipText}>{touchValue.label}</Text>
-            {touchValue.description && (
-              <Text style={styles.touchTooltipDescription}>{touchValue.description}</Text>
-            )}
-          </View>
-        )}
-      </View>
+          {/* Touch value tooltip */}
+          {touchValue && (
+            <View
+              style={[
+                styles.touchTooltip,
+                isVertical
+                  ? { top: touchValue.y - 30, left: 25 }
+                  : { left: touchValue.x - 60, top: -40 }
+              ]}
+              pointerEvents="none"
+            >
+              <Text style={styles.touchTooltipText}>{touchValue.label}</Text>
+              {touchValue.description && (
+                <Text style={styles.touchTooltipDescription}>{touchValue.description}</Text>
+              )}
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 };
