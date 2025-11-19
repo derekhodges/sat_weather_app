@@ -368,6 +368,22 @@ export default function SubscriptionScreen({ onClose }) {
         </View>
       )}
 
+      {/* Trial Info Card - Show when auth is disabled or trial already used */}
+      {(!authEnabled || (authEnabled && isAuthenticated && trialUsed)) && subscriptionTier === SUBSCRIPTION_TIERS.FREE && !trialActive && (
+        <View style={styles.trialInfoCard}>
+          <View style={styles.trialInfoHeader}>
+            <Text style={styles.trialInfoTitle}>
+              {!authEnabled ? '🔒 Free Trial Requires Authentication' : '✓ Trial Already Used'}
+            </Text>
+          </View>
+          <Text style={styles.trialInfoDescription}>
+            {!authEnabled
+              ? 'The 7-day free trial feature requires authentication to be enabled. Set EXPO_PUBLIC_ENABLE_AUTH=true in your .env file to enable account creation and trial access.\n\nNote: When auth is disabled, all features are already unlocked in guest mode.'
+              : 'You\'ve already used your 7-day free trial. Subscribe to continue enjoying Pro Plus features!'}
+          </Text>
+        </View>
+      )}
+
       {/* Billing Period Toggle */}
       <View style={styles.periodToggle}>
         <TouchableOpacity
@@ -686,5 +702,27 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  trialInfoCard: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  trialInfoHeader: {
+    marginBottom: 12,
+  },
+  trialInfoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#aaa',
+  },
+  trialInfoDescription: {
+    fontSize: 14,
+    color: '#888',
+    lineHeight: 20,
   },
 });
