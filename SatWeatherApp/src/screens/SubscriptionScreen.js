@@ -264,15 +264,12 @@ export default function SubscriptionScreen({ onClose }) {
     if (isCurrent) {
       buttonText = 'Current Plan';
     } else if (isFreeTier) {
-      buttonText = 'Cancel Subscription';
+      buttonText = 'Downgrade to Free';
     }
 
     return (
-      <TouchableOpacity
+      <View
         key={tier}
-        activeOpacity={isCurrent ? 1 : 0.7}
-        onPress={() => handleSubscribe(tier)}
-        disabled={loading || isCurrent}
         style={[styles.tierCard, isCurrent && styles.tierCardCurrent]}
       >
         {isCurrent && <Text style={styles.currentBadge}>Current Plan</Text>}
@@ -289,14 +286,24 @@ export default function SubscriptionScreen({ onClose }) {
 
         {renderFeatureList(tierData.features)}
 
-        <View style={[styles.subscribeButton, isCurrent && styles.subscribeButtonCurrent, loading && styles.subscribeButtonDisabled]}>
+        <TouchableOpacity
+          style={[
+            styles.subscribeButton,
+            isCurrent && styles.subscribeButtonCurrent,
+            !isCurrent && styles.subscribeButtonActive,
+            loading && styles.subscribeButtonDisabled
+          ]}
+          onPress={() => handleSubscribe(tier)}
+          disabled={loading || isCurrent}
+          activeOpacity={0.7}
+        >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.subscribeButtonText}>{buttonText}</Text>
           )}
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -569,10 +576,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   subscribeButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#333',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
+  },
+  subscribeButtonActive: {
+    backgroundColor: '#4A90E2',
   },
   subscribeButtonCurrent: {
     backgroundColor: '#333',
